@@ -1,0 +1,56 @@
+/* client/src/styles/welcomeNavbar.css */
+.welcome-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.95rem;
+  background-color: #f9f9f9;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.welcome-navbar-left,
+.welcome-navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  cursor: pointer;
+}
+
+
+.nav-links a,
+.welcome-navbar-right a,
+.welcome-navbar-right span {
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.btn-outline {
+  padding: 6px 14px;
+  border: 1px solid black;
+  border-radius: 4px;
+  text-decoration: none;
+  color: black;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.btn-outline:hover {
+  background-color: black;
+  color: white;
+}
