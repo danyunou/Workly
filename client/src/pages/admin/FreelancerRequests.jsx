@@ -10,7 +10,7 @@ export default function FreelancerRequests() {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/verifications", {
+      const res = await fetch("https://workly-cy4b.onrender.com/api/admin/verifications", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -36,7 +36,7 @@ export default function FreelancerRequests() {
   // ✅ Aprobar
   const handleApprove = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/verifications/${id}/approve`, {
+      const res = await fetch(`https://workly-cy4b.onrender.com/api/admin/verifications/${id}/approve`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
@@ -56,7 +56,7 @@ export default function FreelancerRequests() {
     if (!reason) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/verifications/${id}/reject`, {
+      const res = await fetch(`https://workly-cy4b.onrender.com/api/admin/verifications/${id}/reject`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,

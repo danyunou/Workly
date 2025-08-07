@@ -21,7 +21,7 @@ export default function CreateService() {
 
   const fetchCategories = async () => {
   try {
-    const res = await fetch("http://localhost:5000/api/freelancerProfile/profile", {
+    const res = await fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/profile", {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -79,7 +79,7 @@ export default function CreateService() {
     body.append("image", formData.image);
 
     try {
-      const res = await fetch("http://localhost:5000/api/services", {
+      const res = await fetch("https://workly-cy4b.onrender.com/api/services", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`

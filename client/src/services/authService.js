@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/auth'; // Ajusta según tu backend
+const API_URL = 'https://workly-cy4b.onrender.com/api/auth'; // Ajusta según tu backend
 
 export const registerUser = async (userData) => {
   const response = await axios.post(`${API_URL}/register`, userData);
@@ -22,7 +22,7 @@ export const verifyAccount = async (token, email) => {
 };
 
 export const resendVerification = async (email) => {
-  const response = await fetch("http://localhost:5000/api/auth/send-verification", {
+  const response = await fetch("https://workly-cy4b.onrender.com/api/auth/send-verification", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),

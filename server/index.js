@@ -11,6 +11,10 @@ const allowedOrigins = [
   'https://workly-frontend.s3-website.us-east-2.amazonaws.com'
 ];
 
+app.get("/", (req, res) => {
+  res.send("Workly backend está corriendo");
+});
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {

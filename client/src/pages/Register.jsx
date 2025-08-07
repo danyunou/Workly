@@ -119,7 +119,7 @@ export default function Register() {
     }
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", form);
+      const res = await axios.post("https://workly-cy4b.onrender.com/api/auth/register", form);
       if (res.data.success) {
         setError("Registro exitoso. Revisa tu correo para verificar tu cuenta.");
         navigate("/login");

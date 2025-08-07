@@ -37,7 +37,7 @@ export default function CreateRequest() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/requests/create", {
+      const res = await fetch("https://workly-cy4b.onrender.com/api/requests/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

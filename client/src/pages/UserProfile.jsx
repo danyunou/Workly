@@ -9,7 +9,7 @@ export default function UserProfile() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/users/profile", {
+    fetch("https://workly-cy4b.onrender.com/api/users/profile", {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
       .then(res => res.json())

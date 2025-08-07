@@ -8,7 +8,7 @@ console.log("USER:", emailUser);
 console.log("PASS:", emailPass);
 
 exports.sendVerificationEmail = async (email, full_name, token) => {
-  const verificationLink = `http://localhost:5173/verify?token=${token}&email=${email}`;
+  const verificationLink = `http://workly-frontend.s3-website.us-east-2.amazonaws.com/verify?token=${token}&email=${email}`;
 
   const transporter = nodemailer.createTransport({
     service: "gmail",

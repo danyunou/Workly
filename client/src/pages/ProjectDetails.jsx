@@ -35,7 +35,7 @@ export default function ProjectDetail() {
 
   const fetchProject = () => {
     const token = localStorage.getItem("token");
-    axios.get(`http://localhost:5000/api/projects/${projectId}`, {
+    axios.get(`https://workly-cy4b.onrender.com/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => setProject(res.data))
@@ -45,7 +45,7 @@ export default function ProjectDetail() {
 const fetchDispute = async () => {
   try {
     const response = await axios.get(
-      `http://localhost:5000/api/disputes/by-project/${projectId}`,
+      `https://workly-cy4b.onrender.com/api/disputes/by-project/${projectId}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -70,7 +70,7 @@ const fetchDispute = async () => {
 
 useEffect(() => {
   if (dispute) {
-    fetch(`http://localhost:5000/api/disputes/${dispute.id}/logs`, {
+    fetch(`https://workly-cy4b.onrender.com/api/disputes/${dispute.id}/logs`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
       .then(res => res.json())
@@ -82,7 +82,7 @@ useEffect(() => {
 
   const handleAccept = () => {
     const token = localStorage.getItem("token");
-    axios.post(`http://localhost:5000/api/projects/${projectId}/accept`, {}, {
+    axios.post(`https://workly-cy4b.onrender.com/api/projects/${projectId}/accept`, {}, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(() => fetchProject())
@@ -101,7 +101,7 @@ useEffect(() => {
         if (deliverableId) formData.append("deliverableId", deliverableId);
 
         try {
-            await axios.post("http://localhost:5000/api/projects/upload-deliverable", formData, {
+            await axios.post("https://workly-cy4b.onrender.com/api/projects/upload-deliverable", formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "multipart/form-data",
@@ -122,7 +122,7 @@ useEffect(() => {
   const fetchDeliverables = async () => {
         const token = localStorage.getItem("token");
         try {
-            const res = await axios.get(`http://localhost:5000/api/projects/${projectId}/deliverables`, {
+            const res = await axios.get(`https://workly-cy4b.onrender.com/api/projects/${projectId}/deliverables`, {
             headers: { Authorization: `Bearer ${token}` },
             });
             setDeliverables(res.data);
@@ -135,7 +135,7 @@ useEffect(() => {
         const token = localStorage.getItem("token");
         try {
             await axios.post(
-            `http://localhost:5000/api/projects/deliverables/${deliverableId}/approve`,
+            `https://workly-cy4b.onrender.com/api/projects/deliverables/${deliverableId}/approve`,
             {},
             { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -152,7 +152,7 @@ useEffect(() => {
         const token = localStorage.getItem("token");
         try {
             await axios.post(
-            `http://localhost:5000/api/projects/deliverables/${deliverableId}/reject`,
+            `https://workly-cy4b.onrender.com/api/projects/deliverables/${deliverableId}/reject`,
             { reason },
             { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -166,7 +166,7 @@ useEffect(() => {
         const token = localStorage.getItem("token");
         try {
             await axios.post(
-            `http://localhost:5000/api/projects/${projectId}/approve`,
+            `https://workly-cy4b.onrender.com/api/projects/${projectId}/approve`,
             {},
             { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -196,7 +196,7 @@ const submitDispute = async (e) => {
 
   try {
     // Enviar nueva disputa (incluso si la anterior fue rechazada)
-    await axios.post("http://localhost:5000/api/disputes", {
+    await axios.post("https://workly-cy4b.onrender.com/api/disputes", {
       projectId,
       description: reasonText,
       policyAccepted
@@ -451,7 +451,7 @@ function PayPalButtonWrapper({ projectId, onSuccess }) {
   const createOrder = async () => {
     try {
       const res = await axios.post(
-        `http://localhost:5000/api/paypal/create-order/${projectId}`,
+        `https://workly-cy4b.onrender.com/api/paypal/create-order/${projectId}`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -466,7 +466,7 @@ function PayPalButtonWrapper({ projectId, onSuccess }) {
   const onApprove = async (data) => {
     try {
       await axios.post(
-        `http://localhost:5000/api/paypal/capture-order`,
+        `https://workly-cy4b.onrender.com/api/paypal/capture-order`,
         {
           orderID: data.orderID,
           projectId: projectId,

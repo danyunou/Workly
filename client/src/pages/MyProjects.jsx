@@ -9,7 +9,7 @@ export default function MyProjects() {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    axios.get("http://localhost:5000/api/projects/my-projects", {
+    axios.get("https://workly-cy4b.onrender.com/api/projects/my-projects", {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => setProjects(res.data))

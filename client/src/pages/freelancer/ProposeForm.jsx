@@ -21,7 +21,7 @@ const ProposeForm = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        `http://localhost:5000/api/proposals/send/${requestId}`,
+        `https://workly-cy4b.onrender.com/api/proposals/send/${requestId}`,
         {
           message,
           proposed_price: price,

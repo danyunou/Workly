@@ -11,7 +11,7 @@ const MyServices = () => {
   const fetchServices = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/services/by-freelancer", {
+      const res = await axios.get("https://workly-cy4b.onrender.com/api/services/by-freelancer", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setServices(res.data);
@@ -30,7 +30,7 @@ const MyServices = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/services/${id}`, {
+      await axios.delete(`https://workly-cy4b.onrender.com/api/services/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchServices();
@@ -47,7 +47,7 @@ const MyServices = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:5000/api/services/${serviceId}/requests`, {
+      const res = await axios.get(`https://workly-cy4b.onrender.com/api/services/${serviceId}/requests`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setServiceRequests(prev => ({ ...prev, [serviceId]: res.data }));
@@ -60,7 +60,7 @@ const MyServices = () => {
   const acceptRequest = async (requestId) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`http://localhost:5000/api/requests/accept-service-request/${requestId}`, {}, {
+      await axios.post(`https://workly-cy4b.onrender.com/api/requests/accept-service-request/${requestId}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Request accepted and project created.");

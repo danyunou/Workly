@@ -10,7 +10,7 @@ export default function FreelancerDashboard() {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/requests/by-freelancer", {
+        const res = await fetch("https://workly-cy4b.onrender.com/api/requests/by-freelancer", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`
           }

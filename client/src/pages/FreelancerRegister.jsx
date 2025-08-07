@@ -38,7 +38,7 @@ export default function FreelancerRegister() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/freelancerProfile/status", {
+        const res = await fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/status", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -171,7 +171,7 @@ export default function FreelancerRegister() {
         }
       }
 
-      const res = await fetch("http://localhost:5000/api/freelancerProfile", {
+      const res = await fetch("https://workly-cy4b.onrender.com/api/freelancerProfile", {
         method: "POST",
         body: formData,
         headers: {

@@ -8,7 +8,7 @@ export default function Services() {
 
   useEffect(() => {
     const fetchServices = async () => {
-      const res = await fetch("http://localhost:5000/api/services", {
+      const res = await fetch("https://workly-cy4b.onrender.com/api/services", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`
         }

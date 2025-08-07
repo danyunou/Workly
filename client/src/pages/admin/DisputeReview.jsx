@@ -4,7 +4,7 @@ export default function DisputeReview() {
   const [disputes, setDisputes] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/admin/disputes", {
+    fetch("https://workly-cy4b.onrender.com/api/admin/disputes", {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
       .then(res => res.json())
@@ -18,7 +18,7 @@ export default function DisputeReview() {
     if (!reason) return;
 
     try {
-      await fetch(`http://localhost:5000/api/admin/disputes/${disputeId}/reject`, {
+      await fetch(`https://worklyworkly-cy4b-backend.onrender.com/api/admin/disputes/${disputeId}/reject`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -42,7 +42,7 @@ export default function DisputeReview() {
     if (!reason) return;
 
     try {
-      await fetch(`http://localhost:5000/api/admin/disputes/${disputeId}/accept`, {
+      await fetch(`https://worklyworkly-cy4b-backend.onrender.com/api/admin/disputes/${disputeId}/accept`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

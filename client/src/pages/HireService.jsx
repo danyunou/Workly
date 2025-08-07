@@ -8,7 +8,7 @@ export default function HireService() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api/services/${id}`)
+    axios.get(`https://workly-cy4b.onrender.com/api/services/${id}`)
       .then(res => setService(res.data))
       .catch(err => console.error("Error al cargar el servicio:", err));
   }, [id]);
@@ -16,7 +16,7 @@ export default function HireService() {
   const handleHire = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(`http://localhost:5000/api/services/hire/${id}`, {}, {
+      const res = await axios.post(`https://workly-cy4b.onrender.com/api/services/hire/${id}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("Servicio contratado con éxito. Redirigiendo al proyecto...");

@@ -20,7 +20,7 @@ export default function EditFreelancerProfile() {
   const navigate = useNavigate(); // 👈 PARA REDIRECCIÓN
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/freelancerProfile/profile", {
+    fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/profile", {
         headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -70,7 +70,7 @@ export default function EditFreelancerProfile() {
     };
 
     try {
-        const res = await fetch("http://localhost:5000/api/freelancerProfile/update", {
+        const res = await fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/update", {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",

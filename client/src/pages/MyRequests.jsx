@@ -15,7 +15,7 @@ const MyRequests = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/requests/by-client", {
+        const res = await axios.get("https://workly-cy4b.onrender.com/api/requests/by-client", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setRequests(res.data);
@@ -33,7 +33,7 @@ const MyRequests = () => {
     }
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/proposals/by-request/${requestId}`, {
+      const res = await axios.get(`https://workly-cy4b.onrender.com/api/proposals/by-request/${requestId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProposals((prev) => ({ ...prev, [requestId]: res.data }));
@@ -46,7 +46,7 @@ const MyRequests = () => {
   const handleAcceptProposal = async (proposalId) => {
     try {
       await axios.post(
-        `http://localhost:5000/api/proposals/accept/${proposalId}`,
+        `https://workly-cy4b.onrender.com/api/proposals/accept/${proposalId}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
