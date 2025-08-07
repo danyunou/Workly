@@ -7,6 +7,7 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Verify from "../pages/Verify";
 import ResendVerify from "../pages/ResendVerify";
+import DisputeTerms from '../pages/DisputeTerms';
 
 // Páginas privadas generales
 import Home from "../pages/Home";
@@ -43,6 +44,7 @@ export default function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route path="/verify" element={<Verify />} />
       <Route path="/resend-verification" element={<ResendVerify />} />
+      <Route path="/dispute-terms" element={<DisputeTerms />} />
 
       {/* Privadas generales */}
       <Route

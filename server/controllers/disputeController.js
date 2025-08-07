@@ -64,21 +64,38 @@ exports.getDisputeByProject = async (req, res) => {
   const { projectId } = req.params;
 
   try {
-    const result = await pool.query(
-      `SELECT * FROM disputes WHERE project_id = $1 AND opened_by = $2 LIMIT 1`,
+    const disputeResult = await pool.query(
+      `SELECT * FROM disputes WHERE project_id = $1 AND opened_by = $2 ORDER BY created_at DESC LIMIT 1`,
       [projectId, userId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "No se encontró una disputa para este proyecto" });
+    const logResult = await pool.query(
+      `SELECT * FROM dispute_logs WHERE project_id = $1 ORDER BY timestamp DESC LIMIT 1`,
+      [projectId]
+    );
+
+    const reopenedDispute = await pool.query(
+      `SELECT * FROM disputes WHERE project_id = $1 AND status = 'resuelta'`,
+      [projectId]
+    );
+
+    const response = {
+      dispute: disputeResult.rows[0] || null,
+      lastLog: logResult.rows[0] || null,
+      wasReopened: reopenedDispute.rows.length > 0
+    };
+
+    if (!response.dispute) {
+      return res.status(404).json(response);
     }
 
-    res.json(result.rows[0]);
+    res.json(response);
   } catch (err) {
     console.error("Error al obtener disputa por proyecto:", err);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };
+
 
 exports.getDisputeLogs = async (req, res) => {
   const disputeId = req.params.id;

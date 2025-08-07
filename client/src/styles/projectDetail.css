@@ -42,3 +42,125 @@
   background-color: #ccc;
   cursor: not-allowed;
 }
+
+.upload-form {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.deliverables {
+  margin-top: 2rem;
+}
+
+.deliverables h3 {
+  color: #222;
+  margin-bottom: 0.5rem;
+}
+
+.deliverables ul {
+  list-style: none;
+  padding: 0;
+}
+
+.deliverable-item {
+  background: #f9f9f9;
+  padding: 0.8rem;
+  border-radius: 6px;
+  margin-bottom: 0.8rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.upload-form-minimal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #f9f9f9;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  margin-top: 1.5rem;
+  max-width: 500px;
+}
+
+.file-upload-label {
+  display: inline-block;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0.8rem 1rem;
+  border: 2px dashed #bbb;
+  border-radius: 6px;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.file-upload-label:hover {
+  border-color: #007bff;
+}
+
+.file-input {
+  display: none;
+}
+
+.minimal-btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.minimal-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Reemplaza file-input-inline por esta nueva estructura */
+.reupload-form-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Nuevo label para seleccionar archivo */
+.file-label {
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  border: 1px dashed #bbb;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.file-label:hover {
+  background-color: #f0f0f0;
+}
+
+/* Ocultar el input real */
+.file-input-hidden {
+  display: none;
+}
+
+/* Botón compacto */
+.minimal-btn-small {
+  background-color: #007bff;
+  color: white;
+  padding: 0.4rem 0.9rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.minimal-btn-small:hover {
+  background-color: #0056b3;
+}

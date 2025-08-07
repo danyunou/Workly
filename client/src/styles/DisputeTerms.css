@@ -1,0 +1,30 @@
+.dispute-terms-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', sans-serif;
+  color: #333;
+}
+
+.dispute-terms-container h1 {
+  text-align: center;
+  color: #007bff;
+  margin-bottom: 1.5rem;
+}
+
+.dispute-terms-container h2 {
+  margin-top: 1.5rem;
+  color: #333;
+}
+
+.dispute-terms-container ul {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.dispute-terms-container p {
+  margin-bottom: 1rem;
+}

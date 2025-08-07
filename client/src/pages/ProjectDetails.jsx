@@ -4,6 +4,9 @@ import axios from "axios";
 import "../styles/projectDetail.css";
 import { jwtDecode } from "jwt-decode";
 import { PayPalButtons } from "@paypal/react-paypal-js";
+import Navbar from "../components/Navbar";
+import FreelancerNavbar from "../components/FreelancerNavbar";
+
 
 export default function ProjectDetail() {
   const { id: projectId } = useParams();
@@ -17,6 +20,7 @@ export default function ProjectDetail() {
   const [dispute, setDispute] = useState(null);
   const [disputeLogs, setDisputeLogs] = useState([]);
   const [showResubmitForm, setShowResubmitForm] = useState(false);
+  const [disputeLimitReached, setDisputeLimitReached] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -39,15 +43,28 @@ export default function ProjectDetail() {
   };
 
 const fetchDispute = async () => {
-  const token = localStorage.getItem("token");
   try {
-    const res = await axios.get(`http://localhost:5000/api/disputes/by-project/${projectId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setDispute(res.data); // ✅ ACTUALIZA dispute correctamente
-  } catch (error) {
-    console.error("Error al obtener disputa:", error);
-    setDispute(null); // por si no hay
+    const response = await axios.get(
+      `http://localhost:5000/api/disputes/by-project/${projectId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const data = response.data;
+
+    // Establece disputa del usuario
+    setDispute(data.user || null);
+
+    // Verifica si se alcanzó el límite total de disputas
+    if (data.all.length >= 5) {
+      setDisputeLimitReached(true);
+    } else {
+      setDisputeLimitReached(false);
+    }
+
+  } catch (err) {
+    console.error("Error al obtener disputa:", err);
   }
 };
 
@@ -220,7 +237,12 @@ const submitDispute = async (e) => {
     freelancer_accepted,
   } = project;
 
+  const lastLog = disputeLogs.length > 0 ? disputeLogs[disputeLogs.length - 1] : null;
+
   return (
+  <>
+    {roleId === 2 ? <FreelancerNavbar /> : <Navbar />}
+
     <div className="project-detail">
       <h2>Contrato de Prestación de Servicios Freelancer</h2>
 
@@ -232,7 +254,6 @@ const submitDispute = async (e) => {
       <p><strong>Servicios Contratados:</strong> {description}</p>
 
       <hr />
-
       <h3>Cláusulas destacadas</h3>
       <ul>
         <li><strong>Objeto del Contrato:</strong> El Freelancer se compromete a proporcionar los servicios acordados en el plazo establecido.</li>
@@ -243,7 +264,6 @@ const submitDispute = async (e) => {
       </ul>
 
       <div className="actions">
-        {/* Aceptar contrato: solo si aún no ha aceptado */}
         {roleId === 1 && !client_accepted && (
           <button onClick={handleAccept} disabled={status !== "pending_contract"}>
             Aceptar contrato (Cliente)
@@ -255,140 +275,173 @@ const submitDispute = async (e) => {
           </button>
         )}
 
-        {/* Solo cliente puede pagar y solo si ambos han aceptado */}
         {roleId === 1 && client_accepted && freelancer_accepted && status === "pending_contract" && (
-            <div style={{ maxWidth: "300px", marginTop: "1rem" }}>
-                <PayPalButtonWrapper projectId={projectId} onSuccess={fetchProject} />
-            </div>
+          <div style={{ maxWidth: "300px", marginTop: "1rem" }}>
+            <PayPalButtonWrapper projectId={projectId} onSuccess={fetchProject} />
+          </div>
         )}
 
-
-        {/* Solo freelancer puede subir entregable */}
         {roleId === 2 && status === "in_progress" && (
-            <form onSubmit={handleUpload} className="upload-form">
-                <input type="file" onChange={(e) => setFile(e.target.files[0])} required />
-                <button type="submit">Subir entregable</button>
-            </form>
+          <form onSubmit={handleUpload} className="upload-form-minimal">
+            <label htmlFor="file-upload" className="file-upload-label">
+              Selecciona un archivo
+              <input
+                type="file"
+                id="file-upload"
+                onChange={(e) => setFile(e.target.files[0])}
+                required
+                className="file-input"
+              />
+            </label>
+            <button type="submit" className="minimal-btn">Subir entregable</button>
+          </form>
         )}
+      </div>
 
-        {["in_progress", "completed"].includes(status) && deliverables.length > 0 && (
-            <div className="deliverables">
-                <h3>Entregables del Freelancer</h3>
-                <ul>
-                {deliverables.map((d, index) => (
-                    <li key={d.id}>
-                        <a href={d.file_url} target="_blank" rel="noopener noreferrer">
-                        Ver archivo {index + 1}
-                        </a>{" "}
-                        <span>– Subido el {new Date(d.uploaded_at).toLocaleString()}</span>
-                        {d.approved_by_client && (
-                        <span style={{ marginLeft: "1rem", color: "green" }}>✅ Aprobado</span>
-                        )}
-
-                        {roleId === 1 && !d.approved_by_client && !d.rejected_by_client && (
-                        <>
-                            <button onClick={() => approveDeliverable(d.id)}>Aprobar</button>
-                            <button onClick={() => rejectDeliverable(d.id)} style={{ marginLeft: "1rem" }}>
-                            Rechazar
-                            </button>
-                        </>
-                        )}
-
-                        {d.rejected_by_client && (
-                        <div style={{ color: "red", marginTop: "0.5rem" }}>
-                            ❌ Rechazado por el cliente: {d.rejection_message}
-                        </div>
-                        )}
-
-                        {roleId === 2 && d.rejected_by_client && (
-                        <form onSubmit={(e) => handleUpload(e, d.id)} className="upload-form">
-                            <input
-                            type="file"
-                            onChange={(e) =>
-                                setReuploadFiles((prev) => ({
-                                ...prev,
-                                [d.id]: e.target.files[0],
-                                }))
-                            }
-                            required
-                            />
-                            <button type="submit">Reenviar entregable</button>
-                        </form>
-                        )}
-                    </li>
-                ))}
-
-                </ul>
-            </div>
-        )}
-
-        {roleId === 1 && status === "in_progress" && deliverables.length > 0 &&
-            deliverables.every(d => d.approved_by_client) && (
-                <button onClick={approveProject} style={{ marginTop: "1rem" }}>
-                Aprobar proyecto
-                </button>
-        )}
-
-        {/* Mostrar formulario de disputa si el proyecto está completado */}
-        {roleId === 1 && status === "completed" && (
-            <div className="dispute-section" style={{ marginTop: "2rem" }}>
-                <h3>Proyecto finalizado</h3>
-
-                {dispute && dispute.status === "open" && (
-                <p style={{ color: "orange" }}>
-                    Ya tienes una disputa abierta. El administrador está revisándola.
-                </p>
+      {["in_progress", "completed"].includes(status) && deliverables.length > 0 && (
+        <div className="deliverables">
+          <h3>Archivos entregables</h3>
+          <ul>
+            {deliverables.map((d, index) => (
+              <li key={d.id} className="deliverable-item">
+                <a href={d.file_url} target="_blank" rel="noopener noreferrer">
+                  📄 Ver archivo {index + 1}
+                </a>
+                <span> – Subido el {new Date(d.uploaded_at).toLocaleString()}</span>
+                {d.approved_by_client && (
+                  <span style={{ marginLeft: "1rem", color: "green" }}>✅ Aprobado</span>
                 )}
 
-{dispute && dispute.status === "rejected" && !showResubmitForm && (
-  <div>
-    <p style={{ color: "red" }}>Tu disputa fue rechazada: {dispute.admin_message}</p>
-    <button onClick={() => setShowResubmitForm(true)}>Volver a enviar disputa</button>
-  </div>
-)}
+                {roleId === 1 && !d.approved_by_client && !d.rejected_by_client && (
+                  <>
+                    <button onClick={() => approveDeliverable(d.id)}>Aprobar</button>
+                    <button onClick={() => rejectDeliverable(d.id)} style={{ marginLeft: "1rem" }}>
+                      Rechazar
+                    </button>
+                  </>
+                )}
 
-{(showResubmitForm || !dispute) && (
-  <form onSubmit={submitDispute}>
-    <textarea
-      placeholder="Describe el motivo de la disputa"
-      value={disputeReason}
-      onChange={(e) => setDisputeReason(e.target.value)}
-      required
-      rows={4}
-      style={{ width: "100%", marginBottom: "1rem" }}
-    />
-    <label>
-      <input
-        type="checkbox"
-        checked={policyAccepted}
-        onChange={(e) => setPolicyAccepted(e.target.checked)}
-        required
-      />
-      Acepto la política de resolución de disputas.
-    </label>
-    <br />
-    <button type="submit" disabled={!policyAccepted}>
-      {dispute ? "Reenviar disputa" : "Abrir disputa"}
-    </button>
-  </form>
-)}
+                {d.rejected_by_client && (
+                  <div style={{ color: "red", marginTop: "0.5rem" }}>
+                    ❌ Rechazado por el cliente: {d.rejection_message}
+                  </div>
+                )}
 
+                {roleId === 2 && d.rejected_by_client && (
+                  <form onSubmit={(e) => handleUpload(e, d.id)} className="reupload-form-inline">
+                    <label htmlFor={`reupload-${d.id}`} className="file-label">
+                      Seleccionar archivo
+                      <input
+                        type="file"
+                        id={`reupload-${d.id}`}
+                        onChange={(e) =>
+                          setReuploadFiles((prev) => ({
+                            ...prev,
+                            [d.id]: e.target.files[0],
+                          }))
+                        }
+                        required
+                        className="file-input-hidden"
+                      />
+                    </label>
+
+                    <button type="submit" className="minimal-btn-small">Reenviar</button>
+                  </form>
+
+
+
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {roleId === 1 && status === "in_progress" && deliverables.every(d => d.approved_by_client) && (
+              <button onClick={approveProject} style={{ marginTop: "1rem" }}>
+                ✅ Aprobar proyecto
+              </button>
+            )}
+
+            {/* Mostrar formulario de disputa si el proyecto está completado */}
+      {roleId === 1 && status === "completed" && (
+        <div className="dispute-section" style={{ marginTop: "2rem" }}>
+          <h3>¿Tienes un problema con el proyecto?</h3>
+          <p>Puedes abrir una disputa si consideras que el entregable no cumple con lo acordado.</p>
+          <p style={{ fontSize: "0.9rem", color: "#555" }}>
+            Al enviar una disputa, se notificará a los administradores para revisar el caso. <br />
+            Lee nuestra <a href="/dispute-terms" target="_blank">política de resolución de disputas</a>.
+          </p>
+
+          {/* ⚠️ Muestra mensaje si ya se alcanzó el límite */}
+          {disputeLimitReached && (
+            <p style={{ color: "red", fontWeight: "bold" }}>
+              Este proyecto ha alcanzado el límite de disputas permitidas (5). Ya no es posible abrir nuevas disputas.
+            </p>
+          )}
+
+          {/* Mostrar estado actual si hay disputa */}
+          {!disputeLimitReached && dispute && dispute.status === "open" && (
+            <p style={{ color: "orange" }}>
+              Ya tienes una disputa abierta. El administrador está revisándola.
+            </p>
+          )}
+
+          {!disputeLimitReached && dispute && dispute.status === "rejected" && !showResubmitForm && (
+            <div>
+              <p style={{ color: "red" }}>Tu disputa fue rechazada: {dispute.admin_message}</p>
+              <button onClick={() => setShowResubmitForm(true)}>Volver a enviar disputa</button>
             </div>
-        )}
+          )}
 
-        {disputeLogs.length > 0 && (
-            <div className="dispute-log">
-                <p><strong>Última decisión:</strong> {disputeLogs[0].action_description}</p>
-                <p><em>{new Date(disputeLogs[0].timestamp).toLocaleString()}</em></p>
-            </div>
-        )}
+          {/* ⚠️ Solo muestra el formulario si no se ha alcanzado el límite */}
+          {!disputeLimitReached &&
+          (showResubmitForm || !dispute) &&
+          (!dispute || (dispute.status !== "irresoluble" && dispute.status !== "resuelta")) && (
+
+            <form onSubmit={submitDispute}>
+              <textarea
+                placeholder="Describe el motivo de la disputa"
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+                required
+                rows={4}
+                style={{ width: "100%", marginBottom: "1rem" }}
+              />
+              <label>
+                <input
+                  type="checkbox"
+                  checked={policyAccepted}
+                  onChange={(e) => setPolicyAccepted(e.target.checked)}
+                  required
+                />
+                Acepto la política de resolución de disputas.
+              </label>
+              <br />
+              <button type="submit" disabled={!policyAccepted}>
+                {dispute ? "Reenviar disputa" : "Abrir disputa"}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
 
 
 
-      </div>
-      
+      {lastLog && (
+        <div className="dispute-log" style={{ marginTop: "1.5rem", background: "#f9f9f9", padding: "1rem", borderRadius: "6px" }}>
+          <strong>Última decisión del administrador:</strong>
+          <p>{lastLog.action_description}</p>
+          <p style={{ fontSize: "0.85rem", color: "#666" }}>
+            {new Date(lastLog.timestamp).toLocaleString()}
+          </p>
+        </div>
+      )}
+
     </div>
-  );
+  </>
+);
+
 }
 
 

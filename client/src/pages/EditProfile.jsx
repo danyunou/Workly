@@ -33,7 +33,6 @@ export default function EditProfile() {
       });
   }, []);
 
-  // Actualiza communication_pref automáticamente
   useEffect(() => {
     if (!form) return;
 
@@ -89,6 +88,10 @@ export default function EditProfile() {
 
       const result = await res.json();
       if (res.ok) {
+        const updatedForm = { ...form };
+        delete updatedForm.profile_picture;
+        setOriginalForm(updatedForm);
+
         setMessage("Perfil actualizado correctamente.");
         setMessageType("success");
         setTimeout(() => navigate("/user-profile"), 1500);
@@ -130,7 +133,6 @@ export default function EditProfile() {
         <option value="Uso personal">Uso personal</option>
       </select>
 
-      {/* Días disponibles */}
       <div className="day-buttons">
         {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((day) => (
           <button
@@ -151,7 +153,6 @@ export default function EditProfile() {
         ))}
       </div>
 
-      {/* Horario disponible */}
       <div className="time-range-container">
         <label>Desde: {form.horaInicio}:00</label>
         <input

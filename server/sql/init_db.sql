@@ -1,207 +1,170 @@
+
 CREATE TABLE roles (
-  id SERIAL PRIMARY KEY,
-  name TEXT UNIQUE NOT NULL -- admin, freelancer, client
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL
 );
 
 CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  full_name TEXT NOT NULL,
-  username TEXT UNIQUE NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role_id INTEGER REFERENCES roles(id),
-  profile_picture TEXT,
-  biography TEXT,
-  preferences JSONB,
-  is_verified BOOLEAN DEFAULT FALSE,
-  verify_token TEXT,
-  token_expires TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  is_freelancer BOOLEAN DEFAULT FALSE
-);
-
-CREATE TABLE freelancer_profiles (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  alias TEXT,
-  description TEXT,
-  languages TEXT[],
-  skills TEXT[],
-  education JSONB, -- ejemplo: [{"institution":"MIT", "degree":"CS", "year":2020}]
-  website TEXT,
-  social_links TEXT[],
-  verification_file TEXT,
-  verified BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  categories INTEGER[]
+    id SERIAL PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    username TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role_id INTEGER REFERENCES roles(id),
+    profile_picture TEXT,
+    biography TEXT,
+    preferences JSONB,
+    is_verified BOOLEAN DEFAULT false,
+    verify_token TEXT,
+    token_expires TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_freelancer BOOLEAN DEFAULT false
 );
 
 CREATE TABLE pending_users (
-  id SERIAL PRIMARY KEY,
-  full_name TEXT NOT NULL,
-  username TEXT UNIQUE NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  usage_preference TEXT NOT NULL,
-  verify_token TEXT NOT NULL,
-  token_expires TIMESTAMP NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  image_url TEXT NOT NULL
+    id SERIAL PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    username TEXT NOT NULL,
+    email TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    usage_preference TEXT NOT NULL,
+    verify_token TEXT NOT NULL,
+    token_expires TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE freelancer_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    alias TEXT NOT NULL,
+    description TEXT,
+    languages TEXT[],
+    skills TEXT[],
+    education JSONB,
+    website TEXT,
+    social_links TEXT[],
+    verification_file TEXT,
+    verified BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    categories TEXT[]
 );
 
 CREATE TABLE services (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  price NUMERIC(10,2) NOT NULL,
-  freelancer_id INTEGER REFERENCES users(id),
-  category_id INTEGER REFERENCES categories(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  is_active BOOLEAN DEFAULT TRUE
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    price NUMERIC(10, 2) NOT NULL,
+    freelancer_id INTEGER REFERENCES users(id),
+    category TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT true,
+    image_url TEXT
 );
 
 CREATE TABLE requests (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  budget NUMERIC(10,2) NOT NULL,
-  deadline DATE NOT NULL,
-  client_id INTEGER REFERENCES users(id),
-  category_id INTEGER REFERENCES categories(id),
-  status TEXT DEFAULT 'open',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE proposals (
-  id SERIAL PRIMARY KEY,
-  request_id INTEGER REFERENCES requests(id),
-  freelancer_id INTEGER REFERENCES users(id),
-  message TEXT,
-  proposed_price NUMERIC(10,2),
-  proposed_deadline DATE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  status TEXT DEFAULT 'pending'
-);
-
-CREATE TABLE projects (
-  id SERIAL PRIMARY KEY,
-  proposal_id INTEGER REFERENCES proposals(id),
-  status TEXT DEFAULT 'in_progress',
-  started_at TIMESTAMP,
-  completed_at TIMESTAMP,
-  service_request_id INTEGER REFERENCES service_requests(id),
-  approved_by_client BOOLEAN DEFAULT FALSE
-);
-
-
-CREATE TABLE messages (
-  id SERIAL PRIMARY KEY,
-  sender_id INTEGER REFERENCES users(id),
-  receiver_id INTEGER REFERENCES users(id),
-  project_id INTEGER REFERENCES projects(id),
-  content TEXT,
-  file_url TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE files (
-  id SERIAL PRIMARY KEY,
-  uploaded_by INTEGER REFERENCES users(id),
-  related_service_id INTEGER REFERENCES services(id),
-  related_project_id INTEGER REFERENCES projects(id),
-  related_message_id INTEGER REFERENCES messages(id),
-  file_url TEXT,
-  file_type TEXT,
-  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE payments (
-  id SERIAL PRIMARY KEY,
-  project_id INTEGER REFERENCES projects(id),
-  amount NUMERIC(10,2),
-  method TEXT DEFAULT 'paypal',
-  status TEXT DEFAULT 'pending',
-  paid_at TIMESTAMP
-);
-
-CREATE TABLE reviews (
-  id SERIAL PRIMARY KEY,
-  reviewer_id INTEGER REFERENCES users(id),
-  reviewed_id INTEGER REFERENCES users(id),
-  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
-  comment TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE verifications (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  status TEXT DEFAULT 'pending', -- pending, approved, rejected
-  reviewed_by INTEGER REFERENCES users(id),
-  reviewed_at TIMESTAMP,
-  file_url TEXT
-);
-
-CREATE TABLE transactions (
-  id SERIAL PRIMARY KEY,
-  payment_id INTEGER REFERENCES payments(id),
-  paypal_order_id TEXT,
-  paypal_capture_id TEXT,
-  transaction_fee NUMERIC(10,2),
-  status TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE disputes (
-  id SERIAL PRIMARY KEY,
-  project_id INTEGER REFERENCES projects(id),
-  opened_by INTEGER REFERENCES users(id),
-  opened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  description TEXT NOT NULL,
-  policy_accepted BOOLEAN NOT NULL,
-  status TEXT DEFAULT 'pendiente', -- pendiente, resuelta, irresoluble
-  closed_by INTEGER REFERENCES users(id),
-  closed_at TIMESTAMP,
-  resolution TEXT
-);
-
-CREATE TABLE dispute_files (
-  id SERIAL PRIMARY KEY,
-  dispute_id INTEGER REFERENCES disputes(id),
-  uploaded_by INTEGER REFERENCES users(id),
-  file_url TEXT NOT NULL,
-  file_type TEXT,
-  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE dispute_logs (
-  id SERIAL PRIMARY KEY,
-  dispute_id INTEGER REFERENCES disputes(id),
-  action_by INTEGER REFERENCES users(id),
-  action_type TEXT, -- mensaje, archivo, decisión
-  action_description TEXT,
-  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE verification_logs (
-  id SERIAL PRIMARY KEY,
-  verification_id INTEGER REFERENCES verifications(id) ON DELETE CASCADE,
-  action TEXT NOT NULL, -- 'approved' o 'rejected'
-  message TEXT,         -- mensaje opcional (razón del rechazo)
-  action_by INTEGER REFERENCES users(id), -- admin que tomó la acción
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    budget NUMERIC(10, 2) NOT NULL,
+    deadline DATE NOT NULL,
+    client_id INTEGER REFERENCES users(id),
+    category TEXT,
+    status TEXT DEFAULT 'open',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE service_requests (
-  id SERIAL PRIMARY KEY,
-  service_id INTEGER REFERENCES services(id),
-  client_id INTEGER REFERENCES users(id),
-  message TEXT,
-  proposed_deadline DATE,
-  status TEXT DEFAULT 'pending',
-  proposed_budget NUMERIC(10, 2),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER REFERENCES services(id),
+    client_id INTEGER REFERENCES users(id),
+    message TEXT,
+    proposed_deadline DATE,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    proposed_budget NUMERIC(10,2)
 );
 
+CREATE TABLE proposals (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER REFERENCES requests(id),
+    freelancer_id INTEGER REFERENCES users(id),
+    message TEXT,
+    proposed_price NUMERIC(10, 2),
+    proposed_deadline DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'pending'
+);
 
+CREATE TABLE projects (
+    id SERIAL PRIMARY KEY,
+    proposal_id INTEGER REFERENCES proposals(id),
+    request_id INTEGER REFERENCES requests(id),
+    freelancer_id INTEGER REFERENCES users(id),
+    client_id INTEGER REFERENCES users(id),
+    service_request_id INTEGER REFERENCES service_requests(id),
+    service_id INTEGER REFERENCES services(id),
+    status TEXT DEFAULT 'pending_contract',
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    approved_by_client BOOLEAN DEFAULT false,
+    contract_accepted_at TIMESTAMP,
+    payment_status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    client_accepted BOOLEAN DEFAULT false,
+    freelancer_accepted BOOLEAN DEFAULT false
+);
+
+CREATE TABLE deliverables (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id),
+    freelancer_id INTEGER REFERENCES users(id),
+    file_url TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    approved_by_client BOOLEAN DEFAULT false,
+    rejected_by_client BOOLEAN DEFAULT false,
+    rejection_message TEXT,
+    version INTEGER DEFAULT 1
+);
+
+CREATE TABLE disputes (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id),
+    opened_by INTEGER REFERENCES users(id),
+    opened_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description TEXT NOT NULL,
+    policy_accepted BOOLEAN NOT NULL,
+    status TEXT DEFAULT 'pendiente',
+    closed_by INTEGER REFERENCES users(id),
+    closed_at TIMESTAMP,
+    resolution TEXT
+);
+
+CREATE TABLE dispute_logs (
+    id SERIAL PRIMARY KEY,
+    dispute_id INTEGER REFERENCES disputes(id),
+    action_by INTEGER REFERENCES users(id),
+    action_type TEXT,
+    action_description TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE verifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'pending',
+    reviewed_by INTEGER REFERENCES users(id),
+    reviewed_at TIMESTAMP,
+    file_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    rejection_message TEXT
+);
+
+CREATE TABLE verification_logs (
+    id SERIAL PRIMARY KEY,
+    verification_id INTEGER REFERENCES verifications(id),
+    action TEXT NOT NULL,
+    message TEXT,
+    action_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
