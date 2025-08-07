@@ -41,8 +41,8 @@ export default function UserProfile() {
             <p>Aprovecha al máximo Workly compartiendo más sobre ti.</p>
 
             <div className="checklist">
-            <div className="checklist-item"> ✔️ Cómo planeas usar Workly:{" "}{user.usage_preference || "No especificado"}</div>
-            <div className="checklist-item">✔️ Biografía: {user.biography || "0%"}</div>
+            <div className="checklist-item"> Cómo planeas usar Workly:{" "}{user.usage_preference || "No especificado"}</div>
+            <div className="checklist-item"> Biografía: {user.biography || "0%"}</div>
             </div>
 
             <div className="comments-section">

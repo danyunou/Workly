@@ -1,6 +1,6 @@
 // server/services/emailService.js
 const nodemailer = require("nodemailer");
-require('dotenv').config(); // 👈 asegúrate que esté al principio
+require('dotenv').config(); 
 const emailUser = process.env.EMAIL_USER;
 const emailPass = process.env.EMAIL_PASS;
 

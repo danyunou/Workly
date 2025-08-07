@@ -14,15 +14,45 @@ exports.createFreelancerProfile = async (req, res) => {
     social_links
   } = req.body;
 
-  const user_id = req.user?.id || 1; // reemplaza con autenticación real
+  const user_id = req.user?.id;
 
   try {
+    if (!req.files?.profile_picture || !req.files?.verification_file) {
+      return res.status(400).json({ error: "Archivos requeridos no enviados" });
+    }
+
     const profileUrl = await uploadToS3(req.files.profile_picture[0]);
     const idFileUrl = await uploadToS3(req.files.verification_file[0]);
 
+    console.log("💡 education recibido como string:", education);
+    try {
+      const parsed = JSON.parse(education);
+      console.log("✅ parsed:", parsed);
+    } catch (err) {
+      console.error("❌ JSON inválido:", education);
+      return res.status(400).json({ error: "Formato de educación no es JSON válido" });
+    }
+
+    // 🔧 Procesar categorías (aceptar string separado por comas)
+    const parsedCategories =
+      typeof categories === "string"
+        ? categories.split(",").map(c => c.trim())
+        : Array.isArray(categories)
+        ? categories.map(c => c.trim())
+        : [];
+
+    console.log("📦 Categorías procesadas:", parsedCategories);
+
+    // 🖼 Guardar la imagen de perfil en la tabla `users`
+    await pool.query(
+      `UPDATE users SET profile_picture = $1 WHERE id = $2`,
+      [profileUrl, user_id]
+    );
+
+    // 💾 Guardar el perfil
     await pool.query(`
       INSERT INTO freelancer_profiles 
-        (user_id, alias, description, languages, skills, education, website, social_links, profile_picture, verified)
+        (user_id, alias, description, languages, skills, education, website, social_links, categories, verified)
       VALUES 
         ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
     `, [
@@ -34,9 +64,10 @@ exports.createFreelancerProfile = async (req, res) => {
       education,
       website,
       social_links.split(',').map(s => s.trim()),
-      profileUrl
+      parsedCategories
     ]);
 
+    // 🧾 Guardar archivo de verificación
     await pool.query(`
       INSERT INTO verifications (user_id, file_url, status)
       VALUES ($1, $2, 'pending')
@@ -45,10 +76,11 @@ exports.createFreelancerProfile = async (req, res) => {
     res.json({ message: 'Freelancer profile created and verification submitted' });
 
   } catch (err) {
-    console.error(err);
+    console.error("Error al crear perfil de freelancer:", err);
     res.status(500).json({ error: 'Error creating profile' });
   }
 };
+
 
 exports.getVerificationStatus = async (req, res) => {
   const user_id = req.user?.id;
@@ -70,7 +102,7 @@ exports.getVerificationStatus = async (req, res) => {
 
     // Verificar si hay solicitud de verificación
     const verificationResult = await pool.query(
-      `SELECT status FROM verifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      `SELECT status, rejection_message FROM verifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
       [user_id]
     );
 
@@ -78,14 +110,20 @@ exports.getVerificationStatus = async (req, res) => {
       return res.json({ status: verified ? "verified" : "not_submitted" });
     }
 
-    const status = verificationResult.rows[0].status;
+    const { status, rejection_message } = verificationResult.rows[0];
 
-    return res.json({ status }); // puede ser 'pending', 'approved', 'rejected'
+    // Incluir el mensaje solo si está rechazado
+    if (status === "rejected") {
+      return res.json({ status, rejection_message });
+    }
+
+    return res.json({ status }); // puede ser 'pending' o 'approved'
   } catch (err) {
     console.error("Error checking verification status:", err);
     return res.status(500).json({ error: "Error checking verification status" });
   }
 };
+
 
 exports.getFreelancerProfile = async (req, res) => {
   const user_id = req.user?.id;
@@ -94,18 +132,136 @@ exports.getFreelancerProfile = async (req, res) => {
 
   try {
     const result = await pool.query(`
-      SELECT alias, description, languages, skills, education, website, social_links, profile_picture, verified
-      FROM freelancer_profiles
-      WHERE user_id = $1
+      SELECT 
+        u.full_name,
+        u.username,
+        u.created_at,
+        u.preferences,
+        u.profile_picture,
+        f.alias,
+        f.description,
+        f.languages,
+        f.skills,
+        f.education,
+        f.website,
+        f.social_links,
+        f.verified,
+        f.categories
+      FROM freelancer_profiles f
+      JOIN users u ON f.user_id = u.id
+      WHERE f.user_id = $1
     `, [user_id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Perfil de freelancer no encontrado" });
     }
 
-    res.json(result.rows[0]);
+    const profile = result.rows[0];
+
+    // Parsear arrays y JSON
+    profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
+    profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
+    profile.social_links = Array.isArray(profile.social_links) ? profile.social_links : [];
+
+    if (typeof profile.education === "string") {
+      try {
+        profile.education = JSON.parse(profile.education);
+      } catch {
+        profile.education = [];
+      }
+    }
+
+    // Parsear categorías
+    profile.categories = Array.isArray(profile.categories)
+      ? profile.categories.map(c => c.trim())
+      : [];
+
+    res.json(profile);
   } catch (err) {
     console.error("Error al obtener perfil de freelancer:", err);
     res.status(500).json({ error: "Error al obtener el perfil" });
+  }
+};
+
+
+
+// controllers/requestController.js
+exports.getRequestsForFreelancer = async (req, res) => {
+  const userId = req.user?.id;
+
+  try {
+    const catResult = await pool.query(
+      `SELECT category_id FROM freelancer_categories WHERE user_id = $1`,
+      [userId]
+    );
+    const categories = catResult.rows.map(row => row.category_id);
+
+    if (categories.length === 0) return res.json([]);
+
+    const result = await pool.query(`
+      SELECT r.id, r.title, r.description, r.budget
+      FROM requests r
+      WHERE r.category_id = ANY($1::int[])
+        AND r.status = 'active'
+      ORDER BY r.created_at DESC
+    `, [categories]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error al obtener solicitudes para freelancer:", err);
+    res.status(500).json({ error: "Error al obtener solicitudes" });
+  }
+};
+
+exports.updateFreelancerProfile = async (req, res) => {
+  const userId = req.user.id;
+  const {
+    description,
+    languages,
+    categories,
+    skills,
+    education,
+    website,
+    social_links,
+    communication_hours // se guarda en tabla users
+  } = req.body;
+
+  try {
+    // 1. Actualizar freelancer_profiles
+    await pool.query(
+      `UPDATE freelancer_profiles 
+       SET
+         description = $1,
+         languages = $2,
+         categories = $3,
+         skills = $4,
+         education = $5,
+         website = $6,
+         social_links = $7
+       WHERE user_id = $8`,
+      [
+        description,
+        languages,
+        categories,
+        skills,
+        education,
+        website,
+        social_links,
+        userId
+      ]
+    );
+
+    // 2. Actualizar comunicación en tabla users
+    await pool.query(
+      `UPDATE users 
+      SET preferences = jsonb_set(preferences, '{communication_hours}', to_jsonb($1::text), true)
+      WHERE id = $2`,
+      [communication_hours, userId]
+    );
+
+    res.status(200).json({ message: 'Perfil actualizado correctamente' });
+  } catch (err) {
+    console.error("Error al actualizar perfil freelancer:", err);
+    res.status(500).json({ error: 'Error al actualizar perfil' });
   }
 };

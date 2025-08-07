@@ -6,7 +6,7 @@ export default function Verify() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState("verifying");
+  const [status, setStatus] = useState("verifying"); // verifying | success | expired | invalid | error
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [resendStatus, setResendStatus] = useState(null); // null | sending | success | error
@@ -61,52 +61,65 @@ export default function Verify() {
     }
   };
 
+  const renderResendButton = () => (
+    <>
+      <button
+        onClick={handleResend}
+        disabled={resendStatus === "sending"}
+        style={{
+          padding: "0.5rem 1rem",
+          cursor: resendStatus === "sending" ? "not-allowed" : "pointer",
+          marginTop: "1rem",
+        }}
+      >
+        {resendStatus === "sending" ? "Enviando..." : "Reenviar verificación"}
+      </button>
+      {resendMessage && (
+        <p style={{ marginTop: "1rem", color: resendStatus === "success" ? "green" : "red" }}>
+          {resendMessage}
+        </p>
+      )}
+    </>
+  );
+
+  const renderContent = () => {
+    switch (status) {
+      case "verifying":
+        return <p>Verificando tu cuenta...</p>;
+      case "success":
+        return (
+          <>
+            <p style={{ color: "green" }}>{message}</p>
+            <p>Redirigiendo al inicio de sesión...</p>
+          </>
+        );
+      case "expired":
+        return (
+          <>
+            <p style={{ color: "orange" }}>El enlace de verificación ha expirado.</p>
+            {renderResendButton()}
+          </>
+        );
+      case "invalid":
+        return (
+          <>
+            <p style={{ color: "red" }}>
+              El enlace es inválido o está incompleto. Verifica tu correo o intenta nuevamente.
+            </p>
+            {renderResendButton()}
+          </>
+        );
+      case "error":
+        return <p style={{ color: "red" }}>Hubo un error interno al verificar tu cuenta.</p>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div style={{ textAlign: "center", padding: "2rem" }}>
       <h2>Verificación de Cuenta</h2>
-
-      {status === "verifying" && <p>Verificando tu cuenta...</p>}
-
-      {status === "success" && (
-        <>
-          <p style={{ color: "green" }}>{message}</p>
-          <p>Redirigiendo al inicio de sesión...</p>
-        </>
-      )}
-
-      {(status === "expired" || status === "invalid") && (
-        <>
-          <p style={{ color: status === "expired" ? "orange" : "red" }}>
-            {status === "expired"
-              ? "El enlace de verificación ha expirado."
-              : "El enlace es inválido o está incompleto. Verifica tu correo o intenta nuevamente."}
-          </p>
-
-          <button
-            onClick={handleResend}
-            disabled={resendStatus === "sending"}
-            style={{
-              padding: "0.5rem 1rem",
-              cursor: resendStatus === "sending" ? "not-allowed" : "pointer",
-              marginTop: "1rem",
-            }}
-          >
-            {resendStatus === "sending" ? "Enviando..." : "Reenviar verificación"}
-          </button>
-
-          {resendMessage && (
-            <p style={{ marginTop: "1rem", color: resendStatus === "success" ? "green" : "red" }}>
-              {resendMessage}
-            </p>
-          )}
-        </>
-      )}
-
-      {status === "error" && (
-        <p style={{ color: "red" }}>
-          Hubo un error interno al verificar tu cuenta. Intenta de nuevo más tarde.
-        </p>
-      )}
+      {renderContent()}
     </div>
   );
 }

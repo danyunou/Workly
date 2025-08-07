@@ -13,5 +13,10 @@ export default function PrivateRoute({ children, requiredRole }) {
     return <Navigate to="/home" />;
   }
 
+  // Validar acceso para freelancers
+  if (requiredRole === "freelancer" && user?.role_id !== 2) {
+    return <Navigate to="/home" />;
+  }
+
   return children;
 }

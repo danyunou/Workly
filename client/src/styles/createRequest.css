@@ -1,0 +1,53 @@
+.create-request-container {
+  max-width: 600px;
+  margin: auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.create-request-container h2 {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.create-request-container form {
+  display: flex;
+  flex-direction: column;
+}
+
+.create-request-container input,
+.create-request-container textarea,
+.create-request-container select {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.create-request-container textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.create-request-container .error {
+  color: red;
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+.create-request-container button {
+  background-color: #007bff;
+  color: white;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.create-request-container button:hover {
+  background-color: #0056b3;
+}

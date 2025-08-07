@@ -1,0 +1,68 @@
+.service-form-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fafafa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.service-form-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 26px;
+  color: #222;
+}
+
+form input[type="text"],
+form input[type="number"],
+form input[type="file"],
+form select,
+form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+form input[type="text"]:focus,
+form input[type="number"]:focus,
+form input[type="file"]:focus,
+form select:focus,
+form textarea:focus {
+  border-color: #00a8ff;
+  outline: none;
+}
+
+form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+form button {
+  width: 100%;
+  padding: 14px;
+  background-color: #00a8ff;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+form button:hover {
+  background-color: #007ecb;
+}
+
+.error {
+  color: red;
+  font-size: 15px;
+  margin-bottom: 15px;
+  text-align: center;
+}

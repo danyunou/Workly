@@ -58,8 +58,9 @@ export default function Navbar() {
           {menuOpen && (
             <div className="dropdown-menu">
               <Link to="/user-profile">Perfil</Link>
-              <Link to="/MyProposals">Mis propuestas</Link>
-              <Link to="/PublishProposal">Publicar propuesta</Link>
+              <Link to="/my-projects">Mis proyectos</Link>
+              <Link to="/MyRequests">Mis propuestas</Link>
+              <Link to="/create-request">Publicar propuesta</Link>
               <Link to="/freelancer-register">Conviértete en vendedor</Link>
               <button onClick={handleLogout}>Cerrar sesión</button>
             </div>

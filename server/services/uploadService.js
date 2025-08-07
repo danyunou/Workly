@@ -22,3 +22,16 @@ exports.uploadToS3 = async (file) => {
   const result = await s3.upload(params).promise();
   return result.Location;
 };
+
+exports.deleteFromS3 = async (fileUrl) => {
+  const bucketName = process.env.AWS_BUCKET_NAME;
+  const baseUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/`;
+  const Key = fileUrl.replace(baseUrl, '');
+
+  const params = {
+    Bucket: bucketName,
+    Key,
+  };
+
+  await s3.deleteObject(params).promise();
+};

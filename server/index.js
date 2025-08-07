@@ -10,16 +10,31 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));                         // /api/auth/*
 app.use('/api/services', require('./routes/services'));                // /api/services/*
 app.use('/api/upload', require('./routes/upload'));                    // /api/upload/*
-app.use('/api/paypal', require('./routes/paypal'));                    // /api/paypal/*
-app.use('/api/freelancer', require('./routes/freelancerProfile'));     // /api/freelancer/*
+const paypalRoutes = require("./routes/paypal");
+app.use("/api/paypal", paypalRoutes);                    // /api/paypal/*
+
+const freelancerRoutes = require('./routes/freelancerProfile');
+app.use('/api/freelancerProfile', freelancerRoutes);                   // /api/freelancerProfile/*
+
+const requestRoutes = require("./routes/requests");
+app.use("/api/requests", requestRoutes);
+
+const proposalRoutes = require('./routes/proposals');
+app.use('/api/proposals', proposalRoutes);  // ✅ Esta línea es la que debes agregar
+
+const serviceRequestRoutes = require('./routes/serviceRequests');
+app.use('/api/service-requests', serviceRequestRoutes);
+
+app.use('/api/projects', require('./routes/projects'));
+
+const disputeRoutes = require("./routes/disputes");
+app.use("/api/disputes", disputeRoutes);
 
 const pingRoutes = require('./routes/ping');
 app.use("/api", pingRoutes);
 
 const userRoutes = require('./routes/userRoutes');
 app.use('/api/users', userRoutes);
-const freelancerRoutes = require('./routes/freelancerProfile');
-app.use('/api/freelancer-profile', freelancerRoutes);
 
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/admin', adminRoutes);

@@ -32,7 +32,8 @@ CREATE TABLE freelancer_profiles (
   social_links TEXT[],
   verification_file TEXT,
   verified BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  categories INTEGER[]
 );
 
 CREATE TABLE pending_users (
@@ -46,11 +47,6 @@ CREATE TABLE pending_users (
   token_expires TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   image_url TEXT NOT NULL
-);
-
-CREATE TABLE categories (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL
 );
 
 CREATE TABLE services (
@@ -93,8 +89,10 @@ CREATE TABLE projects (
   status TEXT DEFAULT 'in_progress',
   started_at TIMESTAMP,
   completed_at TIMESTAMP,
+  service_request_id INTEGER REFERENCES service_requests(id),
   approved_by_client BOOLEAN DEFAULT FALSE
 );
+
 
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
@@ -185,3 +183,25 @@ CREATE TABLE dispute_logs (
   action_description TEXT,
   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE verification_logs (
+  id SERIAL PRIMARY KEY,
+  verification_id INTEGER REFERENCES verifications(id) ON DELETE CASCADE,
+  action TEXT NOT NULL, -- 'approved' o 'rejected'
+  message TEXT,         -- mensaje opcional (razón del rechazo)
+  action_by INTEGER REFERENCES users(id), -- admin que tomó la acción
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE service_requests (
+  id SERIAL PRIMARY KEY,
+  service_id INTEGER REFERENCES services(id),
+  client_id INTEGER REFERENCES users(id),
+  message TEXT,
+  proposed_deadline DATE,
+  status TEXT DEFAULT 'pending',
+  proposed_budget NUMERIC(10, 2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+

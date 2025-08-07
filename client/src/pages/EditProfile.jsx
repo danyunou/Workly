@@ -20,6 +20,9 @@ export default function EditProfile() {
           usage_preference: data.usage_preference || "",
           communication_pref: data.communication_hours || "",
           profile_picture: null,
+          selectedDays: [],
+          horaInicio: 9,
+          horaFin: 18,
         };
         setForm(initialData);
         setOriginalForm(initialData);
@@ -29,6 +32,19 @@ export default function EditProfile() {
         setMessageType("error");
       });
   }, []);
+
+  // Actualiza communication_pref automáticamente
+  useEffect(() => {
+    if (!form) return;
+
+    const { selectedDays, horaInicio, horaFin } = form;
+
+    if (selectedDays.length > 0 && horaInicio && horaFin) {
+      const dias = selectedDays.join(", ");
+      const texto = `${dias}, ${horaInicio}h - ${horaFin}h`;
+      setForm((prev) => ({ ...prev, communication_pref: texto }));
+    }
+  }, [form?.selectedDays, form?.horaInicio, form?.horaFin]);
 
   const handleSubmit = async () => {
     if (!form || !originalForm) return;
@@ -91,27 +107,70 @@ export default function EditProfile() {
   return (
     <div className="edit-profile-form">
       <h2>Editar Perfil</h2>
+
       <input
         type="file"
         accept="image/png,image/jpeg"
         onChange={(e) => setForm({ ...form, profile_picture: e.target.files[0] })}
       />
+
       <textarea
         placeholder="Biografía (50-500 caracteres)"
         value={form.biography}
         onChange={(e) => setForm({ ...form, biography: e.target.value })}
       />
-      <select value={form.usage_preference} onChange={(e) => setForm({ ...form, usage_preference: e.target.value })}>
+
+      <select
+        value={form.usage_preference}
+        onChange={(e) => setForm({ ...form, usage_preference: e.target.value })}
+      >
         <option value="">Selecciona un uso</option>
         <option value="Negocio Principal">Negocio principal</option>
         <option value="Trabajo secundario">Trabajo secundario</option>
         <option value="Uso personal">Uso personal</option>
       </select>
-      <input
-        placeholder="Preferencias de comunicación (ej. Lunes a Viernes, 9am-6pm)"
-        value={form.communication_pref}
-        onChange={(e) => setForm({ ...form, communication_pref: e.target.value })}
-      />
+
+      {/* Días disponibles */}
+      <div className="day-buttons">
+        {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((day) => (
+          <button
+            type="button"
+            key={day}
+            className={form.selectedDays.includes(day) ? "selected" : ""}
+            onClick={() =>
+              setForm((prev) => {
+                const updated = prev.selectedDays.includes(day)
+                  ? prev.selectedDays.filter(d => d !== day)
+                  : [...prev.selectedDays, day];
+                return { ...prev, selectedDays: updated };
+              })
+            }
+          >
+            {day.slice(0, 3)}
+          </button>
+        ))}
+      </div>
+
+      {/* Horario disponible */}
+      <div className="time-range-container">
+        <label>Desde: {form.horaInicio}:00</label>
+        <input
+          type="range"
+          min="0"
+          max="23"
+          value={form.horaInicio}
+          onChange={(e) => setForm({ ...form, horaInicio: parseInt(e.target.value) })}
+        />
+
+        <label>Hasta: {form.horaFin}:00</label>
+        <input
+          type="range"
+          min="1"
+          max="24"
+          value={form.horaFin}
+          onChange={(e) => setForm({ ...form, horaFin: parseInt(e.target.value) })}
+        />
+      </div>
 
       {message && (
         <p className={`form-message ${messageType === "error" ? "error" : "success"}`}>

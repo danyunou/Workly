@@ -14,4 +14,8 @@ router.get('/verifications', adminController.getPendingVerifications);
 router.put('/verifications/:verificationId/approve', adminController.approveVerification);
 router.put('/verifications/:verificationId/reject', adminController.rejectVerification);
 
+router.get('/disputes', authMiddleware, ensureAdmin, adminController.getAllDisputes);
+router.post("/disputes/:id/accept", authMiddleware, adminController.acceptDispute);
+router.post("/disputes/:id/reject", authMiddleware, adminController.rejectDispute);
+
 module.exports = router;

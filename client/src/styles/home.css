@@ -36,35 +36,86 @@
 
 .services-scroll {
   display: flex;
+  flex-direction: row;
   overflow-x: auto;
+  padding: 1rem 0;
   gap: 1rem;
-  padding-bottom: 0.5rem;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
 }
 
+.services-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.services-scroll::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+
 .service-card {
-  min-width: 220px;
+  width: 220px;
+  margin: 0 10px;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  overflow: hidden;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
-  flex-shrink: 0;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto; /* Que no se contraiga y mantenga el tamaño */
+  scroll-snap-align: start;
+}
+
+.service-card:hover {
+  transform: translateY(-4px);
 }
 
 .service-image {
   width: 100%;
-  height: 130px;
+  height: 140px;
   object-fit: cover;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
+}
+
+.service-details {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .service-title {
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: bold;
+  margin: 0;
 }
 
-.service-user,
+.service-user {
+  color: #777;
+  font-size: 14px;
+  margin: 0;
+}
+
 .service-price {
-  font-size: 0.9rem;
-  color: #555;
+  font-size: 14px;
+  color: #333;
+  margin: 0;
+}
+
+.hire-btn {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #007bff;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.hire-btn:hover {
+  background-color: #0056b3;
 }

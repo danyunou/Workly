@@ -1,0 +1,23 @@
+.my-requests {
+  max-width: 800px;
+  margin: auto;
+  padding: 2rem;
+}
+
+.request-list {
+  list-style: none;
+  padding: 0;
+}
+
+.request-item {
+  background-color: #f4f4f4;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.request-item h3 {
+  margin-top: 0;
+  color: #222;
+}

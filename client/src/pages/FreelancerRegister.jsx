@@ -1,7 +1,17 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import "../styles/freelancerRegister.css";
+
+const LANGUAGES = [
+  "Alemán", "Árabe", "Bengalí", "Chino mandarín", "Español",
+  "Francés", "Hindi", "Indonesio", "Inglés", "Japonés",
+  "Portugués", "Ruso", "Swahili", "Turco", "Urdu"
+];
+
+const CATEGORY_OPTIONS = [
+  "Artes gráficas y diseño", "Marketing", "Escritura y traduccion", "Video y animacion", "Musica y audio", 
+  "Programacion y tencología", "Negocios", "Estilo de vida", "Datos", "Fotografía"
+];
 
 export default function FreelancerRegister() {
   const [step, setStep] = useState(1);
@@ -10,18 +20,20 @@ export default function FreelancerRegister() {
     alias: "",
     profile_picture: null,
     description: "",
-    languages: "",
-    categories: "",
-    skills: "",
-    education: "",
+    languages: [],
+    categories: [],
+    skills: [],
+    education: [],
     website: "",
-    social_links: "",
+    social_links: [],
     verification_file: null,
   });
 
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [rejectionMessage, setRejectionMessage] = useState("");
+
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -31,11 +43,14 @@ export default function FreelancerRegister() {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
-
         if (!res.ok) throw new Error("No se pudo obtener el estado");
-
         const data = await res.json();
         setStatus(data.status || "not_submitted");
+        if (data.status === "rejected" && data.rejection_message) {
+          setRejectionMessage(data.rejection_message);
+        } else {
+          setRejectionMessage("");
+        }
       } catch (err) {
         console.error("Error al verificar estado del perfil:", err);
         setStatus("not_submitted");
@@ -54,6 +69,17 @@ export default function FreelancerRegister() {
       return () => clearTimeout(timer);
     }
   }, [message, error]);
+
+  const handleLanguageChange = (e) => {
+    const selected = e.target.value;
+    if (selected && !form.languages.includes(selected)) {
+      setForm({ ...form, languages: [...form.languages, selected] });
+    }
+  };
+
+  const handleRemoveLanguage = (lang) => {
+    setForm({ ...form, languages: form.languages.filter(l => l !== lang) });
+  };
 
   const isValidURL = (url) => {
     try {
@@ -75,27 +101,25 @@ export default function FreelancerRegister() {
       aliasRegex.test(form.alias) &&
       file && ["image/jpeg", "image/png"].includes(file.type) && file.size <= 2 * 1024 * 1024 &&
       form.description.length >= 50 && form.description.length <= 500 && !hasLinks &&
-      form.languages.trim()
+      form.languages.length > 0 
     );
   };
 
   const validateStep2 = () => {
-    const cats = form.categories.split(",").map(c => c.trim()).filter(Boolean);
-    const skills = form.skills.split(",").map(s => s.trim());
-    let educationList;
-    try {
-      educationList = JSON.parse(form.education);
-    } catch {
-      educationList = [];
-    }
-    const socials = form.social_links.split(",").map(s => s.trim());
+    const cats = form.categories;
+    const skills = form.skills;
+    const educationList = form.education;
+    const socials = form.social_links;
 
     return (
-      cats.length > 0 && cats.length <= 3 &&
-      skills.length > 0 && skills.every(s => s.length <= 50) &&
+      Array.isArray(cats) && cats.length > 0 && cats.length <= 3 &&
+      Array.isArray(skills) && skills.length > 0 && skills.every(s => s.length <= 50) &&
       Array.isArray(educationList) && educationList.length <= 3 &&
-      isValidURL(form.website) &&
-      socials.every(link => isValidURL(link))
+      (!form.website || isValidURL(form.website)) && // ✅ website opcional
+      (
+        socials.length === 0 ||                      // ✅ redes sociales opcionales
+        (Array.isArray(socials) && socials.every(link => isValidURL(link)))
+      )
     );
   };
 
@@ -105,27 +129,46 @@ export default function FreelancerRegister() {
   };
 
   const handleNext = () => {
-    if (status === "verified" || status === "pending") {
-      setError("Ya tienes un perfil enviado o verificado.");
-      return;
-    }
+    if (status === "verified") return setError("Tu perfil ya fue verificado.");
+    if (status === "pending") return setError("Perfil ya enviado, espera validación.");
+    if (step === 1 && validateStep1()) return setStep(2);
+    if (step === 2 && validateStep2()) return setStep(3);
+    if (step === 3 && validateStep3()) return handleSubmit();
+    setError("Completa correctamente todos los campos.");
+  };
 
-    if (step === 1 && validateStep1()) {
-      setStep(2);
-    } else if (step === 2 && validateStep2()) {
-      setStep(3);
-    } else if (step === 3 && validateStep3()) {
-      handleSubmit();
-    } else {
-      setError("Completa correctamente todos los campos.");
-    }
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
   };
 
   const handleSubmit = async () => {
     try {
+      // Validación manual de archivos
+      const profile = form.profile_picture;
+      const idFile = form.verification_file;
+
+      if (!profile || !["image/jpeg", "image/png"].includes(profile.type) || profile.size > 2 * 1024 * 1024) {
+        setError("La foto de perfil debe ser JPG o PNG y pesar menos de 2MB.");
+        return;
+      }
+
+      if (!idFile || !["image/jpeg", "image/png", "application/pdf"].includes(idFile.type) || idFile.size > 15 * 1024 * 1024) {
+        setError("El archivo de verificación debe ser PDF, JPG o PNG y pesar menos de 15MB.");
+        return;
+      }
+
       const formData = new FormData();
+
       for (let key in form) {
-        formData.append(key, form[key]);
+        if (key === "education") {
+          formData.append("education", JSON.stringify(form.education));
+        } else if (Array.isArray(form[key])) {
+          formData.append(key, form[key].join(","));
+        } else if (key === "profile_picture" || key === "verification_file") {
+          formData.append(key, form[key]); // Ya validados
+        } else {
+          formData.append(key, form[key]);
+        }
       }
 
       const res = await fetch("http://localhost:5000/api/freelancerProfile", {
@@ -137,12 +180,14 @@ export default function FreelancerRegister() {
       });
 
       const result = await res.json();
+
       if (res.ok) {
         setMessage("Perfil enviado. Será validado por un administrador.");
         setStatus("pending");
       } else {
         setError(result.error || "Error al enviar.");
       }
+
     } catch (err) {
       setError("Error en la conexión.");
       console.error(err);
@@ -152,54 +197,216 @@ export default function FreelancerRegister() {
   return (
     <>
       <Navbar />
-      <div className="freelancer-register-container">
-        <h2>Registro como Freelancer</h2>
 
-        {/* Progress bar visual */}
-        <div className="progress-bar">
-          <div className={`progress-step ${step >= 1 ? "active" : ""}`}></div>
-          <div className={`progress-step ${step >= 2 ? "active" : ""}`}></div>
-          <div className={`progress-step ${step === 3 ? "active" : ""}`}></div>
+      {status === "pending" && (
+        <div className="freelancer-register-container">
+          <h2>Solicitud enviada</h2>
+          <p className="info-message">Tu solicitud está pendiente de revisión.</p>
         </div>
+      )}
 
-        {/* Mensajes */}
-        {message && <p className="success-message">{message}</p>}
-        {error && <p className="error-message">{error}</p>}
+      {status === "verified" && (
+        <div className="freelancer-register-container">
+          <h2>Perfil verificado</h2>
+          <p className="success-message">Ya puedes usar tu cuenta como freelancer.</p>
+        </div>
+      )}
 
-        {step === 1 && (
-          <div className="step-section">
-            <h3>1. Información Personal</h3>
-            <input placeholder="Nombre completo" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} />
-            <input placeholder="Apodo (alias)" value={form.alias} onChange={e => setForm({ ...form, alias: e.target.value })} />
-            <input placeholder="Foto de Perfil" type="file" accept="image/jpeg,image/png" onChange={e => setForm({ ...form, profile_picture: e.target.files[0] })} />
-            <textarea placeholder="Descripción (mínimo 50 caracteres, sin enlaces)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-            <input placeholder="Idiomas (separados por coma)" value={form.languages} onChange={e => setForm({ ...form, languages: e.target.value })} />
-          </div>
-        )}
+      {(status === "not_submitted" || status === "rejected") && (
+        <>
+          {<div className="freelancer-register-container">
+      <h2>Registro como Freelancer</h2>
 
-        {step === 2 && (
-          <div className="step-section">
-            <h3>2. Información Profesional</h3>
-            <input placeholder="Categorías (máx. 3, separadas por coma)" value={form.categories} onChange={e => setForm({ ...form, categories: e.target.value })} />
-            <input placeholder="Skills (separadas por coma, máx. 50 caracteres c/u)" value={form.skills} onChange={e => setForm({ ...form, skills: e.target.value })} />
-            <textarea placeholder='Educación (formato JSON)' value={form.education} onChange={e => setForm({ ...form, education: e.target.value })} />
-            <input placeholder="Sitio web personal" value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} />
-            <input placeholder="Redes sociales (URLs separadas por coma)" value={form.social_links} onChange={e => setForm({ ...form, social_links: e.target.value })} />
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="step-section">
-            <h3>3. Verificación de Identidad</h3>
-            <p>Sube tu identificación oficial (PDF, JPG o PNG. Máx. 5MB)</p>
-            <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => setForm({ ...form, verification_file: e.target.files[0] })} />
-          </div>
-        )}
-
-        <button className="submit-button" onClick={handleNext}>
-          {step < 3 ? "Siguiente" : "Enviar"}
-        </button>
+      <div className="progress-bar">
+        <div className={`progress-step ${step >= 1 ? "active" : ""}`}></div>
+        <div className={`progress-step ${step >= 2 ? "active" : ""}`}></div>
+        <div className={`progress-step ${step === 3 ? "active" : ""}`}></div>
       </div>
+
+      {message && <p className="success-message">{message}</p>}
+      {error && <p className="error-message">{error}</p>}
+      {status === "rejected" && rejectionMessage && (
+        <p className="error-message">Tu solicitud fue rechazada: {rejectionMessage}</p>
+      )}
+      {status === "rejected" && (
+        <p className="info-message">Puedes corregir los datos y volver a enviar el formulario.</p>
+      )}
+
+      {/* Paso 1: Info Personal */}
+      {step === 1 && (
+        <div className="step-section">
+          <br />
+          <h3>1. Información Personal</h3>
+          <input placeholder="Nombre completo" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} />
+          <input placeholder="Apodo (alias)" value={form.alias} onChange={e => setForm({ ...form, alias: e.target.value })} />
+          <label htmlFor="profile_picture">Foto de perfil (JPG o PNG, máx. 2MB):</label>
+          <input
+            id="profile_picture"
+            type="file"
+            accept="image/jpeg,image/png"
+            onChange={e => setForm({ ...form, profile_picture: e.target.files[0] })}
+          />
+          <textarea placeholder="Descripción (mínimo 50 caracteres, sin enlaces)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+
+          <label>Idiomas que hablas:</label>
+          <div className="language-selector">
+            <select onChange={handleLanguageChange} value="">
+              <option value="" disabled>Selecciona un idioma...</option>
+              {LANGUAGES.filter(lang => !form.languages.includes(lang)).map((lang, i) => (
+                <option key={i} value={lang}>{lang}</option>
+              ))}
+            </select>
+
+            <div className="language-chips">
+              {form.languages.map((lang, i) => (
+                <div key={i} className="chip">
+                  {lang}
+                  <span className="remove" onClick={() => handleRemoveLanguage(lang)}>×</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paso 2: Info Profesional */}
+      {step === 2 && (
+        <div className="step-section">
+          <br />
+          <h3>2. Información Profesional</h3>
+
+          <label>Categorías (máx. 3):</label>
+          <select
+            value=""
+            onChange={(e) => {
+              const selected = e.target.value;
+              if (!form.categories.includes(selected) && form.categories.length < 3) {
+                setForm({ ...form, categories: [...form.categories, selected] });
+              }
+            }}
+          >
+            <option disabled value="">Selecciona una categoría...</option>
+            {CATEGORY_OPTIONS.filter(c => !form.categories.includes(c)).map((cat, i) => (
+              <option key={i} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <div className="language-chips">
+            {form.categories.map((cat, i) => (
+              <div key={i} className="chip">
+                {cat}
+                <span className="remove" onClick={() =>
+                  setForm({ ...form, categories: form.categories.filter(c => c !== cat) })
+                }>×</span>
+              </div>
+            ))}
+          </div>
+
+          <label>Skills (máx. 50 caracteres c/u):</label>
+          <div className="input-add-chip">
+            <input
+              placeholder="Escribe una skill y presiona Enter"
+              onKeyDown={(e) => {
+                const skill = e.target.value.trim();
+                if (e.key === "Enter" && skill && skill.length <= 50 && !form.skills.includes(skill)) {
+                  e.preventDefault();
+                  setForm({ ...form, skills: [...form.skills, skill] });
+                  e.target.value = "";
+                }
+              }}
+            />
+          </div>
+          <div className="language-chips">
+            {form.skills.map((s, i) => (
+              <div key={i} className="chip">
+                {s}
+                <span className="remove" onClick={() =>
+                  setForm({ ...form, skills: form.skills.filter(skill => skill !== s) })
+                }>×</span>
+              </div>
+            ))}
+          </div>
+
+          <label>Educación (máx. 3 entradas):</label>
+          {form.education.map((edu, i) => (
+            <div key={i} className="education-entry">
+              <p><strong>{edu.institucion}</strong> - {edu.carrera} ({edu.anio})</p>
+              <button onClick={() =>
+                setForm({ ...form, education: form.education.filter((_, idx) => idx !== i) })
+              }>Eliminar</button>
+            </div>
+          ))}
+          {form.education.length < 3 && (
+            <div className="education-form">
+              <input placeholder="Institución" id="inst" />
+              <input placeholder="Carrera" id="carr" />
+              <input placeholder="Año" id="anio" />
+              <button onClick={() => {
+                const inst = document.getElementById("inst").value.trim();
+                const carr = document.getElementById("carr").value.trim();
+                const anio = document.getElementById("anio").value.trim();
+                if (inst && carr && anio) {
+                  setForm({ ...form, education: [...form.education, { institucion: inst, carrera: carr, anio }] });
+                  document.getElementById("inst").value = "";
+                  document.getElementById("carr").value = "";
+                  document.getElementById("anio").value = "";
+                }
+              }}>Agregar educación</button>
+            </div>
+          )}
+
+          <label>Redes sociales (URL):</label>
+          <div className="input-add-chip">
+            <input
+              placeholder="Pega una URL y presiona Enter"
+              onKeyDown={(e) => {
+                const url = e.target.value.trim();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  try {
+                    new URL(url);
+                    if (!form.social_links.includes(url)) {
+                      setForm({ ...form, social_links: [...form.social_links, url] });
+                      e.target.value = "";
+                    }
+                  } catch {
+                    setError("URL inválida.");
+                  }
+                }
+              }}
+            />
+          </div>
+          <div className="language-chips">
+            {form.social_links.map((url, i) => (
+              <div key={i} className="chip">
+                {url}
+                <span className="remove" onClick={() =>
+                  setForm({ ...form, social_links: form.social_links.filter(link => link !== url) })
+                }>×</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Paso 3: Verificación */}
+      {step === 3 && (
+        <div className="step-section">
+          <br />
+          <h3>3. Verificación de Identidad</h3>
+          <p>Sube tu identificación oficial (PDF, JPG o PNG. Máx. 5MB)</p>
+          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => setForm({ ...form, verification_file: e.target.files[0] })} />
+        </div>
+      )}
+
+      <button
+        className="submit-button"
+        onClick={step < 3 ? handleNext : handleSubmit}
+      >
+        {step < 3 ? "Siguiente" : "Enviar"}
+      </button>
+    </div>}
+        </>
+      )}
     </>
   );
 }

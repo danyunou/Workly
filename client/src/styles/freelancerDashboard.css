@@ -1,0 +1,106 @@
+/* Contenedor principal */
+.dashboard-container {
+  padding: 30px 40px;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+}
+
+/* Título principal */
+.dashboard-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Mensaje cuando no hay solicitudes */
+.no-requests {
+  font-size: 16px;
+  color: #666;
+  margin-top: 40px;
+  text-align: center;
+}
+
+/* Rejilla de solicitudes */
+.requests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+/* Tarjeta de solicitud */
+.request-card {
+  background-color: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.3s ease-in-out;
+  border: 1px solid #e5e7eb;
+}
+
+.request-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Título */
+.request-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+/* Descripción */
+.request-description {
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+/* Categoría */
+.request-category {
+  display: inline-block;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+}
+
+/* Presupuesto */
+.request-budget {
+  font-size: 15px;
+  font-weight: 600;
+  color: #15803d;
+  margin-bottom: 4px;
+}
+
+/* Fecha límite */
+.request-deadline {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Botón */
+.request-card button {
+  margin-top: 12px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.request-card button:hover {
+  background-color: #059669;
+}

@@ -42,6 +42,9 @@ export default function Login() {
       // Redirección según el rol
       if (data.user.role_id === 3) {
         navigate("/admin");
+      }
+      else if (data.user.role_id === 2) {
+        navigate("/FreelancerDashboard");
       } else {
         navigate("/home");
       }

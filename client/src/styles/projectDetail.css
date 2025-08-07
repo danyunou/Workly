@@ -1,0 +1,44 @@
+.project-detail {
+  max-width: 800px;
+  margin: 2rem auto;
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.project-detail h2 {
+  margin-bottom: 1rem;
+  text-align: center;
+  color: #333;
+}
+
+.project-detail p {
+  margin: 0.5rem 0;
+}
+
+.project-detail ul {
+  margin-top: 1rem;
+  padding-left: 1.2rem;
+}
+
+.project-detail .actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: space-around;
+}
+
+.project-detail button {
+  padding: 0.6rem 1.2rem;
+  background-color: #007aff;
+  border: none;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.project-detail button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
