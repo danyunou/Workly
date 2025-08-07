@@ -1,12 +1,11 @@
-// server/config/db.js
 const { Pool } = require('pg');
+const connectionString = process.env.DATABASE_URL;
 
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'Workly_Production',
-  password: 'lolquemal',
-  port: 5432,
+  connectionString,
+  ssl: {
+    rejectUnauthorized: false, // Necesario para Render
+  },
 });
 
 module.exports = pool;
