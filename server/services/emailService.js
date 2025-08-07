@@ -17,14 +17,20 @@ exports.sendVerificationEmail = async (email, full_name, token) => {
       pass: emailPass,
     },
   });
+  console.log("Enviando correo a:", email);
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Verifica tu cuenta en Workly",
+      html: `<p>Hola ${full_name},</p>
+        <p>Haz clic en el siguiente enlace para verificar tu cuenta:</p>
+        <a href="${verificationLink}">Verificar cuenta</a>
+        <p>Este enlace expirará en 10 minutos.</p>`,
+    });
+    console.log("Correo enviado correctamente a:", email);
+  } catch (error) {
+    console.error("❌ Error al enviar correo de verificación:", error.message);
+  }
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Verifica tu cuenta en Workly",
-    html: `<p>Hola ${full_name},</p>
-      <p>Haz clic en el siguiente enlace para verificar tu cuenta:</p>
-      <a href="${verificationLink}">Verificar cuenta</a>
-      <p>Este enlace expirará en 10 minutos.</p>`,
-  });
 };
