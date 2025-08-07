@@ -3,41 +3,43 @@ const cors = require('cors');
 require('dotenv').config();
 const env = require('./config/envConfig');
 const app = express();
-app.use(cors());
+
+// 🔐 Configuración de CORS con dominios permitidos
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://workly-frontend.s3-website.us-east-2.amazonaws.com',
+  'https://workly-frontend.s3-website.us-east-2.amazonaws.com'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS policy: This origin is not allowed.'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // Rutas API organizadas
-app.use('/api/auth', require('./routes/auth'));                         // /api/auth/*
-app.use('/api/services', require('./routes/services'));                // /api/services/*
-app.use('/api/upload', require('./routes/upload'));                    // /api/upload/*
-const paypalRoutes = require("./routes/paypal");
-app.use("/api/paypal", paypalRoutes);                    // /api/paypal/*
-
-const freelancerRoutes = require('./routes/freelancerProfile');
-app.use('/api/freelancerProfile', freelancerRoutes);                   // /api/freelancerProfile/*
-
-const requestRoutes = require("./routes/requests");
-app.use("/api/requests", requestRoutes);
-
-const proposalRoutes = require('./routes/proposals');
-app.use('/api/proposals', proposalRoutes);  // ✅ Esta línea es la que debes agregar
-
-const serviceRequestRoutes = require('./routes/serviceRequests');
-app.use('/api/service-requests', serviceRequestRoutes);
-
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/services', require('./routes/services'));
+app.use('/api/upload', require('./routes/upload'));
+app.use('/api/paypal', require('./routes/paypal'));
+app.use('/api/freelancerProfile', require('./routes/freelancerProfile'));
+app.use('/api/requests', require('./routes/requests'));
+app.use('/api/proposals', require('./routes/proposals'));
+app.use('/api/service-requests', require('./routes/serviceRequests'));
 app.use('/api/projects', require('./routes/projects'));
-
-const disputeRoutes = require("./routes/disputes");
-app.use("/api/disputes", disputeRoutes);
-
-const pingRoutes = require('./routes/ping');
-app.use("/api", pingRoutes);
-
-const userRoutes = require('./routes/userRoutes');
-app.use('/api/users', userRoutes);
-
-const adminRoutes = require('./routes/adminRoutes');
-app.use('/api/admin', adminRoutes);
+app.use('/api/disputes', require('./routes/disputes'));
+app.use('/api', require('./routes/ping'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 // Tarea programada para limpiar usuarios no verificados
 const cron = require("node-cron");
