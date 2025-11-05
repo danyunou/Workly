@@ -1,10 +1,23 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import { jwtDecode } from "jwt-decode";
+import FreelancerNavbar from "../components/FreelancerNavbar";
 import "../styles/myProjects.css";
 
 export default function MyProjects() {
   const [projects, setProjects] = useState([]);
+  const [roleId, setRoleId] = useState(null);
+
+  useEffect(() => {
+      const token = localStorage.getItem("token");
+  
+      if (token) {
+        const decoded = jwtDecode(token);
+        setRoleId(decoded.role_id);
+      }
+    });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -17,6 +30,8 @@ export default function MyProjects() {
   }, []);
 
   return (
+    <>
+    {roleId === 2 ? <FreelancerNavbar /> : <Navbar />}
     <div className="projects-container">
       <h2>Mis proyectos</h2>
       {projects.length === 0 ? (
@@ -37,5 +52,6 @@ export default function MyProjects() {
         </div>
       )}
     </div>
+     </>
   );
 }

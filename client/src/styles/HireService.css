@@ -1,0 +1,79 @@
+.hire-container {
+  display: flex;
+  justify-content: center;
+  padding: 60px 20px;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+}
+
+.hire-card {
+  max-width: 650px;
+  width: 100%;
+  background-color: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.hire-title {
+  font-size: 26px;
+  margin-bottom: 20px;
+  color: #333;
+  text-align: center;
+}
+
+.hire-image {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.hire-info p {
+  font-size: 16px;
+  color: #444;
+  margin: 10px 0;
+  line-height: 1.5;
+}
+
+.hire-button {
+  margin-top: 25px;
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  background-color: #00b894;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.hire-button:hover {
+  background-color: #00997a;
+}
+
+.loading {
+  text-align: center;
+  margin-top: 50px;
+  font-size: 18px;
+}
+
+.back-button {
+  margin-top: 10px;
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  background-color: #636e72;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.back-button:hover {
+  background-color: #4d4d4d;
+}

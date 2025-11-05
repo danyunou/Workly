@@ -62,17 +62,17 @@ const MyRequests = () => {
     <>
       <Navbar />
       <div className="my-requests">
-        <h2>My Project Requests</h2>
+        <h2>Mis Propuestas</h2>
         {requests.length === 0 ? (
-          <p>You haven't published any requests yet.</p>
+          <p>Aun no has publicado ninguna propuesta.</p>
         ) : (
           <ul className="request-list">
             {requests.map((req) => (
               <li key={req.id} className="request-item">
                 <h3>{req.title}</h3>
                 <p>{req.description}</p>
-                <p><strong>Budget:</strong> ${req.budget}</p>
-                <p><strong>Deadline:</strong> {new Date(req.deadline).toLocaleDateString()}</p>
+                <p><strong>Presupuesto:</strong> ${req.budget}</p>
+                <p><strong>Fecha de entrega:</strong> {new Date(req.deadline).toLocaleDateString()}</p>
                 <p><strong>Status:</strong> {req.status}</p>
                 <br></br>
                 <button onClick={() => toggleRequestDetails(req.id)}>
@@ -81,7 +81,7 @@ const MyRequests = () => {
 
                 {expandedRequestId === req.id && (
                   <div className="proposal-section">
-                    <h4>Proposals ({proposals[req.id]?.length || 0})</h4>
+                    <h4>Propuestas ({proposals[req.id]?.length || 0})</h4>
                     {proposals[req.id]?.length > 0 ? (
                       <ul>
                         {proposals[req.id].map((prop) => (

@@ -11,13 +11,11 @@ export default function AdminDashboard() {
 
       <div className="admin-sections">
         <Link to="/admin/disputas" className="admin-section">
-          <div className="admin-section-icon">📂</div>
           <h3>Revisar Disputas</h3>
           <p>Consulta y resuelve disputas abiertas entre usuarios.</p>
         </Link>
 
         <Link to="/admin/solicitudes" className="admin-section">
-          <div className="admin-section-icon">📝</div>
           <h3>Solicitudes de Freelancer</h3>
           <p>Aprueba o rechaza solicitudes de verificación de freelancers.</p>
         </Link>

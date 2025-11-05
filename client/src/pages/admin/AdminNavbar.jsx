@@ -14,12 +14,12 @@ export default function AdminNavbar() {
   return (
     <nav className="admin-navbar">
       <div className="admin-navbar-logo" onClick={() => navigate("/admin")}>
-        🛠️ Admin Panel
+      
       </div>
 
       <div className="admin-navbar-actions">
-        <button onClick={() => navigate("/admin/mensajes")}>📨 Mensajes</button>
-        <button onClick={handleLogout}>🚪 Cerrar sesión</button>
+        <button onClick={() => navigate("/admin/mensajes")}>Mensajes</button>
+        <button onClick={handleLogout}>Cerrar sesión</button>
       </div>
     </nav>
   );

@@ -29,7 +29,6 @@ export default function Home() {
           <div className="category-section" key={cat.category}>
             <div className="category-header">
               <h3 className="category-title">{cat.category}</h3>
-              <button className="explore-btn" onClick={() => handleExplore(cat.category)}>Explorar</button>
             </div>
 
             <div className="services-scroll">
