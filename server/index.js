@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const env = require('./config/envConfig');
 const app = express();
+const { verifyMailer } = require('./services/emailService');
 
 // 🔐 Configuración de CORS con dominios permitidos
 const allowedOrigins = [
