@@ -76,4 +76,7 @@ app.get("/", (req, res) => {
 
 // Puerto
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Server running on port ${PORT}`);
+  await verifyMailer(); // comprueba handshake/credenciales al iniciar
+});
