@@ -1,97 +1,160 @@
-.admin-dashboard {
+/* Fondo general del panel */
+.admin-page {
+  min-height: 50vh;
+  background: #ffffff;
   display: flex;
-  flex-direction: column;
-  padding: 2rem;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f9fafc;
-  border-bottom: 1px solid #e0e0e0;
-  min-height: 100vh;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem 1rem 2rem;
 }
 
+/* Card central */
+.admin-dashboard {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Header del panel */
 .admin-header {
   text-align: center;
   margin-bottom: 2rem;
 }
 
+.admin-subtitle {
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 0.4rem;
+}
+
 .admin-header h2 {
   font-size: 2rem;
-  color: #222;
-  margin-bottom: 0.5rem;
+  color: #111827;
+  margin-bottom: 0.3rem;
 }
 
 .admin-header p {
-  color: #666;
-}
-
-.admin-sections {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  justify-content: center;
-}
-
-.admin-section {
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  padding: 1.5rem;
-  width: 280px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s;
-  text-decoration: none;
-  color: inherit;
-}
-
-.admin-section:hover {
-  transform: scale(1.02);
-}
-
-.admin-section h3 {
-  margin-top: 0;
-  font-size: 1.3rem;
-  color: #333;
-}
-
-.admin-section p {
-  color: #555;
+  color: #6b7280;
   font-size: 0.95rem;
 }
 
-.admin-section-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  color: #4a90e2;
+/* Grid de tarjetas */
+.admin-sections {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.8rem;
 }
 
+/* Tarjeta */
+.admin-section {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 1.8rem 1.6rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.05);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(2, 173, 122, 0.12),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.admin-section:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 45px rgba(15, 23, 42, 0.12);
+  border-color: #02ad7a;
+}
+
+.admin-section:hover::before {
+  opacity: 1;
+}
+
+.admin-section-icon {
+  font-size: 2rem;
+  margin-bottom: 0.9rem;
+}
+
+.admin-section h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+  color: #111827;
+}
+
+.admin-section p {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+/* NAVBAR ADMIN */
 .admin-navbar {
   width: 100%;
-  background-color: #f9f9f9;
-  color: black;
+  background-color: #f3f4f6;
+  color: #111827;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.8rem 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0.8rem 2.2rem;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 
 .admin-navbar-logo {
-  font-size: 1.3rem;
-  font-weight: bold;
+  font-size: 1.2rem;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.admin-navbar-logo span {
+  color: #02ad7a;
 }
 
 .admin-navbar-actions button {
   background: transparent;
-  color: black;
-  border: none;
-  margin-left: 1rem;
-  font-size: 0.95rem;
+  color: #111827;
+  border: 1px solid transparent;
+  margin-left: 0.75rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  padding: 0.4rem 0.8rem;
-  border-radius: 5px;
-  transition: background 0.2s;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.admin-navbar-actions button:hover {
-  background: rgba(255, 255, 255, 0.1);
+.admin-navbar-actions button:first-child {
+  border-color: #e5e7eb;
+}
+
+.admin-navbar-actions button:last-child {
+  background: #02ad7a;
+  color: #ffffff;
+}
+
+.admin-navbar-actions button:first-child:hover {
+  background: #f3f4f6;
+}
+
+.admin-navbar-actions button:last-child:hover {
+  background: #00915d;
 }

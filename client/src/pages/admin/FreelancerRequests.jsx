@@ -86,24 +86,90 @@ export default function FreelancerRequests() {
         ) : (
           <div className="requests-list">
             {requests.map((r) => (
-              <div key={r.id} className="request-card">
-                <h4>{r.full_name} (@{r.username})</h4>
-                <p><strong>Correo:</strong> {r.email}</p>
-                <p><strong>Subido:</strong> {new Date(r.created_at).toLocaleString()}</p>
-                <a href={r.file_url} target="_blank" rel="noreferrer">Ver documento</a>
+            <div key={r.id} className="request-card">
+              <h4>{r.full_name} (@{r.username})</h4>
+              <p><strong>Correo:</strong> {r.email}</p>
+              <p><strong>Subido:</strong> {new Date(r.created_at).toLocaleString()}</p>
 
-                {statusMap[r.id] === "approved" && <p className="approved-msg">✅ Aprobado</p>}
-                {statusMap[r.id] === "rejected" && <p className="rejected-msg">❌ Rechazado</p>}
-                {statusMap[r.id] === "error" && <p className="error-msg">⚠️ Hubo un error</p>}
+              {/* Alias */}
+              {r.alias && (
+                <p><strong>Alias profesional:</strong> {r.alias}</p>
+              )}
 
-                {!statusMap[r.id] && (
-                  <div className="btns">
-                    <button className="approve" onClick={() => handleApprove(r.id)}>Aprobar</button>
-                    <button className="reject" onClick={() => handleReject(r.id)}>Rechazar</button>
+              {/* Descripción */}
+              {r.description && (
+                <p><strong>Descripción:</strong> {r.description}</p>
+              )}
+
+              {/* Tags de idiomas / categorías / skills */}
+              <div className="tags-row">
+                {r.languages && r.languages.length > 0 && (
+                  <div>
+                    <strong>Idiomas:</strong>
+                    <div className="tags">
+                      {r.languages.map((lang, idx) => (
+                        <span key={idx} className="tag">{lang}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {r.categories && r.categories.length > 0 && (
+                  <div>
+                    <strong>Categorías:</strong>
+                    <div className="tags">
+                      {r.categories.map((cat, idx) => (
+                        <span key={idx} className="tag">{cat}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {r.skills && r.skills.length > 0 && (
+                  <div>
+                    <strong>Skills:</strong>
+                    <div className="tags">
+                      {r.skills.map((skill, idx) => (
+                        <span key={idx} className="tag">{skill}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
+
+              {/* Educación */}
+              {r.education && (
+                <p><strong>Educación:</strong> {r.education}</p>
+              )}
+
+              {/* Links */}
+              <div className="links-row">
+                {r.website && (
+                  <a href={r.website} target="_blank" rel="noreferrer">
+                    Portafolio / sitio web
+                  </a>
+                )}
+                {r.social_links && r.social_links.length > 0 && r.social_links.map((link, idx) => (
+                  <a key={idx} href={link} target="_blank" rel="noreferrer">
+                    Red social #{idx + 1}
+                  </a>
+                ))}
+              </div>
+
+              <a href={r.file_url} target="_blank" rel="noreferrer">Ver documento</a>
+
+              {statusMap[r.id] === "approved" && <p className="approved-msg">✅ Aprobado</p>}
+              {statusMap[r.id] === "rejected" && <p className="rejected-msg">❌ Rechazado</p>}
+              {statusMap[r.id] === "error" && <p className="error-msg">⚠️ Hubo un error</p>}
+
+              {!statusMap[r.id] && (
+                <div className="btns">
+                  <button className="approve" onClick={() => handleApprove(r.id)}>Aprobar</button>
+                  <button className="reject" onClick={() => handleReject(r.id)}>Rechazar</button>
+                </div>
+              )}
+            </div>
+          ))}
           </div>
         )}
       </div>

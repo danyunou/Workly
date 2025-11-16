@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
 import "../styles/login.css";
-import eye from "../assets/icons/eye.png";
+import openEye from "../assets/icons/open-eye.png";
+import closedEye from "../assets/icons/closed-eye.png";
 import WelcomeNavbar from "../components/WelcomeNavbar";
 
 export default function Login() {
@@ -77,11 +78,13 @@ export default function Login() {
             <button
               type="button"
               className="toggle-password"
-              onMouseDown={() => setShowPassword(true)}
-              onMouseUp={() => setShowPassword(false)}
-              onMouseLeave={() => setShowPassword(false)}
+              onClick={() => setShowPassword((prev) => !prev)}
             >
-              <img src={eye} alt="Mostrar contraseña" className="toggle-password-icon" />
+              <img
+                src={showPassword ? openEye : closedEye}
+                alt={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                className="toggle-password-icon"
+              />
             </button>
           </div>
 

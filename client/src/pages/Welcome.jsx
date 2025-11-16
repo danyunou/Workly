@@ -19,22 +19,21 @@ export default function Welcome() {
       <WelcomeNavbar />
 
       <div className="welcome-container">
-        {/* Hero */}
         <section className="hero">
           <div className="hero-text">
-            <h1>Freelancers competentes en todos los campos a solo un clic</h1>
+            <h1>Freelancers profesionales de todos los campos al alcance de un solo un clic</h1>
             <ul>
               <li>
-                <strong> Trabajo de calidad – eficiente y confiable:</strong> Recibe entregas puntuales y de alta calidad, ya sea un trabajo a corto plazo o un proyecto complejo.
+                <strong> Trabajo de calidad, eficiente y confiable:</strong> Recibe entregas puntuales y de alta calidad, ya sea un trabajo corto o un proyecto mas complejo.
               </li>
               <li>
-                <strong> Seguridad en cada pedido:</strong> Pagos protegidos mediante tecnología SSL. Las transacciones no se liberan hasta que se apruebe la entrega.
+                <strong> Seguridad en cada pedido:</strong> Tu dinero esta seguro con nostros. Las transacciones no se liberan hasta que se apruebe la entrega.
               </li>
               <li>
-                <strong> Locales o globales:</strong> Trabaja con expertos de habla hispana o con talento profesional internacional, de acuerdo a tus preferencias y requisitos.
+                <strong> Talento globalizado:</strong> Trabaja con expertos de habla hispana o con talento profesional internacional, de acuerdo a tus preferencias y requisitos.
               </li>
               <li>
-                <strong> 24/7 – soporte continuo a cualquier hora del día:</strong> ¿Tienes alguna pregunta? Nuestro equipo de soporte está disponible en todo momento y lugar.
+                <strong> Soporte 24/7 durante todo el año:</strong> ¿Tienes alguna pregunta? Nuestro equipo de soporte está disponible en todo momento y lugar.
               </li>
             </ul>
           </div>
@@ -47,7 +46,6 @@ export default function Welcome() {
           </div>
         </section>
 
-        {/* ¿Cómo funciona? */}
         <section className="how-it-works">
           <h2>¿Cómo funciona Workly?</h2>
           <div className="steps">
@@ -69,14 +67,24 @@ export default function Welcome() {
           </div>
         </section>
 
-        {/* Testimonio / resumen final */}
         <section className="testimonial">
+          <h2>Testimonios sobre Workly</h2>
           <p>
             Permite la colaboración rápida con freelancers talentosos.<br />
-            Con frecuencia usamos Workly para subcontratar proyectos individuales.
+            - Empresa importante
+          </p>
+          <br />
+          <p>
+            Con frecuencia usamos Workly para subcontratar proyectos individuales.<br/>
+            - Empresa sumamente importante
+          </p>
+          <br />
+          <p>
+            Su CEO es de los hombres mas exitosos de esta decada<br/>
+            - Forbes
           </p>
         </section>
-              {/* Categorías populares */}
+
         <section className="categories">
           <h2>Lo necesitas, nosotros lo tenemos</h2>
           <div className="category-grid">
@@ -122,7 +130,6 @@ export default function Welcome() {
             </div>
           </div>
         </section>
-
       </div>
     </>
   );

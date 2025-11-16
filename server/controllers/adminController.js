@@ -5,10 +5,29 @@ const { deleteFromS3 } = require('../services/uploadService'); // asegúrate de 
 exports.getPendingVerifications = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT v.id, v.user_id, v.file_url, v.status, v.created_at,
-             u.full_name, u.email, u.username
+      SELECT 
+        v.id,
+        v.user_id,
+        v.file_url,
+        v.status,
+        v.created_at,
+
+        u.full_name,
+        u.email,
+        u.username,
+
+        fp.alias,
+        fp.description,
+        fp.languages,
+        fp.categories,
+        fp.skills,
+        fp.education,
+        fp.website,
+        fp.social_links
+
       FROM verifications v
       JOIN users u ON u.id = v.user_id
+      LEFT JOIN freelancer_profiles fp ON fp.user_id = v.user_id
       WHERE v.status = 'pending'
       ORDER BY v.created_at DESC
     `);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/editProfile.css";
+import Navbar from "../components/Navbar";
 
 export default function EditProfile() {
   const [form, setForm] = useState(null);
@@ -105,81 +106,172 @@ export default function EditProfile() {
     }
   };
 
-  if (!form) return <p>Cargando datos del perfil...</p>;
+  if (!form) {
+    return (
+      <>
+        <Navbar />
+        <main className="edit-profile-page">
+          <div className="edit-profile-form">
+            <h2>Editar Perfil</h2>
+            <p>Cargando datos del perfil...</p>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
-    <div className="edit-profile-form">
-      <h2>Editar Perfil</h2>
+    <>
+      <Navbar />
 
-      <input
-        type="file"
-        accept="image/png,image/jpeg"
-        onChange={(e) => setForm({ ...form, profile_picture: e.target.files[0] })}
-      />
+      <main className="edit-profile-page">
+        <div className="edit-profile-form">
+          <h2>Editar Perfil</h2>
 
-      <textarea
-        placeholder="Biografía (50-500 caracteres)"
-        value={form.biography}
-        onChange={(e) => setForm({ ...form, biography: e.target.value })}
-      />
+          {/* FOTO */}
+          <div className="form-field">
+            <label className="field-label">Foto de perfil</label>
+            <div className="file-field">
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                className="file-input"
+                onChange={(e) =>
+                  setForm({ ...form, profile_picture: e.target.files[0] })
+                }
+              />
+              <p className="file-help">
+                {form.profile_picture
+                  ? form.profile_picture.name
+                  : "JPG o PNG, máx. 2MB"}
+              </p>
+            </div>
+          </div>
 
-      <select
-        value={form.usage_preference}
-        onChange={(e) => setForm({ ...form, usage_preference: e.target.value })}
-      >
-        <option value="">Selecciona un uso</option>
-        <option value="Negocio Principal">Negocio principal</option>
-        <option value="Trabajo secundario">Trabajo secundario</option>
-        <option value="Uso personal">Uso personal</option>
-      </select>
+          {/* BIO */}
+          <div className="form-field">
+            <label className="field-label">Biografía</label>
+            <textarea
+              placeholder="Biografía (50-500 caracteres)"
+              value={form.biography}
+              onChange={(e) =>
+                setForm({ ...form, biography: e.target.value })
+              }
+            />
+          </div>
 
-      <div className="day-buttons">
-        {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((day) => (
-          <button
-            type="button"
-            key={day}
-            className={form.selectedDays.includes(day) ? "selected" : ""}
-            onClick={() =>
-              setForm((prev) => {
-                const updated = prev.selectedDays.includes(day)
-                  ? prev.selectedDays.filter(d => d !== day)
-                  : [...prev.selectedDays, day];
-                return { ...prev, selectedDays: updated };
-              })
-            }
-          >
-            {day.slice(0, 3)}
-          </button>
-        ))}
-      </div>
+          {/* USO */}
+          <div className="form-field">
+            <label className="field-label">¿Cómo usarás Workly?</label>
+            <select
+              value={form.usage_preference}
+              onChange={(e) =>
+                setForm({ ...form, usage_preference: e.target.value })
+              }
+            >
+              <option value="">Selecciona un uso</option>
+              <option value="Negocio Principal">Negocio principal</option>
+              <option value="Trabajo secundario">Trabajo secundario</option>
+              <option value="Uso personal">Uso personal</option>
+            </select>
+          </div>
 
-      <div className="time-range-container">
-        <label>Desde: {form.horaInicio}:00</label>
-        <input
-          type="range"
-          min="0"
-          max="23"
-          value={form.horaInicio}
-          onChange={(e) => setForm({ ...form, horaInicio: parseInt(e.target.value) })}
-        />
+          {/* DÍAS */}
+          <div className="form-field">
+            <label className="field-label">Días de comunicación</label>
+            <div className="day-buttons">
+              {[
+                "Lunes",
+                "Martes",
+                "Miércoles",
+                "Jueves",
+                "Viernes",
+                "Sábado",
+                "Domingo",
+              ].map((day) => (
+                <button
+                  type="button"
+                  key={day}
+                  className={
+                    form.selectedDays.includes(day) ? "selected" : ""
+                  }
+                  onClick={() =>
+                    setForm((prev) => {
+                      const updated = prev.selectedDays.includes(day)
+                        ? prev.selectedDays.filter((d) => d !== day)
+                        : [...prev.selectedDays, day];
+                      return { ...prev, selectedDays: updated };
+                    })
+                  }
+                >
+                  {day.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <label>Hasta: {form.horaFin}:00</label>
-        <input
-          type="range"
-          min="1"
-          max="24"
-          value={form.horaFin}
-          onChange={(e) => setForm({ ...form, horaFin: parseInt(e.target.value) })}
-        />
-      </div>
+          {/* HORARIO */}
+          <div className="form-field">
+            <label className="field-label">Horario de comunicación</label>
+            <div className="time-range-container">
+              <label>Desde: {form.horaInicio}:00</label>
+              <input
+                type="range"
+                min="0"
+                max="23"
+                value={form.horaInicio}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    horaInicio: parseInt(e.target.value),
+                  })
+                }
+              />
 
-      {message && (
-        <p className={`form-message ${messageType === "error" ? "error" : "success"}`}>
-          {message}
-        </p>
-      )}
+              <label>Hasta: {form.horaFin}:00</label>
+              <input
+                type="range"
+                min="1"
+                max="24"
+                value={form.horaFin}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    horaFin: parseInt(e.target.value),
+                  })
+                }
+              />
+            </div>
+          </div>
 
-      <button onClick={handleSubmit}>Guardar cambios</button>
-    </div>
+          {message && (
+            <p
+              className={`form-message ${
+                messageType === "error" ? "error" : "success"
+              }`}
+            >
+              {message}
+            </p>
+          )}
+
+          <div className="edit-profile-actions">
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleSubmit}
+            >
+              Guardar cambios
+            </button>
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => navigate("/user-profile")}
+            >
+              Volver al perfil
+            </button>
+          </div>
+        </div>
+      </main>
+    </>
   );
 }

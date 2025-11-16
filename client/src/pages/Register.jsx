@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import WelcomeNavbar from "../components/WelcomeNavbar";
 import "../styles/register.css";
-import eye from "../assets/icons/eye.png";
+import openEye from "../assets/icons/open-eye.png";
+import closedEye from "../assets/icons/closed-eye.png";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -137,7 +138,7 @@ export default function Register() {
     <>
       <WelcomeNavbar />
       <div className="register-container">
-        <h2>Crear cuenta</h2>
+        <h2>Crea una cuenta con nosotros</h2>
 
         {/* Mostrar error SIEMPRE que exista, no importa el paso */}
         {error && <p className="error-message">{error}</p>}
@@ -171,11 +172,13 @@ export default function Register() {
               <button
                 type="button"
                 className="toggle-password"
-                onMouseDown={() => setShowPassword(true)}
-                onMouseUp={() => setShowPassword(false)}
-                onMouseLeave={() => setShowPassword(false)}
+                onClick={() => setShowPassword((prev) => !prev)}
               >
-                <img src={eye} alt="Mostrar contraseña" className="toggle-password-icon" />
+                <img
+                  src={showPassword ? openEye : closedEye}
+                  alt={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  className="toggle-password-icon"
+                />
               </button>
             </div>
 

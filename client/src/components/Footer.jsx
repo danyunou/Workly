@@ -11,7 +11,7 @@ export default function Footer() {
       </div>
 
       <div className="footer-box-right">
-        <Link to="#">Terminos de Servicio</Link>
+        <Link to="/dispute-terms">Terminos de Servicio</Link>
         <Link to="#">Politica de Privacidad</Link>
         <Link to="#">Acerca de Workly</Link>
       </div>

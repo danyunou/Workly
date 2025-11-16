@@ -13,9 +13,8 @@ export default function WelcomeNavbar() {
       </div>
 
       <div className="welcome-navbar-right">
-        <span>🌐 Español</span>
         <Link to="/login">Iniciar sesión</Link>
-        <Link to="/register" className="btn-outline">Únete</Link>
+        <Link to="/register" className="btn-outline">Únete a nosotros</Link>
       </div>
     </nav>
   );

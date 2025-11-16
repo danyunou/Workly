@@ -239,13 +239,42 @@ export default function FreelancerRegister() {
           <h3>1. Información Personal</h3>
           <input placeholder="Nombre completo" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} />
           <input placeholder="Apodo (alias)" value={form.alias} onChange={e => setForm({ ...form, alias: e.target.value })} />
-          <label htmlFor="profile_picture">Foto de perfil (JPG o PNG, máx. 2MB):</label>
-          <input
-            id="profile_picture"
-            type="file"
-            accept="image/jpeg,image/png"
-            onChange={e => setForm({ ...form, profile_picture: e.target.files[0] })}
-          />
+
+
+<label
+  htmlFor="profile_picture"
+  className="form-label"
+>
+  Foto de perfil (JPG o PNG, máx. 2MB):
+</label>
+
+<div className="file-field">
+  <input
+    id="profile_picture"
+    name="profile_picture"
+    type="file"
+    accept="image/jpeg,image/png"
+    className="file-input"
+    onChange={(e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      // usamos la versión "prev" para evitar problemas de estado
+      setForm((prev) => ({
+        ...prev,
+        profile_picture: file,
+      }));
+    }}
+  />
+
+  <p className="file-help">
+    {form.profile_picture
+      ? form.profile_picture.name
+      : "Aún no has seleccionado un archivo"}
+  </p>
+</div>
+
+
+
           <textarea placeholder="Descripción (mínimo 50 caracteres, sin enlaces)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
 
           <label>Idiomas que hablas:</label>
@@ -329,30 +358,50 @@ export default function FreelancerRegister() {
           <label>Educación (máx. 3 entradas):</label>
           {form.education.map((edu, i) => (
             <div key={i} className="education-entry">
-              <p><strong>{edu.institucion}</strong> - {edu.carrera} ({edu.anio})</p>
-              <button onClick={() =>
-                setForm({ ...form, education: form.education.filter((_, idx) => idx !== i) })
-              }>Eliminar</button>
+              <div className="education-text">
+                <strong>{edu.institucion}</strong> - {edu.carrera} ({edu.anio})
+              </div>
+              <button
+                type="button"
+                className="education-remove-button"
+                onClick={() =>
+                  setForm({ ...form, education: form.education.filter((_, idx) => idx !== i) })
+                }
+              >
+                Eliminar
+              </button>
             </div>
           ))}
+
           {form.education.length < 3 && (
             <div className="education-form">
               <input placeholder="Institución" id="inst" />
               <input placeholder="Carrera" id="carr" />
               <input placeholder="Año" id="anio" />
-              <button onClick={() => {
-                const inst = document.getElementById("inst").value.trim();
-                const carr = document.getElementById("carr").value.trim();
-                const anio = document.getElementById("anio").value.trim();
-                if (inst && carr && anio) {
-                  setForm({ ...form, education: [...form.education, { institucion: inst, carrera: carr, anio }] });
-                  document.getElementById("inst").value = "";
-                  document.getElementById("carr").value = "";
-                  document.getElementById("anio").value = "";
-                }
-              }}>Agregar educación</button>
+
+              <button
+                type="button"
+                className="education-add-button"
+                onClick={() => {
+                  const inst = document.getElementById("inst").value.trim();
+                  const carr = document.getElementById("carr").value.trim();
+                  const anio = document.getElementById("anio").value.trim();
+                  if (inst && carr && anio) {
+                    setForm({
+                      ...form,
+                      education: [...form.education, { institucion: inst, carrera: carr, anio }]
+                    });
+                    document.getElementById("inst").value = "";
+                    document.getElementById("carr").value = "";
+                    document.getElementById("anio").value = "";
+                  }
+                }}
+              >
+                Agregar educación
+              </button>
             </div>
           )}
+
 
           <label>Redes sociales (URL):</label>
           <div className="input-add-chip">
@@ -398,12 +447,26 @@ export default function FreelancerRegister() {
         </div>
       )}
 
-      <button
-        className="submit-button"
-        onClick={step < 3 ? handleNext : handleSubmit}
-      >
-        {step < 3 ? "Siguiente" : "Enviar"}
-      </button>
+      <div className="button-group">
+        {step > 1 && (
+          <button
+            type="button"
+            className="back-button"
+            onClick={handleBack}
+          >
+            Anterior
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="submit-button"
+          onClick={step < 3 ? handleNext : handleSubmit}
+        >
+          {step < 3 ? "Siguiente" : "Enviar"}
+        </button>
+      </div>
+
     </div>}
         </>
       )}

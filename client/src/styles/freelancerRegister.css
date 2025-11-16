@@ -43,22 +43,6 @@ textarea {
   min-height: 100px;
 }
 
-.submit-button {
-  width: 100%;
-  background-color: #007bff;
-  color: white;
-  font-weight: bold;
-  padding: 0.9rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-
-.submit-button:hover {
-  background-color: #0056b3;
-}
-
 .success-message {
   color: green;
   font-size: 0.95rem;
@@ -95,11 +79,11 @@ textarea {
   width: 32px;
   height: 32px;
   line-height: 32px;
-  border: 2px solid #007bff;
+  border: 2px solid #02ad7a;
   display: inline-block;
   border-radius: 50%;
   background-color: white;
-  color: #007bff;
+  color: #02ad7a;
   font-weight: bold;
   margin-bottom: 0.5rem;
 }
@@ -120,12 +104,12 @@ textarea {
 }
 
 .progress-step.active::before {
-  background-color: #007bff;
+  background-color: #02ad7a;
   color: white;
 }
 
 .progress-step.active + .progress-step::after {
-  background-color: #007bff;
+  background-color: #02ad7a;
 }
 
 select[multiple] {
@@ -160,7 +144,7 @@ select[multiple] {
 
 .chip {
   background-color: #e0e7ff;
-  color: #1e3a8a;
+  color: #02ad7a;
   padding: 0.3rem 0.8rem;
   border-radius: 16px;
   font-size: 0.9rem;
@@ -172,7 +156,7 @@ select[multiple] {
   margin-left: 8px;
   cursor: pointer;
   font-weight: bold;
-  color: #1e3a8a;
+  color: #02ad7a;
 }
 
 .toast {
@@ -199,4 +183,226 @@ select[multiple] {
 .error-msg {
   color: darkorange;
   font-weight: bold;
+}
+
+.button-group {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+  margin-top: 30px;
+}
+
+/* Dentro del grupo, anula el width:100% de .submit-button */
+.button-group .submit-button,
+.button-group .back-button {
+  width: 100%;
+  height: 48px;
+  padding: 0 25px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+
+/* Botón Anterior */
+.button-group .back-button {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.button-group .back-button:hover {
+  background-color: #d5d5d5;
+}
+
+/* Botón Siguiente (usa el color que ya tengas en .submit-button global) */
+.button-group .submit-button {
+  background-color: #00a86b; /* o el verde que estés usando */
+  color: #fff;
+}
+
+.button-group .submit-button:hover {
+  background-color: #00915d;
+}
+
+
+.education-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.education-text {
+  margin-right: 1rem;
+}
+
+.education-remove-button {
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #dc3545;
+  background-color: #fff;
+  color: #dc3545;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.education-remove-button:hover {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Formulario para agregar educación */
+.education-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-top: 0.75rem;
+}
+
+.education-form input {
+  width: 100%;
+}
+
+.education-add-button {
+  grid-column: 1 / -1;   /* Botón ocupa todo el ancho debajo de los 3 inputs */
+  padding: 0.6rem;
+  border-radius: 6px;
+  border: none;
+  background-color: #00a86b;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.education-add-button:hover {
+  background-color: #00915d;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #222;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Contenedor reutilizable para campos que quieres resaltar */
+.field-card {
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+/* Campo de archivo más bonito */
+.file-field {
+  margin-top: 0.25rem;
+}
+
+.file-input {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px dashed #02ad7a;
+  background-color: #f8fdfb;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* Botoncito de “Seleccionar archivo” */
+.file-input {
+  display: block !important;
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px dashed #02ad7a;
+  background-color: #f8fdfb;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* Asegura que el botón del input de archivo se muestre */
+.file-input::file-selector-button {
+  -webkit-appearance: auto;
+  appearance: auto;
+  background-color: #02ad7a;
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  margin-right: 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.file-help {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.35rem;
+}
+
+.language-selector {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Select más moderno */
+.language-selector select {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  /* quita la flecha fea por defecto */
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  background-size: 12px 8px;
+}
+
+.language-selector select:focus {
+  outline: none;
+  border-color: #02ad7a;
+  box-shadow: 0 0 0 2px rgba(2, 173, 122, 0.12);
+}
+
+.language-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 0.4rem;
+}
+
+/* Chips reutilizables (ya tenías .chip, los afinamos) */
+.chip {
+  background-color: #e0f2f1;
+  color: #00695c;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chip .remove {
+  margin-left: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #00a86b;
+}
+
+.chip .remove:hover {
+  color: #007e52;
 }

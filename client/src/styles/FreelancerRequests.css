@@ -95,7 +95,7 @@
 
 .back-button {
   margin-top: 1.5rem;
-  padding: 0.6rem 1.2rem;
+  padding: 0.6rem 1.5rem;
   font-size: 0.95rem;
   background-color: #e0e0e0;
   color: #333;
@@ -103,6 +103,7 @@
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
+  width: 10;
 }
 
 .back-button:hover {
@@ -133,4 +134,33 @@
 .error-msg {
   color: darkorange;
   font-weight: bold;
+}
+
+.tags-row {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.tag {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  font-size: 0.8rem;
+  background-color: #f3f3f3;
+}
+
+.links-row {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }

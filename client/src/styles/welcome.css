@@ -142,6 +142,13 @@
   margin: 0 auto;
 }
 
+.testimonial h2 {
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  font-style: Tahoma;
+  color: #000;
+}
+
 .categories {
   text-align: center;
   padding: 4rem 2rem;
