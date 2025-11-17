@@ -2,6 +2,7 @@
 const pool = require('../config/db');
 const { uploadToS3 } = require('../services/uploadService');
 
+
 exports.getAllServices = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -16,11 +17,18 @@ exports.getAllServices = async (req, res) => {
             'freelancer_id', s.freelancer_id,
             'image_url', s.image_url,
             'created_at', s.created_at,
-            'user_alias', u.username
+            -- alias del freelancer (si no hay, usamos username)
+            'user_alias', COALESCE(fp.alias, u.username),
+            -- username real para armar la URL pública
+            'username', u.username,
+            -- foto de perfil del freelancer
+            'profile_picture', u.profile_picture
           )
+          ORDER BY s.created_at DESC
         ) AS services
       FROM services s
       JOIN users u ON u.id = s.freelancer_id
+      LEFT JOIN freelancer_profiles fp ON fp.user_id = s.freelancer_id
       WHERE s.is_active = TRUE
       GROUP BY s.category
       ORDER BY s.category;
@@ -32,6 +40,7 @@ exports.getAllServices = async (req, res) => {
     res.status(500).json({ error: "Error al obtener servicios", detail: err.message });
   }
 };
+
 
 
 
@@ -71,10 +80,13 @@ exports.getServicesByCategory = async (req, res) => {
         s.id,
         s.title,
         s.price,
-        u.username AS user_alias,
+        COALESCE(fp.alias, u.username) AS user_alias,
+        u.username AS username,
+        u.profile_picture,
         s.image_url
       FROM services s
       JOIN users u ON u.id = s.freelancer_id
+      LEFT JOIN freelancer_profiles fp ON fp.user_id = s.freelancer_id
       WHERE s.category = $1 AND s.is_active = TRUE
       ORDER BY s.created_at DESC
     `, [category]);
@@ -85,6 +97,7 @@ exports.getServicesByCategory = async (req, res) => {
     res.status(500).json({ error: 'Error al filtrar servicios por categoría' });
   }
 };
+
 
 exports.getServicesByFreelancer = async (req, res) => {
   const freelancerId = req.user.id;

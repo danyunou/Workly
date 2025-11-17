@@ -34,6 +34,7 @@ import CreateService from "../pages/freelancer/CreateService";
 import FreelancerProfile from "../pages/freelancer/FreelancerProfile";
 import EditFreelancerProfile from "../pages/freelancer/EditFreelancerProfile";
 import ProposeForm from "../pages/freelancer/ProposeForm";
+import PublicFreelancerProfile from "../pages/freelancer/PublicFreelancerProfile";
 
 export default function AppRoutes() {
   return (

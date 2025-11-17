@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import "../../styles/freelancerProfile.css";
 import Navbar from "../../components/Navbar"; 
 import WelcomeNavbar from "../../components/WelcomeNavbar";
+import { jwtDecode } from "jwt-decode";
 
 export default function PublicFreelancerProfile() {
   const { username } = useParams();

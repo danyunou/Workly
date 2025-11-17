@@ -1,14 +1,18 @@
 .home-body {
   padding: 2rem;
-  background: #f8f8f8;
+  background: #f3f4f6;
 }
 
+/* Título principal */
 .home-title {
   text-align: center;
   margin-bottom: 2rem;
   font-size: 2rem;
+  font-weight: 600;
+  color: #111827;
 }
 
+/* Secciones por categoría */
 .category-section {
   margin-bottom: 3rem;
 }
@@ -20,20 +24,30 @@
   margin-bottom: 1rem;
 }
 
+.category-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.see-all-btn,
 .explore-btn {
-  background-color: #007bff;
+  background-color: #1f78d1;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 
+.see-all-btn:hover,
 .explore-btn:hover {
-  background-color: #0056b3;
+  background-color: #145fa8;
 }
 
+/* Scroll horizontal de servicios */
 .services-scroll {
   display: flex;
   flex-direction: row;
@@ -49,28 +63,27 @@
 }
 
 .services-scroll::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: #cbd5f5;
   border-radius: 10px;
 }
 
-
+/* Tarjeta de servicio */
 .service-card {
-  width: 220px;
-  margin: 0 10px;
-  border: 1px solid #eee;
+  width: 240px;
   border-radius: 16px;
   overflow: hidden;
-  background: white;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-  transition: transform 0.2s;
+  background: #ffffff;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto; /* Que no se contraiga y mantenga el tamaño */
+  flex: 0 0 auto;
   scroll-snap-align: start;
 }
 
 .service-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.15);
 }
 
 .service-image {
@@ -79,43 +92,100 @@
   object-fit: cover;
 }
 
+/* Contenido de la tarjeta */
 .service-details {
-  padding: 12px;
+  padding: 0.75rem 0.9rem 0.9rem;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.4rem;
 }
 
 .service-title {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 1rem;
+  font-weight: 600;
   margin: 0;
+  color: #111827;
+}
+
+/* Bloque freelancer: avatar + alias */
+.service-freelancer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-top: 0.3rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.service-freelancer:hover .service-user {
+  color: #1f78d1;
+}
+
+.service-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.service-freelancer-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
 }
 
 .service-user {
-  color: #777;
-  font-size: 14px;
+  color: #4b5563;
+  font-size: 0.88rem;
+  font-weight: 500;
   margin: 0;
 }
 
+.service-rating {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* Precio + botón */
 .service-price {
-  font-size: 14px;
-  color: #333;
-  margin: 0;
+  font-size: 0.9rem;
+  color: #111827;
+  margin: 0.3rem 0 0;
+  font-weight: 500;
 }
 
 .hire-btn {
-  margin-top: 8px;
-  padding: 8px;
-  background-color: #007bff;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  background-color: #1f78d1;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   color: white;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .hire-btn:hover {
-  background-color: #0056b3;
+  background-color: #145fa8;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .home-body {
+    padding: 1.5rem 1rem;
+  }
+
+  .home-title {
+    font-size: 1.6rem;
+  }
+
+  .service-card {
+    width: 210px;
+  }
 }

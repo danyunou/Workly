@@ -19,6 +19,11 @@ export default function Home() {
     navigate(`/services?category=${categoryId}`);
   };
 
+  const handleGoToFreelancer = (username) => {
+    if (!username) return;
+    navigate(`/freelancer/${username}`);
+  };
+
   return (
     <>
       <Navbar />
@@ -29,17 +34,60 @@ export default function Home() {
           <div className="category-section" key={cat.category}>
             <div className="category-header">
               <h3 className="category-title">{cat.category}</h3>
+              {/* Si quieres reutilizar handleExplore */}
+              {/* <button onClick={() => handleExplore(cat.category_id)} className="see-all-btn">
+                Ver todo
+              </button> */}
             </div>
 
             <div className="services-scroll">
               {cat.services.map(service => (
                 <div className="service-card" key={service.id}>
-                  <img src={service.image_url} alt={service.title} className="service-image" />
+                  <img
+                    src={service.image_url}
+                    alt={service.title}
+                    className="service-image"
+                  />
+
                   <div className="service-details">
                     <h4 className="service-title">{service.title}</h4>
-                    <p className="service-user">@{service.user_alias}</p>
-                    <p className="service-price">Desde ${service.price} USD</p>
-                    <button className="hire-btn" onClick={() => navigate(`/hire/${service.id}`)}>Contratar</button>
+
+                    {/* Bloque freelancer: avatar + alias clicable */}
+                    <button
+                      type="button"
+                      className="service-freelancer"
+                      onClick={() => handleGoToFreelancer(service.username)}
+                    >
+                      {service.profile_picture && (
+                        <img
+                          src={service.profile_picture}
+                          alt={service.user_alias || service.username}
+                          className="service-avatar"
+                        />
+                      )}
+                      <div className="service-freelancer-text">
+                        <span className="service-user">
+                          @{service.user_alias || service.username}
+                        </span>
+                        {/* Si luego agregas rating en el backend, lo pintas aquí */}
+                        {service.avg_rating && (
+                          <span className="service-rating">
+                            {Number(service.avg_rating).toFixed(1)} ⭐
+                          </span>
+                        )}
+                      </div>
+                    </button>
+
+                    <p className="service-price">
+                      Desde ${service.price} USD
+                    </p>
+
+                    <button
+                      className="hire-btn"
+                      onClick={() => navigate(`/hire/${service.id}`)}
+                    >
+                      Contratar
+                    </button>
                   </div>
                 </div>
               ))}
@@ -48,6 +96,7 @@ export default function Home() {
         ))}
 
       </div>
+      <Footer />
     </>
   );
 }
