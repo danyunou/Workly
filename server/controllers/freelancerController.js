@@ -265,3 +265,64 @@ exports.updateFreelancerProfile = async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar perfil' });
   }
 };
+
+exports.getPublicFreelancerProfile = async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        u.full_name,
+        u.username,
+        u.created_at,
+        u.preferences,
+        u.profile_picture,
+        f.alias,
+        f.description,
+        f.languages,
+        f.skills,
+        f.education,
+        f.website,
+        f.social_links,
+        f.verified,
+        f.categories
+      FROM freelancer_profiles f
+      JOIN users u ON f.user_id = u.id
+      WHERE u.username = $1
+      `,
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Perfil de freelancer no encontrado" });
+    }
+
+    const profile = result.rows[0];
+
+    // Parsear arrays y JSON igual que en getFreelancerProfile
+    profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
+    profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
+    profile.social_links = Array.isArray(profile.social_links) ? profile.social_links : [];
+
+    if (typeof profile.education === "string") {
+      try {
+        profile.education = JSON.parse(profile.education);
+      } catch {
+        profile.education = [];
+      }
+    }
+
+    profile.categories = Array.isArray(profile.categories)
+      ? profile.categories.map(c => c.trim())
+      : [];
+
+    // Si no quieres exponer preferencias completas, puedes limpiar aquí:
+    // delete profile.preferences;
+
+    res.json(profile);
+  } catch (err) {
+    console.error("Error al obtener perfil público de freelancer:", err);
+    res.status(500).json({ error: "Error al obtener el perfil público" });
+  }
+};

@@ -45,6 +45,7 @@ export default function AppRoutes() {
       <Route path="/verify" element={<Verify />} />
       <Route path="/resend-verification" element={<ResendVerify />} />
       <Route path="/dispute-terms" element={<DisputeTerms />} />
+      <Route path="/freelancer/:username" element={<PublicFreelancerProfile />} />
 
       {/* Privadas generales */}
       <Route

@@ -74,6 +74,26 @@ export default function FreelancerRequests() {
     }
   };
 
+  const renderEducation = (education) => {
+    if (!education) return null;
+    // Si ya viene como string, lo mostramos tal cual
+    if (typeof education === "string") {
+      return education;
+    }
+    // Si viene como array de objetos
+    if (Array.isArray(education)) {
+      return education.map((edu, idx) => (
+        <span key={idx}>
+          {edu.carrera} - {edu.institucion} ({edu.anio})
+          {idx < education.length - 1 && ", "}
+        </span>
+      ));
+    }
+    // Si viene como un solo objeto { anio, carrera, institucion }
+    return `${education.carrera} - ${education.institucion} (${education.anio})`;
+  };
+
+
   return (
     <div className="requests-wrapper">
       <h2>Solicitudes de conversión a freelancer</h2>
@@ -139,22 +159,37 @@ export default function FreelancerRequests() {
 
               {/* Educación */}
               {r.education && (
-                <p><strong>Educación:</strong> {r.education}</p>
+                <p>
+                  <strong>Educación:</strong>{" "}
+                  {renderEducation(r.education)}
+                </p>
               )}
 
               {/* Links */}
-              <div className="links-row">
-                {r.website && (
-                  <a href={r.website} target="_blank" rel="noreferrer">
-                    Portafolio / sitio web
-                  </a>
-                )}
-                {r.social_links && r.social_links.length > 0 && r.social_links.map((link, idx) => (
-                  <a key={idx} href={link} target="_blank" rel="noreferrer">
-                    Red social #{idx + 1}
-                  </a>
-                ))}
-              </div>
+{(r.website || (r.social_links && r.social_links.length > 0)) ? (
+  <div className="links-row">
+
+    {/* Website */}
+    {r.website && (
+      <a href={r.website} target="_blank" rel="noreferrer">
+        Portafolio / sitio web
+      </a>
+    )}
+
+    {/* Social links */}
+    {Array.isArray(r.social_links) &&
+      r.social_links.length > 0 &&
+      r.social_links.map((link, idx) => (
+        <a key={idx} href={link} target="_blank" rel="noreferrer">
+          Red social #{idx + 1}
+        </a>
+      ))
+    }
+  </div>
+) : (
+  <p><strong>Links:</strong> No se proporcionaron enlaces.</p>
+)}
+
 
               <a href={r.file_url} target="_blank" rel="noreferrer">Ver documento</a>
 
