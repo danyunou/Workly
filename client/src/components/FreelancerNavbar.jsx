@@ -37,12 +37,8 @@ export default function FreelancerNavbar() {
       </div>
 
       <div className="navbar-right">
-        <span>🌐 Español</span>
         <Link to="/Notifications" className="logo-container">
           <img src={notifications} />
-        </Link>
-        <Link to="/Chats" className="logo-container">
-          <img src={chats} className="logo-img" />
         </Link>
 
         {/* MENÚ DESPLEGABLE */}

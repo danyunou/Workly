@@ -2,7 +2,7 @@
 .dashboard-container {
   padding: 30px 40px;
   background-color: #f9f9f9;
-  min-height: 100vh;
+  min-height: 50vh;
 }
 
 /* Título principal */

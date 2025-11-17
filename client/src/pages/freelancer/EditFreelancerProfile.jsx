@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/editFreelancerProfile.css";
+import Navbar from "../../components/FreelancerNavbar";
 
 const LANGUAGES = [
   "Alemán", "Árabe", "Bengalí", "Chino mandarín", "Español",
@@ -17,7 +18,7 @@ export default function EditFreelancerProfile() {
   const [form, setForm] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate(); // 👈 PARA REDIRECCIÓN
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/profile", {
@@ -96,16 +97,18 @@ export default function EditFreelancerProfile() {
   if (!form) return <p>Cargando datos...</p>;
 
   return (
+    <>
+    <Navbar />
     <div className="edit-profile-container">
       <h2>Editar Perfil de Freelancer</h2>
 
       <label>Biografía (50-500 caracteres)</label>
-<textarea
-  value={form.biography}
-  onChange={e => setForm({ ...form, biography: e.target.value })}
-  minLength={50}
-  maxLength={500}
-/>
+      <textarea
+        value={form.biography}
+        onChange={e => setForm({ ...form, biography: e.target.value })}
+        minLength={50}
+        maxLength={500}
+      />
 
       <label>Idiomas</label>
       <select onChange={e => {
@@ -267,5 +270,6 @@ export default function EditFreelancerProfile() {
 
       <button className="save-btn" onClick={handleSubmit}>Guardar cambios</button>
     </div>
+    </>
   );
 }

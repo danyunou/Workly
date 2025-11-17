@@ -131,7 +131,8 @@ exports.getFreelancerProfile = async (req, res) => {
   if (!user_id) return res.status(401).json({ error: "No autorizado" });
 
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT 
         u.full_name,
         u.username,
@@ -146,11 +147,14 @@ exports.getFreelancerProfile = async (req, res) => {
         f.website,
         f.social_links,
         f.verified,
-        f.categories
+        f.categories,
+        f.featured_projects             
       FROM freelancer_profiles f
       JOIN users u ON f.user_id = u.id
       WHERE f.user_id = $1
-    `, [user_id]);
+      `,
+      [user_id]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Perfil de freelancer no encontrado" });
@@ -158,11 +162,12 @@ exports.getFreelancerProfile = async (req, res) => {
 
     const profile = result.rows[0];
 
-    // Parsear arrays y JSON
+    // Arrays
     profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
     profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
     profile.social_links = Array.isArray(profile.social_links) ? profile.social_links : [];
 
+    // Educación
     if (typeof profile.education === "string") {
       try {
         profile.education = JSON.parse(profile.education);
@@ -171,10 +176,22 @@ exports.getFreelancerProfile = async (req, res) => {
       }
     }
 
-    // Parsear categorías
+    // Categorías
     profile.categories = Array.isArray(profile.categories)
       ? profile.categories.map(c => c.trim())
       : [];
+
+    // Portafolio (JSONB ya llega como objeto; por si acaso, normalizamos)
+    if (!profile.featured_projects) {
+      profile.featured_projects = [];
+    } else if (!Array.isArray(profile.featured_projects)) {
+      // por si viniera como string
+      try {
+        profile.featured_projects = JSON.parse(profile.featured_projects);
+      } catch {
+        profile.featured_projects = [];
+      }
+    }
 
     res.json(profile);
   } catch (err) {
@@ -182,6 +199,7 @@ exports.getFreelancerProfile = async (req, res) => {
     res.status(500).json({ error: "Error al obtener el perfil" });
   }
 };
+
 
 
 
@@ -286,7 +304,8 @@ exports.getPublicFreelancerProfile = async (req, res) => {
         f.website,
         f.social_links,
         f.verified,
-        f.categories
+        f.categories,
+        f.featured_projects              
       FROM freelancer_profiles f
       JOIN users u ON f.user_id = u.id
       WHERE u.username = $1
@@ -300,7 +319,6 @@ exports.getPublicFreelancerProfile = async (req, res) => {
 
     const profile = result.rows[0];
 
-    // Parsear arrays y JSON igual que en getFreelancerProfile
     profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
     profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
     profile.social_links = Array.isArray(profile.social_links) ? profile.social_links : [];
@@ -317,12 +335,67 @@ exports.getPublicFreelancerProfile = async (req, res) => {
       ? profile.categories.map(c => c.trim())
       : [];
 
-    // Si no quieres exponer preferencias completas, puedes limpiar aquí:
-    // delete profile.preferences;
+    if (!profile.featured_projects) {
+      profile.featured_projects = [];
+    } else if (!Array.isArray(profile.featured_projects)) {
+      try {
+        profile.featured_projects = JSON.parse(profile.featured_projects);
+      } catch {
+        profile.featured_projects = [];
+      }
+    }
 
     res.json(profile);
   } catch (err) {
     console.error("Error al obtener perfil público de freelancer:", err);
     res.status(500).json({ error: "Error al obtener el perfil público" });
+  }
+};
+
+
+exports.updatePortfolio = async (req, res) => {
+  const userId = req.user.id;
+  let { featured_projects } = req.body;
+
+  try {
+    if (!featured_projects) featured_projects = [];
+
+    if (!Array.isArray(featured_projects)) {
+      return res
+        .status(400)
+        .json({ message: "featured_projects debe ser un arreglo" });
+    }
+
+    if (featured_projects.length > 5) {
+      return res
+        .status(400)
+        .json({ message: "Máximo 5 proyectos en el portafolio." });
+    }
+
+    featured_projects = featured_projects.map((p) => ({
+      title: String(p.title || "").trim().slice(0, 150),
+      description: p.description ? String(p.description).trim() : null,
+      link: p.link ? String(p.link).trim() : null,
+      image_url: p.image_url ? String(p.image_url).trim() : null,
+    }));
+
+    await pool.query(
+      `
+      UPDATE freelancer_profiles
+      SET featured_projects = $1::jsonb
+      WHERE user_id = $2
+    `,
+      [JSON.stringify(featured_projects), userId]
+    );
+
+    return res.json({
+      message: "Portafolio actualizado correctamente.",
+      featured_projects,
+    });
+  } catch (err) {
+    console.error("Error actualizando portafolio:", err);
+    return res
+      .status(500)
+      .json({ message: "Error al actualizar el portafolio." });
   }
 };

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import "../../styles/freelancerProfile.css";
-import Navbar from "../../components/Navbar"; 
+import Navbar from "../../components/Navbar";
 import WelcomeNavbar from "../../components/WelcomeNavbar";
+import FreelancerNavbar from "../../components/FreelancerNavbar";
+
 import { jwtDecode } from "jwt-decode";
 
 export default function PublicFreelancerProfile() {
@@ -10,15 +12,16 @@ export default function PublicFreelancerProfile() {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
   const [roleId, setRoleId] = useState(null);
-  
+
+  // Solo leer token una vez
   useEffect(() => {
-        const token = localStorage.getItem("token");
-    
-        if (token) {
-          const decoded = jwtDecode(token);
-          setRoleId(decoded.role_id);
-        }
-  });
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      const decoded = jwtDecode(token);
+      setRoleId(decoded.role_id);
+    }
+  }, []);
 
   useEffect(() => {
     fetch(`https://workly-cy4b.onrender.com/api/freelancerProfile/public/${username}`)
@@ -27,15 +30,42 @@ export default function PublicFreelancerProfile() {
         return res.json();
       })
       .then((data) => {
-        // Parsear educación si viene como string
+        // --- EDUCACIÓN ---
+        let education = [];
+
+        // Puede venir como string o como array
         if (typeof data.education === "string") {
           try {
-            data.education = JSON.parse(data.education);
+            education = JSON.parse(data.education);
           } catch {
-            data.education = [];
+            education = [];
           }
+        } else if (Array.isArray(data.education)) {
+          education = data.education;
         }
-        setProfile(data);
+
+        // Normalizar claves a un formato consistente
+        const normalizedEducation = education.map((edu) => ({
+          institution: edu.institucion || edu.institution || "",
+          degree: edu.carrera || edu.degree || "",
+          year: edu.anio || edu.year || "",
+        }));
+
+        // --- SOCIAL LINKS: quitar vacíos ---
+        const socialLinks = (data.social_links || []).filter(
+          (link) => link && link.trim() !== ""
+        );
+
+        // --- PROYECTOS DESTACADOS ---
+        // Espera algo tipo: [{ title, description, link }]
+        const featuredProjects = data.featured_projects || [];
+
+        setProfile({
+          ...data,
+          education: normalizedEducation,
+          social_links: socialLinks,
+          featured_projects: featuredProjects,
+        });
       })
       .catch((err) => {
         console.error(err);
@@ -43,10 +73,12 @@ export default function PublicFreelancerProfile() {
       });
   }, [username]);
 
+  const NavbarToShow = roleId === 2 ? <FreelancerNavbar /> : roleId === 1 ? <Navbar /> : <WelcomeNavbar />;
+
   if (error) {
     return (
       <>
-        {roleId === 1 ? <Navbar /> : <WelcomeNavbar />}
+        {NavbarToShow}
         <div className="profile-container">
           <p>{error}</p>
         </div>
@@ -57,7 +89,7 @@ export default function PublicFreelancerProfile() {
   if (!profile) {
     return (
       <>
-        {roleId === 1 ? <Navbar /> : <WelcomeNavbar />}
+        {NavbarToShow}
         <div className="profile-container">
           <p>Cargando perfil de {username}...</p>
         </div>
@@ -67,7 +99,7 @@ export default function PublicFreelancerProfile() {
 
   return (
     <>
-      {roleId === 1 ? <Navbar /> : <WelcomeNavbar />}
+      {NavbarToShow}
       <div className="profile-container">
         {/* LADO IZQUIERDO */}
         <div className="profile-left">
@@ -119,21 +151,25 @@ export default function PublicFreelancerProfile() {
         {/* LADO DERECHO */}
         <div className="profile-right">
           <section className="section-block">
-            <h2>🧾 Sobre mí</h2>
+            <h2>Acerca del freelancer</h2>
             <p className="section-text">
               {profile.description || "Sin descripción aún."}
             </p>
           </section>
 
+          {/* EDUCACIÓN */}
           <section className="section-block">
-            <h3>🎓 Educación</h3>
-            {Array.isArray(profile.education) && profile.education.length > 0 ? (
+            <h3>Educación</h3>
+            {Array.isArray(profile.education) &&
+            profile.education.length > 0 ? (
               <ul className="section-list">
                 {profile.education.map((edu, i) => (
                   <li key={i}>
                     <strong>{edu.institution}</strong>{" "}
                     {edu.degree && `— ${edu.degree}`}{" "}
-                    {edu.year && <span className="muted">({edu.year})</span>}
+                    {edu.year && (
+                      <span className="muted">({edu.year})</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -144,9 +180,10 @@ export default function PublicFreelancerProfile() {
             )}
           </section>
 
+          {/* CATEGORÍAS */}
           {profile.categories?.length > 0 && (
             <section className="section-block">
-              <h3>📂 Categorías</h3>
+              <h3>Categorías</h3>
               <div className="tag-list">
                 {profile.categories.map((cat, i) => (
                   <span key={i} className="tag-chip">
@@ -157,9 +194,10 @@ export default function PublicFreelancerProfile() {
             </section>
           )}
 
-          {profile.website && (
+          {/* SITIO WEB */}
+          {profile.website && profile.website.trim() !== "" && (
             <section className="section-block">
-              <h3>🌐 Sitio web</h3>
+              <h3>Sitio web</h3>
               <a
                 href={profile.website}
                 target="_blank"
@@ -171,9 +209,10 @@ export default function PublicFreelancerProfile() {
             </section>
           )}
 
+          {/* REDES SOCIALES (solo si hay links válidos) */}
           {profile.social_links?.length > 0 && (
             <section className="section-block">
-              <h3>🔗 Redes Sociales</h3>
+              <h3>Redes Sociales</h3>
               <div className="social-links-row">
                 {profile.social_links.map((link, i) => {
                   let label = "Portafolio";
@@ -194,6 +233,33 @@ export default function PublicFreelancerProfile() {
                     </a>
                   );
                 })}
+              </div>
+            </section>
+          )}
+
+          {/* PROYECTOS DESTACADOS */}
+          {profile.featured_projects?.length > 0 && (
+            <section className="section-block">
+              <h3>Proyectos destacados</h3>
+              <div className="projects-grid">
+                {profile.featured_projects.map((proj, i) => (
+                  <div key={i} className="project-card">
+                    <h4>{proj.title}</h4>
+                    {proj.description && (
+                      <p className="section-text">{proj.description}</p>
+                    )}
+                    {proj.link && (
+                      <a
+                        href={proj.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="section-link"
+                      >
+                        Ver proyecto
+                      </a>
+                    )}
+                  </div>
+                ))}
               </div>
             </section>
           )}

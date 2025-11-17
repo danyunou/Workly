@@ -34,5 +34,6 @@ console.log("✅ Ruta /api/freelancerProfile/update registrada");
 // Perfil público por username (SIN auth)
 router.get('/public/:username', freelancerController.getPublicFreelancerProfile);
 
+router.put("/portfolio", authMiddleware, freelancerController.updatePortfolio);
 
 module.exports = router;
