@@ -10,11 +10,7 @@ const DisputeTerms = () => {
   const [roleId] = useState(null);
   return (
     <>
-    {roleId === 2 
-    ? <FreelancerNavbar /> 
-    : roleId === 1 
-      ? <Navbar /> 
-      : <WelcomeNavbar />}
+    {roleId === 2 ? <FreelancerNavbar /> : roleId === 1 ? <Navbar /> : <WelcomeNavbar />}
     <div className="dispute-terms-container">
       <h1>Términos de Resolución de Disputas</h1>
       <p>En Workly, creemos en la transparencia y la protección de ambas partes durante la realización de un proyecto. A continuación se describen los términos que aplican en caso de una disputa:</p>

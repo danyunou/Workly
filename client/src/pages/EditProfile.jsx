@@ -3,54 +3,119 @@ import { useNavigate } from "react-router-dom";
 import "../styles/editProfile.css";
 import Navbar from "../components/Navbar";
 
+// 0..23 como en EditFreelancerProfile
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
 export default function EditProfile() {
   const [form, setForm] = useState(null);
   const [originalForm, setOriginalForm] = useState(null);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success");
+  const [previewImage, setPreviewImage] = useState("");
+  const [allDay, setAllDay] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("https://workly-cy4b.onrender.com/api/users/profile", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-      .then(res => res.json())
-      .then(data => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(
+          "https://workly-cy4b.onrender.com/api/users/profile",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+
+        // usage_preference y comunicación pueden venir en preferences o plano
+        const usagePref =
+          data.preferences?.usage_preference || data.usage_preference || "";
+
+        const ch =
+          data.preferences?.communication_hours ||
+          data.communication_pref ||
+          data.communication_hours ||
+          "";
+
+        let selectedDays = [];
+        let start = 9;
+        let end = 18;
+
+        if (ch) {
+          // "Viernes, Jueves, Miércoles, 10:00 - 16:00"
+          const timeMatch = ch.match(
+            /(\d{1,2}):\d{2}\s*-\s*(\d{1,2}):\d{2}/
+          );
+          if (timeMatch) {
+            start = parseInt(timeMatch[1], 10);
+            end = parseInt(timeMatch[2], 10);
+          }
+
+          const lastComma = ch.lastIndexOf(",");
+          if (lastComma !== -1) {
+            const daysStr = ch.slice(0, lastComma);
+            selectedDays = daysStr
+              .split(",")
+              .map((d) => d.trim())
+              .filter(Boolean);
+          }
+        }
+
+        const isAllDay = start === 0 && end === 23;
+        setAllDay(isAllDay);
+
+        const profileImageUrl =
+          data.profile_picture_url || data.profile_picture || "";
+
         const initialData = {
-          biography: data.biography || "",
-          usage_preference: data.usage_preference || "",
-          communication_pref: data.communication_hours || "",
-          profile_picture: null,
-          selectedDays: [],
-          horaInicio: 9,
-          horaFin: 18,
+          biography: data.biography || data.description || "",
+          usage_preference: usagePref,
+          communication_pref: ch, // string original
+          profile_picture: null, // File nuevo
+          selectedDays,
+          startHour: start,
+          endHour: end,
+          profileImageUrl,
         };
+
         setForm(initialData);
         setOriginalForm(initialData);
-      })
-      .catch(() => {
+        setPreviewImage(profileImageUrl);
+      } catch (err) {
         setMessage("Error al cargar el perfil.");
         setMessageType("error");
-      });
+      }
+    };
+
+    fetchProfile();
   }, []);
 
-  useEffect(() => {
-    if (!form) return;
+  const buildCommunicationPref = () => {
+    if (!form.selectedDays.length) return "";
+    const dias = form.selectedDays.join(", ");
+    return `${dias}, ${form.startHour}:00 - ${form.endHour}:00`;
+  };
 
-    const { selectedDays, horaInicio, horaFin } = form;
-
-    if (selectedDays.length > 0 && horaInicio && horaFin) {
-      const dias = selectedDays.join(", ");
-      const texto = `${dias}, ${horaInicio}h - ${horaFin}h`;
-      setForm((prev) => ({ ...prev, communication_pref: texto }));
-    }
-  }, [form?.selectedDays, form?.horaInicio, form?.horaFin]);
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setForm({ ...form, profile_picture: file });
+    const url = URL.createObjectURL(file);
+    setPreviewImage(url);
+  };
 
   const handleSubmit = async () => {
     if (!form || !originalForm) return;
 
+    setMessage("");
+    setMessageType("success");
+
     const formData = new FormData();
     let hasChanges = false;
+
+    const newComm = buildCommunicationPref();
 
     if (form.profile_picture) {
       formData.append("profile_picture", form.profile_picture);
@@ -67,8 +132,8 @@ export default function EditProfile() {
       hasChanges = true;
     }
 
-    if (form.communication_pref !== originalForm.communication_pref) {
-      formData.append("communication_pref", form.communication_pref);
+    if (newComm !== originalForm.communication_pref) {
+      formData.append("communication_pref", newComm);
       hasChanges = true;
     }
 
@@ -79,19 +144,26 @@ export default function EditProfile() {
     }
 
     try {
-      const res = await fetch("https://workly-cy4b.onrender.com/api/users/profile", {
-        method: "PUT",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const res = await fetch(
+        "https://workly-cy4b.onrender.com/api/users/profile",
+        {
+          method: "PUT",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       const result = await res.json();
       if (res.ok) {
-        const updatedForm = { ...form };
-        delete updatedForm.profile_picture;
-        setOriginalForm(updatedForm);
+        // Actualizamos el original con los nuevos valores
+        const updatedOriginal = {
+          ...form,
+          communication_pref: newComm,
+          profile_picture: null,
+        };
+        setOriginalForm(updatedOriginal);
 
         setMessage("Perfil actualizado correctamente.");
         setMessageType("success");
@@ -128,23 +200,26 @@ export default function EditProfile() {
         <div className="edit-profile-form">
           <h2>Editar Perfil</h2>
 
-          {/* FOTO */}
+          {/* FOTO con mismo diseño que freelancer */}
           <div className="form-field">
             <label className="field-label">Foto de perfil</label>
-            <div className="file-field">
-              <input
-                type="file"
-                accept="image/png,image/jpeg"
-                className="file-input"
-                onChange={(e) =>
-                  setForm({ ...form, profile_picture: e.target.files[0] })
-                }
-              />
-              <p className="file-help">
-                {form.profile_picture
-                  ? form.profile_picture.name
-                  : "JPG o PNG, máx. 2MB"}
-              </p>
+            <div className="avatar-section">
+              <div className="avatar-wrapper">
+                {previewImage ? (
+                  <img src={previewImage} alt="Foto de perfil" />
+                ) : (
+                  <div className="avatar-placeholder">Foto</div>
+                )}
+              </div>
+              <label className="avatar-button">
+                Cambiar foto
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  hidden
+                  onChange={handleImageChange}
+                />
+              </label>
             </div>
           </div>
 
@@ -210,37 +285,72 @@ export default function EditProfile() {
             </div>
           </div>
 
-          {/* HORARIO */}
+          {/* HORARIO – misma lógica que freelancer */}
           <div className="form-field">
             <label className="field-label">Horario de comunicación</label>
-            <div className="time-range-container">
-              <label>Desde: {form.horaInicio}:00</label>
-              <input
-                type="range"
-                min="0"
-                max="23"
-                value={form.horaInicio}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    horaInicio: parseInt(e.target.value),
-                  })
-                }
-              />
+            <div className="hour-row">
+              <div className="hour-field">
+                <span>De</span>
+                <select
+                  disabled={allDay}
+                  value={form.startHour}
+                  onChange={(e) => {
+                    const h = parseInt(e.target.value, 10);
+                    setForm((prev) => ({
+                      ...prev,
+                      startHour: h,
+                      endHour:
+                        prev.endHour <= h ? h + 1 : prev.endHour,
+                    }));
+                  }}
+                >
+                  {HOURS.slice(0, 23).map((h) => (
+                    <option key={h} value={h}>
+                      {h}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="hour-field">
+                <span>a</span>
+                <select
+                  disabled={allDay}
+                  value={form.endHour}
+                  onChange={(e) => {
+                    const h = parseInt(e.target.value, 10);
+                    setForm((prev) => ({
+                      ...prev,
+                      endHour: h,
+                    }));
+                  }}
+                >
+                  {HOURS.filter((h) => h > form.startHour).map((h) => (
+                    <option key={h} value={h}>
+                      {h}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-              <label>Hasta: {form.horaFin}:00</label>
+            <div className="all-day-row">
               <input
-                type="range"
-                min="1"
-                max="24"
-                value={form.horaFin}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    horaFin: parseInt(e.target.value),
-                  })
-                }
+                type="checkbox"
+                id="allDay"
+                checked={allDay}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setAllDay(checked);
+                  setForm((prev) =>
+                    checked
+                      ? { ...prev, startHour: 0, endHour: 23 }
+                      : { ...prev, startHour: 9, endHour: 18 }
+                  );
+                }}
               />
+              <label htmlFor="allDay" className="all-day-label">
+                Disponible 24 horas
+              </label>
             </div>
           </div>
 

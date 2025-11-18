@@ -14,262 +14,548 @@ const CATEGORY_OPTIONS = [
   "Programacion y tencología", "Negocios", "Estilo de vida", "Datos", "Fotografía"
 ];
 
+// 0..23
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
 export default function EditFreelancerProfile() {
   const [form, setForm] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [newProfileImage, setNewProfileImage] = useState(null);
+  const [previewImage, setPreviewImage] = useState("");
+  const [allDay, setAllDay] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/profile", {
-        headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-    })
-        .then(res => res.json())
-        .then(data => {
-        const days = data.communication_hours?.split(", ")?.slice(0, -1) || [];
-        const hourRange = data.communication_hours?.match(/(\d+):00\s*-\s*(\d+):00/);
-        const start = parseInt(hourRange?.[1]) || 8;
-        const end = parseInt(hourRange?.[2]) || 18;
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(
+          "https://workly-cy4b.onrender.com/api/freelancerProfile/profile",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        const data = await res.json();
+
+        // Leer horario desde preferences o plano
+        const ch =
+          data.preferences?.communication_hours ||
+          data.communication_hours ||
+          "";
+
+        let selectedDays = [];
+        let start = 8;
+        let end = 18;
+
+        if (ch) {
+          // "Viernes, Jueves, Miércoles, Martes, Lunes, 10:00 - 16:00"
+          const timeMatch = ch.match(
+            /(\d{1,2}):\d{2}\s*-\s*(\d{1,2}):\d{2}/
+          );
+          if (timeMatch) {
+            start = parseInt(timeMatch[1], 10);
+            end = parseInt(timeMatch[2], 10);
+          }
+
+          const lastComma = ch.lastIndexOf(",");
+          if (lastComma !== -1) {
+            const daysStr = ch.slice(0, lastComma);
+            selectedDays = daysStr
+              .split(",")
+              .map((d) => d.trim())
+              .filter(Boolean);
+          }
+        }
+
+        const isAllDay = start === 0 && end === 23;
+        setAllDay(isAllDay);
 
         setForm({
-            languages: data.languages || [],
-            categories: data.categories || [],
-            skills: data.skills || [],
-            education: data.education || [],
-            website: data.website || "",
-            social_links: data.social_links || [],
-            selectedDays: days,
-            startHour: start,
-            endHour: end,
-            biography: data.description || "", // <-- importante: description → biography
+          languages: data.languages || [],
+          categories: data.categories || [],
+          skills: data.skills || [],
+          education: data.education || [],
+          website: data.website || "",
+          social_links: data.social_links || [],
+          selectedDays,
+          startHour: start,
+          endHour: end,
+          biography: data.description || "",
+          profileImageUrl:
+            data.profile_picture_url || data.profile_picture || "",
         });
-        });
-    }, []);
 
-  useEffect(() => {
-    if (!form) return;
+        setPreviewImage(
+          data.profile_picture_url || data.profile_picture || ""
+        );
+      } catch (err) {
+        setError("Error al cargar el perfil.");
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const buildCommunicationHours = () => {
+    if (!form.selectedDays.length) return "";
     const dias = form.selectedDays.join(", ");
-    setForm(prev => ({
-        ...prev,
-        communication_hours: `${dias}, ${form.startHour}:00 - ${form.endHour}:00`
-    }));
-    }, [form?.selectedDays, form?.startHour, form?.endHour]);
-
+    return `${dias}, ${form.startHour}:00 - ${form.endHour}:00`;
+  };
 
   const handleSubmit = async () => {
-    const body = {
-        description: form.biography,
-        languages: form.languages,
-        categories: form.categories,
-        skills: form.skills,
-        education: JSON.stringify(form.education),
-        website: form.website,
-        social_links: form.social_links,
-        communication_hours: form.communication_hours
-    };
+    if (!form) return;
+
+    setError("");
+    setMessage("");
+
+    const communication_hours = buildCommunicationHours();
+
+    // 🔹 Usamos FormData para poder enviar archivo + datos de texto
+    const formData = new FormData();
+
+    formData.append("description", form.biography || "");
+    formData.append("languages", JSON.stringify(form.languages || []));
+    formData.append("categories", JSON.stringify(form.categories || []));
+    formData.append("skills", JSON.stringify(form.skills || []));
+    formData.append("education", JSON.stringify(form.education || []));
+    formData.append("website", form.website || "");
+    formData.append("social_links", JSON.stringify(form.social_links || []));
+    formData.append("communication_hours", communication_hours || "");
+
+    // 🔹 Si el usuario eligió nueva foto, la mandamos como profile_picture
+    if (newProfileImage) {
+      formData.append("profile_picture", newProfileImage);
+    }
 
     try {
-        const res = await fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/update", {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify(body)
-        });
+      const res = await fetch(
+        "https://workly-cy4b.onrender.com/api/freelancerProfile/update",
+        {
+          method: "PUT",
+          headers: {
+            // ⚠️ NO pongas Content-Type aquí, fetch lo genera solo con boundary
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
 
-        const result = await res.json();
-        if (res.ok) {
+      const result = await res.json();
+
+      if (res.ok) {
         setMessage("Perfil actualizado correctamente.");
         setTimeout(() => {
-            navigate("/freelancer-profile");
+          navigate("/freelancer-profile");
         }, 1000);
-        } else {
+      } else {
         setError(result.error || "Error al actualizar.");
-        }
+      }
     } catch (err) {
-        setError("Error de conexión.");
+      console.error(err);
+      setError("Error de conexión.");
     }
-    };
+  };
+
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setNewProfileImage(file);
+    const url = URL.createObjectURL(file);
+    setPreviewImage(url);
+  };
 
   if (!form) return <p>Cargando datos...</p>;
 
   return (
     <>
-    <Navbar />
-    <div className="edit-profile-container">
-      <h2>Editar Perfil de Freelancer</h2>
+      <Navbar />
+      <div className="edit-profile-container">
+        <h2>Editar Perfil de Freelancer</h2>
 
-      <label>Biografía (50-500 caracteres)</label>
-      <textarea
-        value={form.biography}
-        onChange={e => setForm({ ...form, biography: e.target.value })}
-        minLength={50}
-        maxLength={500}
-      />
-
-      <label>Idiomas</label>
-      <select onChange={e => {
-        const lang = e.target.value;
-        if (!form.languages.includes(lang))
-          setForm({ ...form, languages: [...form.languages, lang] });
-      }}>
-        <option value="">Agregar idioma...</option>
-        {LANGUAGES.filter(l => !form.languages.includes(l)).map((lang, i) => (
-          <option key={i}>{lang}</option>
-        ))}
-      </select>
-      <div className="language-chips">
-        {form.languages.map((lang, i) => (
-          <div key={i} className="chip">
-            {lang}
-            <span onClick={() => setForm({ ...form, languages: form.languages.filter(l => l !== lang) })}>×</span>
+        {/* FOTO DE PERFIL */}
+        <div className="avatar-section">
+          <div className="avatar-wrapper">
+            {previewImage ? (
+              <img src={previewImage} alt="Foto de perfil" />
+            ) : (
+              <div className="avatar-placeholder">Foto</div>
+            )}
           </div>
-        ))}
-      </div>
+          <label className="avatar-button">
+            Cambiar foto
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              hidden
+            />
+          </label>
+        </div>
 
-      <br></br>
-      <label>Categorías (máx. 3)</label>
-      <select onChange={e => {
-        const cat = e.target.value;
-        if (!form.categories.includes(cat) && form.categories.length < 3)
-          setForm({ ...form, categories: [...form.categories, cat] });
-      }}>
-        <option value="">Agregar categoría...</option>
-        {CATEGORY_OPTIONS.filter(c => !form.categories.includes(c)).map((cat, i) => (
-          <option key={i}>{cat}</option>
-        ))}
-      </select>
-      <div className="language-chips">
-        {form.categories.map((cat, i) => (
-          <div key={i} className="chip">
-            {cat}
-            <span onClick={() => setForm({ ...form, categories: form.categories.filter(c => c !== cat) })}>×</span>
-          </div>
-        ))}
-      </div>
-
-      <br></br>
-      <label>Skills</label>
-      <input
-        placeholder="Escribe una skill y presiona Enter"
-        onKeyDown={(e) => {
-          const val = e.target.value.trim();
-          if (e.key === "Enter" && val && val.length <= 50 && !form.skills.includes(val)) {
-            e.preventDefault();
-            setForm({ ...form, skills: [...form.skills, val] });
-            e.target.value = "";
+        {/* BIOGRAFÍA */}
+        <label>Biografía (50-500 caracteres)</label>
+        <textarea
+          value={form.biography}
+          onChange={(e) =>
+            setForm({ ...form, biography: e.target.value })
           }
-        }}
-      />
-      <div className="language-chips">
-        {form.skills.map((s, i) => (
-          <div key={i} className="chip">
-            {s}
-            <span onClick={() => setForm({ ...form, skills: form.skills.filter(sk => sk !== s) })}>×</span>
-          </div>
-        ))}
-      </div>
+          minLength={50}
+          maxLength={500}
+        />
 
-        <br></br>
-      <label>Educación</label>
-      <br></br>
-      {form.education.map((edu, i) => (
-        <div key={i} className="education-entry">
-          <p><strong>{edu.institucion}</strong> - {edu.carrera} ({edu.anio})</p>
-          <br></br>
-          <button onClick={() => setForm({ ...form, education: form.education.filter((_, idx) => idx !== i) })}>Eliminar</button>
-          <br></br><br></br>
-        </div>
-        
-      ))}
-      {form.education.length < 3 && (
-        <div className="education-form">
-          <input placeholder="Institución" id="inst" />
-          <input placeholder="Carrera" id="carr" />
-          <input placeholder="Año" id="anio" />
-          <button onClick={() => {
-            const inst = document.getElementById("inst").value.trim();
-            const carr = document.getElementById("carr").value.trim();
-            const anio = document.getElementById("anio").value.trim();
-            if (inst && carr && anio) {
-              setForm({ ...form, education: [...form.education, { institucion: inst, carrera: carr, anio }] });
-              document.getElementById("inst").value = "";
-              document.getElementById("carr").value = "";
-              document.getElementById("anio").value = "";
+        {/* IDIOMAS */}
+        <label>Idiomas</label>
+        <select
+          onChange={(e) => {
+            const lang = e.target.value;
+            if (lang && !form.languages.includes(lang)) {
+              setForm({
+                ...form,
+                languages: [...form.languages, lang],
+              });
             }
-          }}>Agregar</button>
+          }}
+        >
+          <option value="">Agregar idioma...</option>
+          {LANGUAGES.filter((l) => !form.languages.includes(l)).map(
+            (lang, i) => (
+              <option key={i}>{lang}</option>
+            )
+          )}
+        </select>
+        <div className="language-chips">
+          {form.languages.map((lang, i) => (
+            <div key={i} className="chip">
+              {lang}
+              <span
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    languages: form.languages.filter(
+                      (l) => l !== lang
+                    ),
+                  })
+                }
+              >
+                ×
+              </span>
+            </div>
+          ))}
         </div>
-      )}
 
-      <br></br>
-      <label>Redes Sociales (URL)</label>
-      <input
-        placeholder="Pega una URL y presiona Enter"
-        onKeyDown={(e) => {
-          const url = e.target.value.trim();
-          if (e.key === "Enter") {
-            e.preventDefault();
-            try {
-              new URL(url);
-              if (!form.social_links.includes(url)) {
-                setForm({ ...form, social_links: [...form.social_links, url] });
-                e.target.value = "";
+        {/* CATEGORÍAS */}
+        <label>Categorías (máx. 3)</label>
+        <select
+          onChange={(e) => {
+            const cat = e.target.value;
+            if (
+              cat &&
+              !form.categories.includes(cat) &&
+              form.categories.length < 3
+            ) {
+              setForm({
+                ...form,
+                categories: [...form.categories, cat],
+              });
+            }
+          }}
+        >
+          <option value="">Agregar categoría...</option>
+          {CATEGORY_OPTIONS.filter(
+            (c) => !form.categories.includes(c)
+          ).map((cat, i) => (
+            <option key={i}>{cat}</option>
+          ))}
+        </select>
+        <div className="language-chips">
+          {form.categories.map((cat, i) => (
+            <div key={i} className="chip">
+              {cat}
+              <span
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    categories: form.categories.filter(
+                      (c) => c !== cat
+                    ),
+                  })
+                }
+              >
+                ×
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* SKILLS */}
+        <label>Skills</label>
+        <input
+          placeholder="Escribe una skill y presiona Enter"
+          onKeyDown={(e) => {
+            const val = e.target.value.trim();
+            if (
+              e.key === "Enter" &&
+              val &&
+              val.length <= 50 &&
+              !form.skills.includes(val)
+            ) {
+              e.preventDefault();
+              setForm({
+                ...form,
+                skills: [...form.skills, val],
+              });
+              e.target.value = "";
+            }
+          }}
+        />
+        <div className="language-chips">
+          {form.skills.map((s, i) => (
+            <div key={i} className="chip">
+              {s}
+              <span
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    skills: form.skills.filter(
+                      (sk) => sk !== s
+                    ),
+                  })
+                }
+              >
+                ×
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* EDUCACIÓN */}
+        <label>Educación</label>
+        {form.education.map((edu, i) => (
+          <div key={i} className="education-entry">
+            <p>
+              <strong>{edu.institucion}</strong> - {edu.carrera} (
+              {edu.anio})
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setForm({
+                  ...form,
+                  education: form.education.filter(
+                    (_, idx) => idx !== i
+                  ),
+                })
               }
-            } catch {
-              setError("URL inválida.");
-            }
-          }
-        }}
-      />
-      <div className="language-chips">
-        {form.social_links.map((link, i) => (
-          <div key={i} className="chip">
-            {link}
-            <span onClick={() => setForm({ ...form, social_links: form.social_links.filter(l => l !== link) })}>×</span>
+            >
+              Eliminar
+            </button>
           </div>
         ))}
-      </div>
 
-        <br></br>
-      <label>Días disponibles</label>
-      <div className="day-buttons">
-        {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((day) => (
+        {form.education.length < 3 && (
+          <div className="education-form">
+            <input placeholder="Institución" id="inst" />
+            <input placeholder="Carrera" id="carr" />
+            <input placeholder="Año" id="anio" />
+            <button
+              type="button"
+              onClick={() => {
+                const inst = document
+                  .getElementById("inst")
+                  .value.trim();
+                const carr = document
+                  .getElementById("carr")
+                  .value.trim();
+                const anio = document
+                  .getElementById("anio")
+                  .value.trim();
+                if (inst && carr && anio) {
+                  setForm({
+                    ...form,
+                    education: [
+                      ...form.education,
+                      { institucion: inst, carrera: carr, anio },
+                    ],
+                  });
+                  document.getElementById("inst").value = "";
+                  document.getElementById("carr").value = "";
+                  document.getElementById("anio").value = "";
+                }
+              }}
+            >
+              Agregar
+            </button>
+          </div>
+        )}
+
+        {/* REDES */}
+        <label>Redes Sociales (URL)</label>
+        <input
+          placeholder="Pega una URL y presiona Enter"
+          onKeyDown={(e) => {
+            const url = e.target.value.trim();
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (!url) return;
+              try {
+                new URL(url);
+                if (!form.social_links.includes(url)) {
+                  setForm({
+                    ...form,
+                    social_links: [...form.social_links, url],
+                  });
+                  e.target.value = "";
+                }
+              } catch {
+                setError("URL inválida.");
+              }
+            }
+          }}
+        />
+        <div className="language-chips">
+          {form.social_links.map((link, i) => (
+            <div key={i} className="chip">
+              {link}
+              <span
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    social_links: form.social_links.filter(
+                      (l) => l !== link
+                    ),
+                  })
+                }
+              >
+                ×
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* DÍAS DISPONIBLES */}
+        <label>Días disponibles</label>
+        <div className="day-buttons">
+          {[
+            "Lunes",
+            "Martes",
+            "Miércoles",
+            "Jueves",
+            "Viernes",
+            "Sábado",
+            "Domingo",
+          ].map((day) => (
+            <button
+              type="button"
+              key={day}
+              className={
+                form.selectedDays.includes(day) ? "selected" : ""
+              }
+              onClick={() => {
+                const newDays = form.selectedDays.includes(day)
+                  ? form.selectedDays.filter((d) => d !== day)
+                  : [...form.selectedDays, day];
+                setForm({ ...form, selectedDays: newDays });
+              }}
+            >
+              {day.slice(0, 3)}
+            </button>
+          ))}
+        </div>
+
+        {/* HORARIO – selects + toggle 24h */}
+        <label>Horario laboral</label>
+        <div className="hour-row">
+          <div className="hour-field">
+            <span>De</span>
+            <select
+              disabled={allDay}
+              value={form.startHour}
+              onChange={(e) => {
+                const h = parseInt(e.target.value, 10);
+                setForm((prev) => ({
+                  ...prev,
+                  startHour: h,
+                  endHour:
+                    prev.endHour <= h ? h + 1 : prev.endHour,
+                }));
+              }}
+            >
+              {HOURS.slice(0, 23).map((h) => (
+                <option key={h} value={h}>
+                  {h}:00
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hour-field">
+            <span>a</span>
+            <select
+              disabled={allDay}
+              value={form.endHour}
+              onChange={(e) => {
+                const h = parseInt(e.target.value, 10);
+                setForm((prev) => ({
+                  ...prev,
+                  endHour: h,
+                }));
+              }}
+            >
+              {HOURS.filter((h) => h > form.startHour).map((h) => (
+                <option key={h} value={h}>
+                  {h}:00
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+<div className="all-day-row">
+  <input
+    type="checkbox"
+    id="allDay"
+    checked={allDay}
+    onChange={(e) => {
+      const checked = e.target.checked;
+      setAllDay(checked);
+      setForm((prev) =>
+        checked
+          ? { ...prev, startHour: 0, endHour: 23 }
+          : { ...prev, startHour: 9, endHour: 18 }
+      );
+    }}
+  />
+  <label htmlFor="allDay" className="all-day-label">
+    Disponible 24 horas
+  </label>
+</div>
+
+
+
+        {message && <p className="success-msg">{message}</p>}
+        {error && <p className="error-msg">{error}</p>}
+
+        {/* BOTONES ACCIÓN */}
+        <div className="actions-row">
           <button
             type="button"
-            key={day}
-            className={form.selectedDays.includes(day) ? "selected" : ""}
-            onClick={() => {
-              const newDays = form.selectedDays.includes(day)
-                ? form.selectedDays.filter(d => d !== day)
-                : [...form.selectedDays, day];
-              setForm({ ...form, selectedDays: newDays });
-            }}
+            className="cancel-btn"
+            onClick={() => navigate("/freelancer-profile")}
           >
-            {day.slice(0, 3)}
+            Cancelar
           </button>
-        ))}
+          <button
+            type="button"
+            className="save-btn"
+            onClick={handleSubmit}
+          >
+            Guardar cambios
+          </button>
+        </div>
       </div>
-
-      <label>Hora de inicio: {form.startHour}:00</label>
-      <input type="range" min="6" max="22" step="1" value={form.startHour} onChange={(e) => {
-        const h = parseInt(e.target.value);
-        setForm({ ...form, startHour: h, endHour: Math.max(form.endHour, h + 1) });
-      }} />
-
-      <label>Hora de fin: {form.endHour}:00</label>
-      <input type="range" min="7" max="23" step="1" value={form.endHour} onChange={(e) => {
-        const h = parseInt(e.target.value);
-        setForm({ ...form, endHour: Math.max(h, form.startHour + 1) });
-      }} />
-
-      {message && <p style={{ color: "green" }}>{message}</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      <button className="save-btn" onClick={handleSubmit}>Guardar cambios</button>
-    </div>
     </>
   );
 }

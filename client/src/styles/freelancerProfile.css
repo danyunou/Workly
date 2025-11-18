@@ -73,9 +73,9 @@
 .tag-chip {
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  background-color: #f0f4ff;
+  background-color: #e6f8f2;
   font-size: 0.8rem;
-  color: #1f78d1;
+  color: #02ad7a;
 }
 
 /* DERECHA */
@@ -129,14 +129,14 @@
 
 .section-link {
   font-size: 0.95rem;
-  color: #02ad7a;
+  color: #02ad7a;                
   text-decoration: none;
 }
 
 .section-link:hover {
   text-decoration: underline;
+  color: #038b63;                  /* verde más oscuro al hover */
 }
-
 /* Redes sociales */
 
 .social-links-row {
@@ -150,13 +150,13 @@
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
   font-size: 0.85rem;
-  background-color: #f0f4ff;
-  color: #1f78d1;
+  background-color: #e6f8f2;
+  color: #02ad7a;
   text-decoration: none;
 }
 
 .social-pill:hover {
-  background-color: #e0ecff;
+  background-color: #d2f0e6;
 }
 
 /* Proyectos destacados */
@@ -170,8 +170,9 @@
 .project-card {
   border-radius: 10px;
   padding: 1rem;
-  background: #fff;
+  background: #fff;             /* verde muy claro */
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  border-left: 3px solid #02ad7a;  /* borde verde Workly */
 }
 
 .project-card h4 {
@@ -217,3 +218,174 @@
   color:#02ad7a;
 }
 
+.edit-portfolio-btn {
+  padding: 0.35rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #02ad7a;
+  background-color: #ffffff;
+  color: #02ad7a;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.edit-portfolio-btn:hover {
+  background-color: #e6f8f2;
+}
+
+.portfolio-edit-wrapper {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Acordeones del editor de portafolio */
+.project-edit-collapse {
+  border-radius: 10px;
+  border: 1px solid #e4e4e4;
+  background-color: #f9fafb;
+}
+
+/* Botón de encabezado del acordeón */
+.project-edit-summary {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  background-color: #f5fbf8;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #02ad7a;
+  border-left: 3px solid #02ad7a;
+}
+
+.project-edit-summary:hover {
+  background-color: #d9f5ec; /* hover claro */
+}
+
+.project-edit-summary.open {
+  background-color: #d6f4ea;
+}
+
+.project-edit-summary-title {
+  font-weight: 600;
+}
+
+.project-edit-summary-toggle {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.project-edit-card {
+  border-radius: 0 0 10px 10px;
+  padding: 1rem;
+  background: #ffffff;
+  border-top: 1px solid #e4e4e4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.portfolio-field label {
+  display: block;
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.2rem;
+}
+
+.portfolio-field input,
+.portfolio-field textarea {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.portfolio-field textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.add-project-btn {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: none;
+  background-color: #02ad7a;
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.add-project-btn:hover {
+  background-color: #038b63;
+}
+
+.remove-project-btn {
+  align-self: flex-start;
+  margin-top: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #e57373;
+  background-color: #fff5f5;
+  color: #c62828;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.remove-project-btn:hover {
+  background-color: #ffe5e5;
+}
+
+.portfolio-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.save-portfolio-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background-color: #02ad7a;
+  color: white;
+  cursor: pointer;
+}
+
+.save-portfolio-btn:hover {
+  background-color: #038b63;
+}
+
+.cancel-portfolio-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #ffffff;
+  color: #555;
+  cursor: pointer;
+}
+
+.cancel-portfolio-btn:hover {
+  background-color: #f2f2f2;
+}
+
+.portfolio-error {
+  color: #c62828;
+}
+
+.portfolio-success {
+  color: #2e7d32;
+}
+
+.project-card a.section-link {
+  color: #02ad7a !important;   /* Verde Workly */
+}
+
+.project-card a.section-link:hover {
+  color: #038b63 !important;   /* Verde más oscuro al hover */
+}

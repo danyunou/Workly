@@ -5,6 +5,12 @@ import Navbar from "../../components/FreelancerNavbar";
 
 export default function FreelancerProfile() {
   const [profile, setProfile] = useState(null);
+  const [portfolioDraft, setPortfolioDraft] = useState([]);
+  const [isEditingPortfolio, setIsEditingPortfolio] = useState(false);
+  const [savingPortfolio, setSavingPortfolio] = useState(false);
+  const [portfolioError, setPortfolioError] = useState("");
+  const [portfolioSuccess, setPortfolioSuccess] = useState("");
+  const [expandedProjectIndex, setExpandedProjectIndex] = useState(null);
 
   useEffect(() => {
     fetch("https://workly-cy4b.onrender.com/api/freelancerProfile/profile", {
@@ -12,7 +18,7 @@ export default function FreelancerProfile() {
     })
       .then((res) => res.json())
       .then((data) => {
-        // --- EDUCACIÓN: asegurar array y claves consistentes ---
+        // --- EDUCACIÓN ---
         let education = [];
 
         if (typeof data.education === "string") {
@@ -31,24 +37,151 @@ export default function FreelancerProfile() {
           year: edu.anio || edu.year || "",
         }));
 
-        // --- SOCIAL LINKS: quitar vacíos ---
+        // --- SOCIAL LINKS ---
         const socialLinks = (data.social_links || []).filter(
           (link) => link && link.trim() !== ""
         );
 
-        // --- PORTAFOLIO / PROYECTOS DESTACADOS ---
-        // Espera algo tipo: [{ title, description, link, image_url }]
-        const featuredProjects = data.featured_projects || [];
+        // --- PORTAFOLIO ---
+        let featuredProjects = data.featured_projects || [];
+        if (!Array.isArray(featuredProjects)) {
+          try {
+            featuredProjects = JSON.parse(featuredProjects);
+          } catch {
+            featuredProjects = [];
+          }
+        }
 
-        setProfile({
+        const finalProfile = {
           ...data,
           education: normalizedEducation,
           social_links: socialLinks,
           featured_projects: featuredProjects,
-        });
+        };
+
+        setProfile(finalProfile);
+        setPortfolioDraft(featuredProjects);
       })
-      .catch((err) => console.error("Error fetching freelancer profile:", err));
+      .catch((err) =>
+        console.error("Error fetching freelancer profile:", err)
+      );
   }, []);
+
+  const handleChangeProjectField = (index, field, value) => {
+    setPortfolioDraft((prev) => {
+      const copy = [...prev];
+      copy[index] = {
+        ...copy[index],
+        [field]: value,
+      };
+      return copy;
+    });
+  };
+
+  const handleAddProject = () => {
+    if (portfolioDraft.length >= 5) {
+      setPortfolioError("Solo puedes tener hasta 5 proyectos en tu portafolio.");
+      return;
+    }
+    setPortfolioError("");
+
+    setPortfolioDraft((prev) => {
+      const next = [
+        ...prev,
+        { title: "", description: "", link: "", image_url: "" },
+      ];
+      // expandimos el nuevo
+      setExpandedProjectIndex(next.length - 1);
+      return next;
+    });
+
+    setIsEditingPortfolio(true);
+  };
+
+  const handleRemoveProject = (index) => {
+    setPortfolioDraft((prev) => prev.filter((_, i) => i !== index));
+
+    // si borramos el que estaba abierto, cerramos el acordeón
+    setExpandedProjectIndex((prevIndex) =>
+      prevIndex === index ? null : prevIndex > index ? prevIndex - 1 : prevIndex
+    );
+  };
+
+  const handleCancelPortfolioEdit = () => {
+    setPortfolioError("");
+    setPortfolioSuccess("");
+    setIsEditingPortfolio(false);
+    setExpandedProjectIndex(null);
+    // restaurar desde profile
+    setPortfolioDraft(profile?.featured_projects || []);
+  };
+
+  const handleSavePortfolio = async () => {
+    setSavingPortfolio(true);
+    setPortfolioError("");
+    setPortfolioSuccess("");
+
+    // 1) Normalizar + quitar espacios
+    const cleanedProjects = portfolioDraft
+      .map((p) => ({
+        title: (p.title || "").trim(),
+        description: (p.description || "").trim(),
+        link: (p.link || "").trim(),
+        image_url: (p.image_url || "").trim(),
+      }))
+      // 2) Quitar proyectos totalmente vacíos
+      .filter(
+        (p) => p.title || p.description || p.link || p.image_url
+      );
+
+    // 3) Si no queda nada, avisar y no guardar
+    if (cleanedProjects.length === 0) {
+      setSavingPortfolio(false);
+      setPortfolioError(
+        "Agrega al menos un proyecto con información antes de guardar."
+      );
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        "https://workly-cy4b.onrender.com/api/freelancerProfile/portfolio",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            featured_projects: cleanedProjects,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPortfolioError(
+          data.message || "Ocurrió un error al guardar el portafolio."
+        );
+      } else {
+        setPortfolioSuccess("Portafolio actualizado correctamente.");
+        // actualizar en el perfil
+        setProfile((prev) =>
+          prev ? { ...prev, featured_projects: cleanedProjects } : prev
+        );
+        setPortfolioDraft(cleanedProjects);
+        setIsEditingPortfolio(false);
+        setExpandedProjectIndex(null);
+      }
+    } catch (err) {
+      console.error("Error guardando portafolio:", err);
+      setPortfolioError("Error al conectar con el servidor.");
+    } finally {
+      setSavingPortfolio(false);
+    }
+  };
 
   if (!profile) return <p>Cargando perfil de freelancer...</p>;
 
@@ -91,10 +224,9 @@ export default function FreelancerProfile() {
             Editar perfil
           </Link>
 
-          {/* Enlace a perfil público opcional */}
           <Link
             to={`/freelancer/${profile.username}`}
-            className="edit-profile-btn public-profile-btn"
+            className="public-profile-btn"
           >
             Ver perfil público
           </Link>
@@ -189,43 +321,198 @@ export default function FreelancerProfile() {
             </section>
           )}
 
-          {/* PORTAFOLIO / PROYECTOS DESTACADOS */}
+          {/* PORTAFOLIO */}
           <section className="section-block">
             <div className="section-header-row">
               <h3>Portafolio</h3>
-              <Link
-                to="/freelancer/portfolio"
-                className="section-link add-portfolio-link"
-              >
-                Gestionar portafolio
-              </Link>
+              {!isEditingPortfolio && (
+                <button
+                  type="button"
+                  className="edit-portfolio-btn"
+                  onClick={() => {
+                    setPortfolioError("");
+                    setPortfolioSuccess("");
+                    setIsEditingPortfolio(true);
+                    setExpandedProjectIndex(null);
+                  }}
+                >
+                  Editar portafolio
+                </button>
+              )}
             </div>
 
-            {profile.featured_projects?.length > 0 ? (
-              <div className="projects-grid">
-                {profile.featured_projects.map((proj, i) => (
-                  <div key={i} className="project-card">
-                    <h4>{proj.title}</h4>
-                    {proj.description && (
-                      <p className="section-text">{proj.description}</p>
-                    )}
-                    {proj.link && (
-                      <a
-                        href={proj.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="section-link"
-                      >
-                        Ver proyecto
-                      </a>
+            {/* Mensajes */}
+            {portfolioError && (
+              <p className="section-text portfolio-error">{portfolioError}</p>
+            )}
+            {portfolioSuccess && (
+              <p className="section-text portfolio-success">
+                {portfolioSuccess}
+              </p>
+            )}
+
+            {!isEditingPortfolio ? (
+              // Vista solo lectura
+              profile.featured_projects?.length > 0 ? (
+                <div className="projects-grid">
+                  {profile.featured_projects.map((proj, i) => (
+                    <div key={i} className="project-card">
+                      <h4>{proj.title}</h4>
+                      {proj.description && (
+                        <p className="section-text">{proj.description}</p>
+                      )}
+                      {proj.link && (
+                        <a
+                          href={proj.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="section-link"
+                        >
+                          Ver proyecto
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="section-text muted">
+                  Aún no has agregado proyectos a tu portafolio.
+                </p>
+              )
+            ) : (
+              // MODO EDICIÓN
+              <div className="portfolio-edit-wrapper">
+                {portfolioDraft.length === 0 && (
+                  <p className="section-text muted">
+                    Empieza agregando un proyecto a tu portafolio.
+                  </p>
+                )}
+
+                {portfolioDraft.map((proj, index) => (
+                  <div key={index} className="project-edit-collapse">
+                    <button
+                      type="button"
+                      className={
+                        "project-edit-summary" +
+                        (expandedProjectIndex === index ? " open" : "")
+                      }
+                      onClick={() =>
+                        setExpandedProjectIndex(
+                          expandedProjectIndex === index ? null : index
+                        )
+                      }
+                    >
+                      <span className="project-edit-summary-title">
+                        {proj.title?.trim() || `Proyecto ${index + 1}`}
+                      </span>
+                      <span className="project-edit-summary-toggle">
+                        {expandedProjectIndex === index ? "Ocultar" : "Editar"}
+                      </span>
+                    </button>
+
+                    {expandedProjectIndex === index && (
+                      <div className="project-edit-card">
+                        <div className="portfolio-field">
+                          <label>Título</label>
+                          <input
+                            type="text"
+                            value={proj.title || ""}
+                            onChange={(e) =>
+                              handleChangeProjectField(
+                                index,
+                                "title",
+                                e.target.value
+                              )
+                            }
+                            maxLength={150}
+                          />
+                        </div>
+
+                        <div className="portfolio-field">
+                          <label>Descripción</label>
+                          <textarea
+                            value={proj.description || ""}
+                            onChange={(e) =>
+                              handleChangeProjectField(
+                                index,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="portfolio-field">
+                          <label>Link (Dribbble, Behance, sitio, etc.)</label>
+                          <input
+                            type="url"
+                            value={proj.link || ""}
+                            onChange={(e) =>
+                              handleChangeProjectField(
+                                index,
+                                "link",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="portfolio-field">
+                          <label>URL de imagen (opcional)</label>
+                          <input
+                            type="url"
+                            value={proj.image_url || ""}
+                            onChange={(e) =>
+                              handleChangeProjectField(
+                                index,
+                                "image_url",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          className="remove-project-btn"
+                          onClick={() => handleRemoveProject(index)}
+                        >
+                          Eliminar proyecto
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
+
+                {portfolioDraft.length < 5 && (
+                  <button
+                    type="button"
+                    className="add-project-btn"
+                    onClick={handleAddProject}
+                  >
+                    + Agregar proyecto
+                  </button>
+                )}
+
+                <div className="portfolio-actions-row">
+                  <button
+                    type="button"
+                    className="save-portfolio-btn"
+                    onClick={handleSavePortfolio}
+                    disabled={savingPortfolio}
+                  >
+                    {savingPortfolio ? "Guardando..." : "Guardar portafolio"}
+                  </button>
+                  <button
+                    type="button"
+                    className="cancel-portfolio-btn"
+                    onClick={handleCancelPortfolioEdit}
+                    disabled={savingPortfolio}
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
-            ) : (
-              <p className="section-text muted">
-                Aún no has agregado proyectos a tu portafolio.
-              </p>
             )}
           </section>
         </div>

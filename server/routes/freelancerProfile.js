@@ -28,7 +28,12 @@ router.get('/profile', authMiddleware, freelancerController.getFreelancerProfile
 router.get("/by-freelancer", authMiddleware, requestController.getRequestsForFreelancer);
 
 // Actualizar perfil del freelancer (nueva ruta)
-router.put('/update', authMiddleware, freelancerController.updateFreelancerProfile);
+router.put(
+  '/update',
+  authMiddleware,
+  upload.single('profile_picture'), // <-- aquí llega req.file
+  freelancerController.updateFreelancerProfile
+);
 console.log("✅ Ruta /api/freelancerProfile/update registrada");
 
 // Perfil público por username (SIN auth)

@@ -1,7 +1,7 @@
 /* Fondo general + centrado */
 .edit-profile-page {
   min-height: calc(100vh - 70px); /* ajusta si tu navbar mide distinto */
-  background: #f3f4f6;
+  background: #fff;
   padding: 3rem 1rem;
   display: flex;
   justify-content: center;
@@ -13,7 +13,7 @@
   width: 100%;
   max-width: 600px;
   padding: 2rem 2.5rem;
-  background: #fff;
+  background: #f3f4f6;
   border-radius: 18px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   display: flex;
@@ -152,26 +152,62 @@
   background: #e5e7eb;
 }
 
-/* thumb del slider */
-.time-range-container input[type="range"]::-webkit-slider-thumb {
-  appearance: none;
-  width: 16px;
-  height: 16px;
+/* Avatar igual que en freelancer */
+.avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.avatar-wrapper {
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: #02ad7a;
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 0 2px rgba(2, 173, 122, 0.4);
+  overflow: hidden;
+  background: #f1f1f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.avatar-button {
+  padding: 0.5rem 0.9rem;
+  background-color: #02ad7a;
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 0.85rem;
   cursor: pointer;
 }
 
-.time-range-container input[type="range"]::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #02ad7a;
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 0 2px rgba(2, 173, 122, 0.4);
-  cursor: pointer;
+/* Fila de horario tipo selects */
+.hour-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hour-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hour-field span {
+  font-size: 0.9rem;
 }
 
 /* Mensajes */

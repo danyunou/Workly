@@ -233,7 +233,7 @@ exports.getRequestsForFreelancer = async (req, res) => {
 
 exports.updateFreelancerProfile = async (req, res) => {
   const userId = req.user.id;
-  const {
+  let {
     description,
     languages,
     categories,
@@ -245,37 +245,67 @@ exports.updateFreelancerProfile = async (req, res) => {
   } = req.body;
 
   try {
-    // 1. Actualizar freelancer_profiles
+    // Si vienen como string (por FormData), las parseamos
+    if (typeof languages === "string") {
+      try { languages = JSON.parse(languages); } catch {}
+    }
+    if (typeof categories === "string") {
+      try { categories = JSON.parse(categories); } catch {}
+    }
+    if (typeof skills === "string") {
+      try { skills = JSON.parse(skills); } catch {}
+    }
+    if (typeof social_links === "string") {
+      try { social_links = JSON.parse(social_links); } catch {}
+    }
+    if (typeof education === "string") {
+      try { education = JSON.parse(education); } catch {}
+    }
+
+    // 1. Actualizar freelancer_profiles (datos generales)
     await pool.query(
       `UPDATE freelancer_profiles 
        SET
-         description = $1,
-         languages = $2,
-         categories = $3,
-         skills = $4,
-         education = $5,
-         website = $6,
-         social_links = $7
+         description   = $1,
+         languages     = $2,
+         categories    = $3,
+         skills        = $4,
+         education     = $5,
+         website       = $6,
+         social_links  = $7
        WHERE user_id = $8`,
       [
         description,
-        languages,
-        categories,
-        skills,
-        education,
+        languages || [],
+        categories || [],
+        skills || [],
+        education || [],
         website,
-        social_links,
+        social_links || [],
         userId
       ]
     );
 
-    // 2. Actualizar comunicación en tabla users
-    await pool.query(
-      `UPDATE users 
-      SET preferences = jsonb_set(preferences, '{communication_hours}', to_jsonb($1::text), true)
-      WHERE id = $2`,
-      [communication_hours, userId]
-    );
+    // 2. Si viene nueva foto de perfil, subir a S3 y actualizar columna profile_picture
+    if (req.file) {
+      const profileUrl = await uploadToS3(req.file);
+      await pool.query(
+        `UPDATE freelancer_profiles
+         SET profile_picture = $1
+         WHERE user_id = $2`,
+        [profileUrl, userId]
+      );
+    }
+
+    // 3. Actualizar comunicación en tabla users (opcional)
+    if (communication_hours) {
+      await pool.query(
+        `UPDATE users 
+         SET preferences = jsonb_set(preferences, '{communication_hours}', to_jsonb($1::text), true)
+         WHERE id = $2`,
+        [communication_hours, userId]
+      );
+    }
 
     res.status(200).json({ message: 'Perfil actualizado correctamente' });
   } catch (err) {
