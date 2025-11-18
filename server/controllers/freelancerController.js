@@ -241,28 +241,53 @@ exports.updateFreelancerProfile = async (req, res) => {
     education,
     website,
     social_links,
-    communication_hours // se guarda en tabla users
+    communication_hours
   } = req.body;
 
   try {
-    // Si vienen como string (por FormData), las parseamos
+    // 🔹 Si vienen como string desde FormData, parseamos
     if (typeof languages === "string") {
-      try { languages = JSON.parse(languages); } catch {}
-    }
-    if (typeof categories === "string") {
-      try { categories = JSON.parse(categories); } catch {}
-    }
-    if (typeof skills === "string") {
-      try { skills = JSON.parse(skills); } catch {}
-    }
-    if (typeof social_links === "string") {
-      try { social_links = JSON.parse(social_links); } catch {}
-    }
-    if (typeof education === "string") {
-      try { education = JSON.parse(education); } catch {}
+      try { languages = JSON.parse(languages); } catch (e) {
+        console.warn("No pude parsear languages:", languages);
+        languages = [];
+      }
     }
 
-    // 1. Actualizar freelancer_profiles (datos generales)
+    if (typeof categories === "string") {
+      try { categories = JSON.parse(categories); } catch (e) {
+        console.warn("No pude parsear categories:", categories);
+        categories = [];
+      }
+    }
+
+    if (typeof skills === "string") {
+      try { skills = JSON.parse(skills); } catch (e) {
+        console.warn("No pude parsear skills:", skills);
+        skills = [];
+      }
+    }
+
+    if (typeof social_links === "string") {
+      try { social_links = JSON.parse(social_links); } catch (e) {
+        console.warn("No pude parsear social_links:", social_links);
+        social_links = [];
+      }
+    }
+
+    if (typeof education === "string") {
+      try {
+        education = JSON.parse(education);
+      } catch (e) {
+        console.warn("❗ No pude parsear education, valor bruto:", education);
+        // 👇 para evitar que Postgres truene, mejor lo reseteamos
+        education = [];
+      }
+    }
+
+    // (Opcional) Log rápido para ver qué se está mandando
+    // console.log("education final:", education);
+
+    // 1. Actualizar freelancer_profiles
     await pool.query(
       `UPDATE freelancer_profiles 
        SET
@@ -279,14 +304,14 @@ exports.updateFreelancerProfile = async (req, res) => {
         languages || [],
         categories || [],
         skills || [],
-        education || [],
+        education || [],   // ⬅️ aquí ya es un array/obj JS, pg lo convierte a JSON
         website,
         social_links || [],
         userId
       ]
     );
 
-    // 2. Si viene nueva foto de perfil, subir a S3 y actualizar columna profile_picture
+    // 2. Foto de perfil nueva (si viene)
     if (req.file) {
       const profileUrl = await uploadToS3(req.file);
       await pool.query(
@@ -297,7 +322,7 @@ exports.updateFreelancerProfile = async (req, res) => {
       );
     }
 
-    // 3. Actualizar comunicación en tabla users (opcional)
+    // 3. Horario en users.preferences
     if (communication_hours) {
       await pool.query(
         `UPDATE users 
@@ -313,6 +338,7 @@ exports.updateFreelancerProfile = async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar perfil' });
   }
 };
+
 
 exports.getPublicFreelancerProfile = async (req, res) => {
   const { username } = req.params;
