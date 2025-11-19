@@ -112,9 +112,7 @@ export default function EditFreelancerProfile() {
 
     const communication_hours = buildCommunicationHours();
 
-    // 🔹 Usamos FormData para poder enviar archivo + datos de texto
     const formData = new FormData();
-
     formData.append("description", form.biography || "");
     formData.append("languages", JSON.stringify(form.languages || []));
     formData.append("categories", JSON.stringify(form.categories || []));
@@ -124,7 +122,6 @@ export default function EditFreelancerProfile() {
     formData.append("social_links", JSON.stringify(form.social_links || []));
     formData.append("communication_hours", communication_hours || "");
 
-    // 🔹 Si el usuario eligió nueva foto, la mandamos como profile_picture
     if (newProfileImage) {
       formData.append("profile_picture", newProfileImage);
     }
@@ -135,7 +132,6 @@ export default function EditFreelancerProfile() {
         {
           method: "PUT",
           headers: {
-            // ⚠️ NO pongas Content-Type aquí, fetch lo genera solo con boundary
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: formData,
@@ -157,6 +153,7 @@ export default function EditFreelancerProfile() {
       setError("Error de conexión.");
     }
   };
+
 
 
   const handleImageChange = (e) => {

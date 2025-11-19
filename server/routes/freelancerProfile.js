@@ -31,7 +31,7 @@ router.get("/by-freelancer", authMiddleware, requestController.getRequestsForFre
 router.put(
   '/update',
   authMiddleware,
-  upload.single('profile_picture'), // <-- aquí llega req.file
+  upload.single('profile_picture'),
   freelancerController.updateFreelancerProfile
 );
 console.log("✅ Ruta /api/freelancerProfile/update registrada");

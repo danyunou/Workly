@@ -241,51 +241,34 @@ exports.updateFreelancerProfile = async (req, res) => {
     education,
     website,
     social_links,
-    communication_hours
+    communication_hours // se guarda en tabla users
   } = req.body;
 
-  try {
-    // 🔹 Si vienen como string desde FormData, parseamos
-    if (typeof languages === "string") {
-      try { languages = JSON.parse(languages); } catch (e) {
-        console.warn("No pude parsear languages:", languages);
-        languages = [];
-      }
+  // Helper para parsear campos que vienen como JSON o como array/objeto
+  const parseJsonField = (value, fieldName) => {
+    if (Array.isArray(value) || (value && typeof value === "object")) {
+      return value;
     }
-
-    if (typeof categories === "string") {
-      try { categories = JSON.parse(categories); } catch (e) {
-        console.warn("No pude parsear categories:", categories);
-        categories = [];
-      }
-    }
-
-    if (typeof skills === "string") {
-      try { skills = JSON.parse(skills); } catch (e) {
-        console.warn("No pude parsear skills:", skills);
-        skills = [];
-      }
-    }
-
-    if (typeof social_links === "string") {
-      try { social_links = JSON.parse(social_links); } catch (e) {
-        console.warn("No pude parsear social_links:", social_links);
-        social_links = [];
-      }
-    }
-
-    if (typeof education === "string") {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return [];
       try {
-        education = JSON.parse(education);
-      } catch (e) {
-        console.warn("❗ No pude parsear education, valor bruto:", education);
-        // 👇 para evitar que Postgres truene, mejor lo reseteamos
-        education = [];
+        return JSON.parse(trimmed);
+      } catch (err) {
+        console.warn(`No pude parsear ${fieldName}:`, value);
+        return [];
       }
     }
+    return [];
+  };
 
-    // (Opcional) Log rápido para ver qué se está mandando
-    // console.log("education final:", education);
+  try {
+    // Parsear campos que son arrays/JSON
+    languages = parseJsonField(languages, "languages");
+    categories = parseJsonField(categories, "categories");
+    skills = parseJsonField(skills, "skills");
+    social_links = parseJsonField(social_links, "social_links");
+    education = parseJsonField(education, "education");
 
     // 1. Actualizar freelancer_profiles
     await pool.query(
@@ -300,33 +283,38 @@ exports.updateFreelancerProfile = async (req, res) => {
          social_links  = $7
        WHERE user_id = $8`,
       [
-        description,
+        description || "",
         languages || [],
         categories || [],
         skills || [],
-        education || [],   // ⬅️ aquí ya es un array/obj JS, pg lo convierte a JSON
-        website,
+        education || [],
+        website || "",
         social_links || [],
         userId
       ]
     );
 
-    // 2. Foto de perfil nueva (si viene)
+    // 2. Si viene nueva foto de perfil, subirla y guardar en tabla users.profile_picture
     if (req.file) {
       const profileUrl = await uploadToS3(req.file);
       await pool.query(
-        `UPDATE freelancer_profiles
+        `UPDATE users
          SET profile_picture = $1
-         WHERE user_id = $2`,
+         WHERE id = $2`,
         [profileUrl, userId]
       );
     }
 
-    // 3. Horario en users.preferences
+    // 3. Actualizar comunicación en tabla users (preferences.communication_hours)
     if (communication_hours) {
       await pool.query(
         `UPDATE users 
-         SET preferences = jsonb_set(preferences, '{communication_hours}', to_jsonb($1::text), true)
+         SET preferences = jsonb_set(
+           COALESCE(preferences, '{}'::jsonb),
+           '{communication_hours}',
+           to_jsonb($1::text),
+           true
+         )
          WHERE id = $2`,
         [communication_hours, userId]
       );
@@ -338,7 +326,6 @@ exports.updateFreelancerProfile = async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar perfil' });
   }
 };
-
 
 exports.getPublicFreelancerProfile = async (req, res) => {
   const { username } = req.params;
