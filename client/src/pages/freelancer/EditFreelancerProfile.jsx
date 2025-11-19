@@ -1,4 +1,3 @@
-// src/pages/freelancer/EditFreelancerProfile.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/editFreelancerProfile.css";
@@ -111,13 +110,12 @@ export default function EditFreelancerProfile() {
     setError("");
     setMessage("");
 
-    // 1) Actualizar datos del perfil (JSON, como antes)
     const body = {
       description: form.biography,
       languages: form.languages,
       categories: form.categories,
       skills: form.skills,
-      education: JSON.stringify(form.education), // el back ya lo parsea
+      education: JSON.stringify(form.education),
       website: form.website,
       social_links: form.social_links,
       communication_hours: buildCommunicationHours(),
@@ -138,41 +136,19 @@ export default function EditFreelancerProfile() {
 
       const result = await res.json();
 
-      if (!res.ok) {
+      if (res.ok) {
+        setMessage("Perfil actualizado correctamente.");
+
+        // TODO: cuando tengas endpoint para actualizar imagen de perfil,
+        // aquí puedes hacer otra petición usando FormData con newProfileImage
+
+        setTimeout(() => {
+          navigate("/freelancer-profile");
+        }, 1000);
+      } else {
         setError(result.error || "Error al actualizar.");
-        return;
       }
-
-      // 2) Si hay nueva imagen, la mandamos al endpoint /avatar
-      if (newProfileImage) {
-        const formData = new FormData();
-        formData.append("profile_picture", newProfileImage);
-
-        const imgRes = await fetch(
-          "https://workly-cy4b.onrender.com/api/freelancerProfile/avatar",
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-              // NO poner Content-Type, fetch lo agrega solo
-            },
-            body: formData,
-          }
-        );
-
-        const imgResult = await imgRes.json();
-        if (!imgRes.ok) {
-          setError(imgResult.error || "Error al actualizar la foto de perfil.");
-          return;
-        }
-      }
-
-      setMessage("Perfil actualizado correctamente.");
-      setTimeout(() => {
-        navigate("/freelancer-profile");
-      }, 1000);
     } catch (err) {
-      console.error(err);
       setError("Error de conexión.");
     }
   };
@@ -531,25 +507,27 @@ export default function EditFreelancerProfile() {
           </div>
         </div>
 
-        <div className="all-day-row">
-          <input
-            type="checkbox"
-            id="allDay"
-            checked={allDay}
-            onChange={(e) => {
-              const checked = e.target.checked;
-              setAllDay(checked);
-              setForm((prev) =>
-                checked
-                  ? { ...prev, startHour: 0, endHour: 23 }
-                  : { ...prev, startHour: 9, endHour: 18 }
-              );
-            }}
-          />
-          <label htmlFor="allDay" className="all-day-label">
-            Disponible 24 horas
-          </label>
-        </div>
+<div className="all-day-row">
+  <input
+    type="checkbox"
+    id="allDay"
+    checked={allDay}
+    onChange={(e) => {
+      const checked = e.target.checked;
+      setAllDay(checked);
+      setForm((prev) =>
+        checked
+          ? { ...prev, startHour: 0, endHour: 23 }
+          : { ...prev, startHour: 9, endHour: 18 }
+      );
+    }}
+  />
+  <label htmlFor="allDay" className="all-day-label">
+    Disponible 24 horas
+  </label>
+</div>
+
+
 
         {message && <p className="success-msg">{message}</p>}
         {error && <p className="error-msg">{error}</p>}
