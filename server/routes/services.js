@@ -53,6 +53,7 @@ router.put(
   '/:id',
   authMiddleware,
   ensureFreelancer,
+  upload.fields([{ name: 'image' }]),
   serviceController.updateService
 );
 
