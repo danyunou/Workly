@@ -348,3 +348,14 @@
   background-color: #e5e7eb;
   color: #4b5563;
 }
+
+.request-client-link {
+  cursor: pointer;
+  color: #02ad7a;
+  font-weight: 500;
+}
+
+.request-client-link:hover {
+  text-decoration: underline;
+  color: #038b63;
+}

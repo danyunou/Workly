@@ -25,7 +25,7 @@ export default function FreelancerDashboard() {
 
         const [serviceRes, customRes] = await Promise.all([
           fetch(
-            "https://workly-cy4b.onrender.com/api/service-requests/by-freelancer",
+            "https://workly-cy4b.onrender.com/api/service-requests/freelancer",
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -81,6 +81,12 @@ export default function FreelancerDashboard() {
   const handleGoToServices = () => {
     navigate("/MyServices");
   };
+
+  const handleGoToClientProfile = (username) => {
+    if (!username) return;
+    navigate(`/client/${username}`); // ajusta la ruta si usas otra
+  };
+
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "Sin fecha definida";
@@ -196,7 +202,16 @@ export default function FreelancerDashboard() {
 
                         <p className="request-additional">
                           <strong>Cliente: </strong>
-                          {sr.client_name || "Cliente sin nombre"}
+                          {sr.client_username ? (
+                            <span
+                              className="request-client-link"
+                              onClick={() => handleGoToClientProfile(sr.client_username)}
+                            >
+                              @{sr.client_username}
+                            </span>
+                          ) : (
+                            sr.client_name || "Cliente sin nombre"
+                          )}
                         </p>
 
                         <div className="request-meta">

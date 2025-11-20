@@ -51,6 +51,25 @@ exports.createService = async (req, res) => {
   const freelancer_id = req.user?.id;
 
   try {
+    if (!freelancer_id) {
+      return res.status(401).json({ error: "No autenticado." });
+    }
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: "El título es obligatorio." });
+    }
+    if (!description || !description.trim()) {
+      return res.status(400).json({ error: "La descripción es obligatoria." });
+    }
+    if (!category || !category.trim()) {
+      return res.status(400).json({ error: "La categoría es obligatoria." });
+    }
+
+    const numericPrice = Number(price);
+    if (!numericPrice || numericPrice <= 0) {
+      return res.status(400).json({ error: "El precio debe ser mayor a 0." });
+    }
+
     if (!req.files || !req.files.image || !req.files.image[0]) {
       return res.status(400).json({ error: "Falta la imagen del servicio." });
     }
@@ -58,7 +77,6 @@ exports.createService = async (req, res) => {
     const imageFile = req.files.image[0];
     const imageUrl = await uploadToS3(imageFile);
 
-    // Si no mandan delivery_time_days, usamos 7 días por defecto
     const deliveryTime = delivery_time_days
       ? parseInt(delivery_time_days, 10)
       : 7;
@@ -77,16 +95,23 @@ exports.createService = async (req, res) => {
        )
        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, TRUE, $7)
        RETURNING *`,
-      [title, description, price, freelancer_id, category, imageUrl, deliveryTime]
+      [
+        title.trim(),
+        description.trim(),
+        numericPrice,
+        freelancer_id,
+        category.trim(),
+        imageUrl,
+        deliveryTime,
+      ]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('Error al crear el servicio:', err.message);
-    res.status(500).json({ error: 'Error al crear el servicio.' });
+    console.error("Error al crear el servicio:", err.message);
+    res.status(500).json({ error: "Error al crear el servicio." });
   }
 };
-
 
 exports.getServicesByCategory = async (req, res) => {
   const { category } = req.params;
@@ -228,10 +253,18 @@ exports.getRequestsForService = async (req, res) => {
 
     // Obtener solicitudes asociadas al servicio
     const { rows: requests } = await pool.query(
-      `SELECT sr.id, sr.message, sr.proposed_budget, sr.created_at, u.username AS client_name
-       FROM service_requests sr
-       JOIN users u ON sr.client_id = u.id
-       WHERE sr.service_id = $1`,
+      `SELECT 
+        sr.id, 
+        sr.message, 
+        sr.proposed_budget, 
+        sr.created_at, 
+        sr.proposed_deadline,
+        sr.status,
+        u.username AS client_name
+      FROM service_requests sr
+      JOIN users u ON sr.client_id = u.id
+      WHERE sr.service_id = $1
+      ORDER BY sr.created_at DESC`,
       [serviceId]
     );
 
@@ -503,5 +536,36 @@ exports.getServiceReviews = async (req, res) => {
   } catch (err) {
     console.error("Error al obtener reseñas del servicio:", err);
     res.status(500).json({ error: "Error interno al obtener reseñas." });
+  }
+};
+
+exports.setServiceActiveState = async (req, res) => {
+  const serviceId = req.params.id;
+  const freelancerId = req.user.id;
+  const { is_active } = req.body;
+
+  try {
+    if (typeof is_active !== "boolean") {
+      return res.status(400).json({ error: "is_active debe ser booleano." });
+    }
+
+    const result = await pool.query(
+      `UPDATE services
+       SET is_active = $1
+       WHERE id = $2 AND freelancer_id = $3
+       RETURNING *`,
+      [is_active, serviceId, freelancerId]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ error: "Servicio no encontrado o no autorizado." });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error al actualizar estado del servicio:", err);
+    res.status(500).json({ error: "Error interno al cambiar estado." });
   }
 };

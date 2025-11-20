@@ -6,22 +6,24 @@ exports.getRequestsForFreelancer = async (req, res) => {
   const freelancerId = req.user.id;
 
   try {
-    const result = await pool.query(`
-      SELECT r.*
-      FROM requests r
-      WHERE r.category IN (
-        SELECT UNNEST(categories)
-        FROM freelancer_profiles
-        WHERE user_id = $1
-      )
-      AND r.status = 'open'
-      ORDER BY r.created_at DESC
-    `, [freelancerId]);
+    const result = await pool.query(
+      `SELECT 
+         sr.*, 
+         s.title AS service_title, 
+         u.full_name AS client_name,
+         u.username AS client_username  
+       FROM service_requests sr
+       JOIN services s ON sr.service_id = s.id
+       JOIN users u ON sr.client_id = u.id
+       WHERE s.freelancer_id = $1
+       ORDER BY sr.created_at DESC`,
+      [freelancerId]
+    );
 
     res.json(result.rows);
   } catch (err) {
-    console.error("Error al obtener solicitudes para freelancer:", err);
-    res.status(500).json({ error: "Error al obtener solicitudes para el freelancer" });
+    console.error("Error fetching service requests:", err);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 

@@ -259,7 +259,7 @@
   top: 0.9rem;
   right: 0.9rem;
   border: none;
-  background: #f2f2f2;
+  background: #02ad7a;
   border-radius: 999px;
   width: 28px;
   height: 28px;
@@ -272,7 +272,7 @@
 }
 
 .service-modal-close:hover {
-  background: #e0e0e0;
+  background: #038b63;
 }
 
 /* Header modal */
