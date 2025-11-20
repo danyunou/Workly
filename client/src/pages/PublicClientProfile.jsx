@@ -1,4 +1,3 @@
-// src/pages/PublicClientProfile.jsx
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -16,7 +15,6 @@ export default function PublicClientProfile() {
         setLoading(true);
         setError(null);
 
-        // Ajusta la URL al endpoint que tengas en el backend
         const res = await fetch(
           `https://workly-cy4b.onrender.com/api/users/public/${username}`
         );
@@ -42,12 +40,14 @@ export default function PublicClientProfile() {
       <Navbar />
       <main className="client-public-page">
         <div className="client-public-container">
+          
           {loading && <p>Cargando perfil...</p>}
           {error && <p className="client-public-error">{error}</p>}
 
           {!loading && !error && profile && (
             <>
               <header className="client-public-header">
+
                 {profile.avatar_url && (
                   <img
                     src={profile.avatar_url}
@@ -60,22 +60,12 @@ export default function PublicClientProfile() {
                   <h1>{profile.full_name || username}</h1>
                   <p className="client-public-username">@{username}</p>
 
-                  {profile.country && (
-                    <p className="client-public-meta">
-                      Ubicación: <span>{profile.country}</span>
-                    </p>
-                  )}
-
-                  {profile.member_since && (
-                    <p className="client-public-meta">
-                      Miembro desde:{" "}
-                      <span>
-                        {new Date(profile.member_since).toLocaleDateString(
-                          "es-MX"
-                        )}
-                      </span>
-                    </p>
-                  )}
+                  <p className="client-public-meta">
+                    Miembro desde:{" "}
+                    <span>
+                      {new Date(profile.member_since).toLocaleDateString("es-MX")}
+                    </span>
+                  </p>
                 </div>
               </header>
 
@@ -90,28 +80,26 @@ export default function PublicClientProfile() {
               <section className="client-public-section">
                 <h2>Actividad</h2>
                 <div className="client-public-stats">
+
                   <div className="client-public-stat-card">
-                    <span className="stat-label">Proyectos creados</span>
-                    <span className="stat-value">
-                      {profile.total_projects ?? 0}
-                    </span>
-                  </div>
-                  <div className="client-public-stat-card">
-                    <span className="stat-label">Proyectos completados</span>
-                    <span className="stat-value">
-                      {profile.completed_projects ?? 0}
-                    </span>
-                  </div>
-                  <div className="client-public-stat-card">
-                    <span className="stat-label">Valoraciones promedio</span>
+                    <span className="stat-label">Valoración promedio</span>
                     <span className="stat-value">
                       {profile.avg_rating
-                        ? profile.avg_rating.toFixed(1)
+                        ? Number(profile.avg_rating).toFixed(1)
                         : "Sin reseñas"}
                     </span>
                   </div>
+
+                  <div className="client-public-stat-card">
+                    <span className="stat-label">Total de reseñas</span>
+                    <span className="stat-value">
+                      {profile.reviews_count ?? 0}
+                    </span>
+                  </div>
+
                 </div>
               </section>
+
             </>
           )}
         </div>

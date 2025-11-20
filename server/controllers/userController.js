@@ -89,9 +89,10 @@ exports.getPublicUserProfile = async (req, res) => {
   const { username } = req.params;
 
   try {
-    const userResult = await pool.query(
+    // 1. Obtener datos básicos del usuario
+    const { rows } = await pool.query(
       `
-      SELECT
+      SELECT 
         id,
         full_name,
         username,
@@ -105,38 +106,40 @@ exports.getPublicUserProfile = async (req, res) => {
       [username]
     );
 
-    if (userResult.rows.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    const user = userResult.rows[0];
+    const user = rows[0];
 
-    // Opcional: estadísticas (solo si existe tabla projects)
-    const stats = await pool.query(
+    // 2. Obtener estadísticas de reviews
+    const reviews = await pool.query(
       `
-      SELECT
-        COUNT(*)::int AS total_projects,
-        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_projects,
-        AVG(rating_for_client)::numeric(10,2) AS avg_rating
-      FROM projects
-      WHERE client_id = $1
+      SELECT 
+        COUNT(*)::int AS review_count,
+        AVG(rating)::numeric(10,2) AS avg_rating
+      FROM service_reviews
+      WHERE target_id = $1
       `,
       [user.id]
     );
+
+    const stats = reviews.rows[0];
 
     return res.json({
       full_name: user.full_name,
       username: user.username,
       avatar_url: user.profile_picture,
-      biography: user.biography,
+      bio: user.biography,
       member_since: user.created_at,
-      total_projects: stats.rows[0]?.total_projects ?? 0,
-      completed_projects: stats.rows[0]?.completed_projects ?? 0,
-      avg_rating: stats.rows[0]?.avg_rating ?? null
+      avg_rating: stats.avg_rating || null,   // ⭐ promedio real
+      reviews_count: stats.review_count || 0  // 📝 total de reviews
     });
 
   } catch (err) {
     console.error("Error en getPublicUserProfile:", err);
-    res.status(500).json({ error: "Error obteniendo perfil público" });
+    return res
+      .status(500)
+      .json({ error: "Error obteniendo perfil público" });
   }
 };
