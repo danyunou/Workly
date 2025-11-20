@@ -31,4 +31,10 @@ router.post('/hire/:serviceId', authMiddleware, serviceController.hireService);
 
 router.get('/:id', serviceController.getServiceById);
 
+// Crear reseña de un servicio (cliente autenticado)
+router.post('/:id/reviews', authMiddleware, serviceController.createServiceReview);
+
+// Obtener reseñas de un servicio (público)
+router.get('/:id/reviews', serviceController.getServiceReviews);
+
 module.exports = router;

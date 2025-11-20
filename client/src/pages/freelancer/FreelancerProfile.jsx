@@ -78,6 +78,50 @@ export default function FreelancerProfile() {
     });
   };
 
+  // SUBIR IMAGEN A S3 PARA UN PROYECTO
+  const handleUploadProjectImage = async (index, file) => {
+    if (!file) return;
+
+    setPortfolioError("");
+    setPortfolioSuccess("");
+
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch(
+        "https://workly-cy4b.onrender.com/api/freelancerProfile/portfolio/image",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(data);
+        setPortfolioError(
+          data.message || "Ocurrió un error al subir la imagen."
+        );
+        return;
+      }
+
+      // Guardamos la URL regresada por el backend en el proyecto
+      handleChangeProjectField(index, "image_url", data.url);
+      setPortfolioSuccess("Imagen subida correctamente.");
+    } catch (err) {
+      console.error("Error subiendo imagen de proyecto:", err);
+      setPortfolioError(
+        "Error al conectar con el servidor al subir la imagen."
+      );
+    }
+  };
+
   const handleAddProject = () => {
     if (portfolioDraft.length >= 5) {
       setPortfolioError("Solo puedes tener hasta 5 proyectos en tu portafolio.");
@@ -130,9 +174,7 @@ export default function FreelancerProfile() {
         image_url: (p.image_url || "").trim(),
       }))
       // 2) Quitar proyectos totalmente vacíos
-      .filter(
-        (p) => p.title || p.description || p.link || p.image_url
-      );
+      .filter((p) => p.title || p.description || p.link || p.image_url);
 
     // 3) Si no queda nada, avisar y no guardar
     if (cleanedProjects.length === 0) {
@@ -207,7 +249,9 @@ export default function FreelancerProfile() {
               <strong>Disponibilidad:</strong>{" "}
               {profile.preferences?.communication_hours || "No especificada"}
             </li>
-            <li>Verificación: {profile.verified ? "Verificado" : "Pendiente"}</li>
+            <li>
+              Verificación: {profile.verified ? "Verificado" : "Pendiente"}
+            </li>
             <li>
               Registro:{" "}
               {new Date(profile.created_at).toLocaleDateString("es-MX", {
@@ -217,10 +261,7 @@ export default function FreelancerProfile() {
             </li>
           </ul>
 
-          <Link
-            to="/edit-freelancer-profile"
-            className="edit-profile-btn"
-          >
+          <Link to="/edit-freelancer-profile" className="edit-profile-btn">
             Editar perfil
           </Link>
 
@@ -357,20 +398,32 @@ export default function FreelancerProfile() {
                 <div className="projects-grid">
                   {profile.featured_projects.map((proj, i) => (
                     <div key={i} className="project-card">
-                      <h4>{proj.title}</h4>
-                      {proj.description && (
-                        <p className="section-text">{proj.description}</p>
+                      {proj.image_url && (
+                        <div className="project-card-image-wrapper">
+                          <img
+                            src={proj.image_url}
+                            alt={proj.title || `Proyecto ${i + 1}`}
+                            className="project-card-image"
+                          />
+                        </div>
                       )}
-                      {proj.link && (
-                        <a
-                          href={proj.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="section-link"
-                        >
-                          Ver proyecto
-                        </a>
-                      )}
+
+                      <div className="project-card-body">
+                        <h4>{proj.title}</h4>
+                        {proj.description && (
+                          <p className="section-text">{proj.description}</p>
+                        )}
+                        {proj.link && (
+                          <a
+                            href={proj.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="section-link"
+                          >
+                            Ver proyecto
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -458,18 +511,32 @@ export default function FreelancerProfile() {
                         </div>
 
                         <div className="portfolio-field">
-                          <label>URL de imagen (opcional)</label>
+                          <label>Imagen del proyecto</label>
+                          <label className="upload-image-btn">
+                          Subir imagen
                           <input
-                            type="url"
-                            value={proj.image_url || ""}
+                            type="file"
+                            accept="image/*"
                             onChange={(e) =>
-                              handleChangeProjectField(
+                              handleUploadProjectImage(
                                 index,
-                                "image_url",
-                                e.target.value
+                                e.target.files?.[0] || null
                               )
                             }
                           />
+                        </label>
+
+                        {proj.image_url && (
+                          <div className="portfolio-image-preview">
+                            <img
+                              src={proj.image_url}
+                              alt={proj.title || `Proyecto ${index + 1}`}
+                            />
+                            <small className="muted">
+                              Esta imagen se mostrará como portada del proyecto.
+                            </small>
+                          </div>
+                        )}
                         </div>
 
                         <button

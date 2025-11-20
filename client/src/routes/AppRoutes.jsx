@@ -17,7 +17,6 @@ import EditProfile from "../pages/EditProfile";
 import FreelancerRegister from "../pages/FreelancerRegister";
 import CreateRequest from "../pages/CreateRequest";
 import MyRequests from "../pages/MyRequests";
-import HireService from "../pages/HireService";
 import MyProjects from "../pages/MyProjects";
 import ProjectDetails from "../pages/ProjectDetails";
 
@@ -105,7 +104,6 @@ export default function AppRoutes() {
           </PrivateRoute>
         }
       />
-      <Route path="/hire/:id" element={<HireService />} />
       <Route path="/my-projects" element={<MyProjects />} />
       <Route path="/projects/:id" element={<ProjectDetails />} />
 

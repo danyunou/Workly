@@ -1,20 +1,34 @@
-/* ======= Layout General ======= */
+/* === LAYOUT GENERAL HOME === */
+
 .home-body {
-  padding: 2rem;
-  background: #f3f4f6; /* gris claro */
+  padding: 2rem 1.5rem 3rem;
+  background: #f8f8f8;
+  min-height: calc(100vh - 80px);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* centramos el contenedor interno */
+}
+
+/* Contenedor interno centrado para el contenido del home */
+.home-inner {
+  width: 100%;
+  max-width: 1100px; /* ajusta al gusto */
 }
 
 .home-title {
   text-align: center;
   margin-bottom: 2rem;
-  font-size: 2rem;
-  font-weight: 600;
-  color: #111827; /* gris oscuro */
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #222;
 }
 
-/* ======= Secciones por Categoría ======= */
+/* === SECCIONES DE CATEGORÍA === */
+
 .category-section {
-  margin-bottom: 3rem;
+  margin-bottom: 2.5rem;
 }
 
 .category-header {
@@ -27,158 +41,152 @@
 .category-title {
   font-size: 1.3rem;
   font-weight: 600;
-  color: #111827;
+  color: #333;
 }
 
-/* Botón secundario (usado para "Ver todo") */
-.see-all-btn,
 .explore-btn {
   background-color: #02ad7a;
-  color: white;
+  color: #fff;
   border: none;
   padding: 0.4rem 0.9rem;
   border-radius: 999px;
   cursor: pointer;
-  font-weight: 600;
   font-size: 0.9rem;
-  transition: background 0.2s ease;
+  font-weight: 600;
+  transition: background 0.2s ease, transform 0.1s ease;
 }
 
-.see-all-btn:hover,
 .explore-btn:hover {
   background-color: #038b63;
+  transform: translateY(-1px);
 }
 
-/* ======= Scroll Horizontal ======= */
+/* === SCROLL HORIZONTAL SERVICIOS === */
+
 .services-scroll {
   display: flex;
-  flex-direction: row;
-  overflow-x: auto;
-  padding: 1rem 0;
   gap: 1rem;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
 }
 
 .services-scroll::-webkit-scrollbar {
   height: 6px;
 }
 
-.services-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* gris suave */
-  border-radius: 10px;
+.services-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* ======= Tarjeta de Servicio ======= */
+.services-scroll::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 999px;
+}
+
+/* === TARJETA DE SERVICIO === */
+
 .service-card {
-  width: 240px;
-  border-radius: 16px;
+  flex: 0 0 240px; /* más pequeña */
+  background-color: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
 }
 
 .service-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 .service-image {
   width: 100%;
-  height: 140px;
+  height: 130px;
   object-fit: cover;
 }
 
-/* ======= Contenido de la tarjeta ======= */
+/* === CONTENIDO TARJETA === */
+
 .service-details {
-  padding: 0.75rem 0.9rem 1rem;
+  padding: 0.75rem 0.85rem 0.9rem;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 .service-title {
   font-size: 1rem;
   font-weight: 600;
+  color: #222;
   margin: 0;
-  color: #111827;
+  line-height: 1.2;
 }
 
-/* ======= Bloque del freelancer ======= */
+/* Freelance info */
+
 .service-freelancer {
-  display: flex;
+  margin-top: 0.1rem;
+  display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.4rem;
   border: none;
   background: transparent;
   padding: 0;
-  margin-top: 0.3rem;
   cursor: pointer;
-  text-align: left;
-}
-
-.service-freelancer:hover {
-  background-color: #02ad7a;
-}
-
-.service-freelancer:hover .service-user {
-  color: white;
-}
-
-.service-freelancer:hover .service-avatar {
-  border: 2px solid white;
 }
 
 .service-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   object-fit: cover;
 }
 
-.service-freelancer-text {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.85rem;
-  color: #000;
-}
-
 .service-user {
-  color: #4b5563;
-  font-size: 0.88rem;
-  font-weight: 500;
-  margin: 0;
+  font-size: 0.85rem;
+  color: #555;
 }
 
-.service-rating {
-  font-size: 0.8rem;
-  color: #6b7280;
+/* Métricas compactas */
+
+.service-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
 }
 
-/* ======= Precio + Botón ======= */
+.compact-metrics .metric-item {
+  font-size: 0.75rem;
+  color: #666;
+  background: #f3f3f3;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+/* Precio + botón */
+
 .service-price {
+  margin: 0.2rem 0 0.3rem;
+  font-weight: 700;
+  color: #02ad7a;
   font-size: 0.95rem;
-  color: #111827;
-  margin-top: 0.3rem;
-  font-weight: 600;
 }
 
-/* Botón principal de "Contratar" */
 .hire-btn {
-  margin-top: 0.6rem;
-  padding: 0.6rem;
-  background-color: #02ad7a;
+  margin-top: auto;
+  width: 100%;
   border: none;
-  border-radius: 10px;
-  color: white;
-  cursor: pointer;
-  font-size: 0.92rem;
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  background-color: #02ad7a;
+  color: #fff;
+  cursor: pointer;
   transition: background 0.2s ease, transform 0.1s ease;
 }
 
@@ -187,17 +195,309 @@
   transform: translateY(-1px);
 }
 
-/* ======= Responsive ======= */
+/* === MODAL BACKDROP === */
+
+.service-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1.5rem;
+  z-index: 999;
+  overflow-y: auto;
+}
+
+/* Animación de entrada/salida del modal */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+/* === CONTENEDOR DEL MODAL === */
+
+.service-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 720px;
+  width: 100%;
+  margin-top: 4rem;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.18);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  animation: modalFadeIn 0.2s ease-out forwards;
+}
+
+.service-modal.closing {
+  animation: modalFadeOut 0.2s ease-in forwards;
+}
+
+/* Botón de cerrar */
+
+.service-modal-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  border: none;
+  background: #f2f2f2;
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.service-modal-close:hover {
+  background: #e0e0e0;
+}
+
+/* Header modal */
+
+.service-modal-header {
+  padding: 1.2rem 1.4rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.service-modal-header h2 {
+  font-size: 1.4rem;
+  margin: 0;
+  color: #222;
+}
+
+.service-modal-category {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: #e8f9f2;
+  color: #02ad7a;
+  font-weight: 600;
+}
+
+/* Imagen del modal */
+
+.service-modal-image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+/* Cuerpo del modal */
+
+.service-modal-body {
+  padding: 1rem 1.4rem 1.2rem;
+}
+
+.service-modal-body p {
+  margin: 0.3rem 0;
+  color: #444;
+  font-size: 0.95rem;
+}
+
+.service-modal-meta {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.service-modal-price {
+  margin-top: 0.8rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #02ad7a;
+}
+
+/* === FORMULARIO EN EL MODAL === */
+
+.service-modal-form {
+  margin-top: 1.2rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #eee;
+}
+
+.service-modal-form h3 {
+  font-size: 1rem;
+  margin: 0 0 0.6rem;
+  color: #222;
+}
+
+.service-modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #444;
+  margin-bottom: 0.75rem;
+}
+
+.service-modal-label span {
+  color: #d9534f;
+  margin-left: 0.1rem;
+}
+
+.service-modal-textarea {
+  min-height: 90px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid #d0d0d0;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border 0.15s ease, box-shadow 0.15s ease;
+}
+
+.service-modal-textarea:focus {
+  border-color: #02ad7a;
+  box-shadow: 0 0 0 2px rgba(2, 173, 122, 0.15);
+}
+
+.service-modal-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.service-modal-input {
+  border-radius: 8px;
+  border: 1px solid #d0d0d0;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border 0.15s ease, box-shadow 0.15s ease;
+}
+
+.service-modal-input:focus {
+  border-color: #02ad7a;
+  box-shadow: 0 0 0 2px rgba(2, 173, 122, 0.15);
+}
+
+/* Checkbox "soy flexible" */
+
+.service-modal-flex-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #555;
+  margin-top: 0.3rem;
+}
+
+.service-modal-flex-row input[type="checkbox"] {
+  accent-color: #02ad7a;
+}
+
+/* === BOTONES DEL MODAL === */
+
+.service-modal-actions {
+  padding: 0.9rem 1.4rem 1.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  border-top: 1px solid #f0f0f0;
+}
+
+.service-modal-hire-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.55rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background-color: #02ad7a;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.service-modal-hire-btn:hover {
+  background-color: #038b63;
+  transform: translateY(-1px);
+}
+
+.service-modal-hire-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.service-modal-hire-btn:disabled:hover {
+  background-color: #02ad7a;
+}
+
+.service-modal-secondary-btn {
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid #d0d0d0;
+  background-color: #fff;
+  color: #444;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.1s ease;
+}
+
+.service-modal-secondary-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #bdbdbd;
+  transform: translateY(-1px);
+}
+
+/* === RESPONSIVE === */
+
 @media (max-width: 768px) {
   .home-body {
-    padding: 1.5rem 1rem;
+    padding: 1.5rem 1rem 2.5rem;
+    margin-top: 70px;
   }
 
-  .home-title {
-    font-size: 1.7rem;
+  .home-inner {
+    max-width: 100%;
   }
 
   .service-card {
-    width: 210px;
+    flex: 0 0 210px;
+  }
+
+  .service-modal {
+    margin-top: 3rem;
+  }
+
+  .service-modal-body {
+    padding: 0.9rem 1rem 1.1rem;
+  }
+
+  .service-modal-actions {
+    padding: 0.8rem 1rem 1.1rem;
   }
 }

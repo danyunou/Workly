@@ -21,7 +21,6 @@ export default function EditFreelancerProfile() {
   const [form, setForm] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [newProfileImage, setNewProfileImage] = useState(null);
   const [previewImage, setPreviewImage] = useState("");
   const [allDay, setAllDay] = useState(false);
   const navigate = useNavigate();
@@ -122,6 +121,7 @@ export default function EditFreelancerProfile() {
     };
 
     try {
+      // 1. Actualizar perfil de freelancer
       const res = await fetch(
         "https://workly-cy4b.onrender.com/api/freelancerProfile/update",
         {
@@ -136,19 +136,45 @@ export default function EditFreelancerProfile() {
 
       const result = await res.json();
 
-      if (res.ok) {
-        setMessage("Perfil actualizado correctamente.");
-
-        // TODO: cuando tengas endpoint para actualizar imagen de perfil,
-        // aquí puedes hacer otra petición usando FormData con newProfileImage
-
-        setTimeout(() => {
-          navigate("/freelancer-profile");
-        }, 1000);
-      } else {
-        setError(result.error || "Error al actualizar.");
+      if (!res.ok) {
+        setError(result.error || "Error al actualizar el perfil de freelancer.");
+        return;
       }
+
+      // 2. Si hay nueva imagen, llamamos al endpoint de usuarios
+      if (form.profile_picture) {
+        const formData = new FormData();
+        formData.append("profile_picture", form.profile_picture);
+
+        const imgRes = await fetch(
+          "https://workly-cy4b.onrender.com/api/users/profile",
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: formData,
+          }
+        );
+
+        const imgResult = await imgRes.json();
+
+        if (!imgRes.ok) {
+          // El perfil de freelancer sí se actualizó, pero falló la foto
+          setError(
+            imgResult.error ||
+              "Perfil actualizado, pero hubo un error al actualizar la foto."
+          );
+          return;
+        }
+      }
+
+      setMessage("Perfil actualizado correctamente.");
+      setTimeout(() => {
+        navigate("/freelancer-profile");
+      }, 1000);
     } catch (err) {
+      console.error(err);
       setError("Error de conexión.");
     }
   };
@@ -156,7 +182,7 @@ export default function EditFreelancerProfile() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setNewProfileImage(file);
+    setForm({ ...form, profile_picture: file });
     const url = URL.createObjectURL(file);
     setPreviewImage(url);
   };
@@ -182,7 +208,7 @@ export default function EditFreelancerProfile() {
             Cambiar foto
             <input
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg"
               onChange={handleImageChange}
               hidden
             />

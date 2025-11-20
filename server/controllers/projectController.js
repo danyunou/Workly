@@ -1,3 +1,4 @@
+//projectController.js
 const pool = require("../config/db");
 const { uploadToS3 } = require('../services/uploadService');
 
@@ -11,35 +12,48 @@ exports.getMyProjects = async (req, res) => {
 
     if (role === "client") {
       result = await pool.query(`
-        SELECT p.id, p.status, p.started_at,
-       COALESCE(s.title, r.title, s2.title) AS service_title,
-       u.username AS freelancer_name
-FROM projects p
-LEFT JOIN requests r ON r.id = p.request_id
-LEFT JOIN services s ON s.id = p.service_id
-LEFT JOIN services s2 ON s2.id = (
-  SELECT sr.service_id FROM service_requests sr WHERE sr.id = p.service_request_id
-)
-LEFT JOIN users u ON u.id = p.freelancer_id
-WHERE p.client_id = $1
-ORDER BY p.started_at DESC;
+        SELECT 
+          p.id,
+          p.status,
+          p.started_at,
+          p.contract_price,
+          p.contract_deadline,
+          COALESCE(s.title, r.title, s2.title) AS service_title,
+          u.username AS freelancer_name
+        FROM projects p
+        LEFT JOIN requests r ON r.id = p.request_id
+        LEFT JOIN services s ON s.id = p.service_id
+        LEFT JOIN services s2 ON s2.id = (
+          SELECT sr.service_id
+          FROM service_requests sr
+          WHERE sr.id = p.service_request_id
+        )
+        LEFT JOIN users u ON u.id = p.freelancer_id
+        WHERE p.client_id = $1
+        ORDER BY p.started_at DESC NULLS LAST, p.created_at DESC;
       `, [userId]);
 
     } else if (role === "freelancer") {
       result = await pool.query(`
-        SELECT p.id, p.status, p.started_at,
-       COALESCE(s.title, r.title, s2.title) AS service_title,
-       u.username AS client_name
-FROM projects p
-LEFT JOIN requests r ON r.id = p.request_id
-LEFT JOIN services s ON s.id = p.service_id
-LEFT JOIN services s2 ON s2.id = (
-  SELECT sr.service_id FROM service_requests sr WHERE sr.id = p.service_request_id
-)
-LEFT JOIN users u ON u.id = p.client_id
-WHERE p.freelancer_id = $1
-ORDER BY p.started_at DESC;
-
+        SELECT 
+          p.id,
+          p.status,
+          p.started_at,
+          p.contract_price,
+          p.contract_deadline,
+          COALESCE(s.title, r.title, s2.title) AS service_title,
+          u.username AS client_name
+        FROM projects p
+        LEFT JOIN requests r ON r.id = p.request_id
+        LEFT JOIN services s ON s.id = p.service_id
+        LEFT JOIN services s2 ON s2.id = (
+          SELECT sr.service_id
+          FROM service_requests sr
+          WHERE sr.id = p.service_request_id
+        )
+        LEFT JOIN users u ON u.id = p.client_id
+        WHERE p.freelancer_id = $1
+        ORDER BY p.started_at DESC NULLS LAST, p.created_at DESC;
       `, [userId]);
 
     } else {
@@ -47,13 +61,11 @@ ORDER BY p.started_at DESC;
     }
 
     res.json(result.rows);
-
   } catch (err) {
     console.error("Error al obtener proyectos:", err);
     res.status(500).json({ error: "Error interno al obtener proyectos" });
   }
 };
-
 
 exports.getProjectById = async (req, res) => {
   const userId = req.user?.id;
@@ -62,26 +74,31 @@ exports.getProjectById = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        p.*, 
+        p.*,
         p.client_accepted,
         p.freelancer_accepted,
         u1.username AS client_name,
         u2.username AS freelancer_name,
 
-        -- Título
+        -- Título del servicio / request
         COALESCE(s.title, r.title, s3.title) AS service_title,
 
         -- Descripción
         COALESCE(s.description, r.description) AS description,
 
-        -- Omitir deadline temporalmente
-        NULL AS deadline,
+        -- Deadline del contrato / request / service_request
+        COALESCE(
+          p.contract_deadline,
+          sr.proposed_deadline,
+          r.deadline
+        ) AS deadline,
 
         -- Monto
         COALESCE(
-          s.price, 
-          r.budget, 
-          pr.proposed_price, 
+          p.contract_price,
+          s.price,
+          r.budget,
+          pr.proposed_price,
           sr.proposed_budget
         ) AS amount
 
@@ -89,20 +106,24 @@ exports.getProjectById = async (req, res) => {
       LEFT JOIN users u1 ON u1.id = p.client_id
       LEFT JOIN users u2 ON u2.id = p.freelancer_id
 
-      -- Si viene de un servicio publicado
+      -- Servicio publicado
       LEFT JOIN services s ON s.id = p.service_id
 
-      -- Si viene de una solicitud directa
+      -- Solicitud directa
       LEFT JOIN requests r ON r.id = p.request_id
 
-      -- Si viene de una solicitud a un servicio
+      -- Solicitud a un servicio
       LEFT JOIN service_requests sr ON sr.id = p.service_request_id
       LEFT JOIN services s3 ON s3.id = sr.service_id
 
-      -- Si existe una propuesta aceptada relacionada
-      LEFT JOIN proposals pr ON pr.request_id = r.id AND pr.freelancer_id = p.freelancer_id AND pr.status = 'accepted'
+      -- Propuesta aceptada relacionada
+      LEFT JOIN proposals pr 
+        ON pr.request_id = r.id 
+       AND pr.freelancer_id = p.freelancer_id 
+       AND pr.status = 'accepted'
 
-      WHERE p.id = $1 AND (p.client_id = $2 OR p.freelancer_id = $2)
+      WHERE p.id = $1
+        AND (p.client_id = $2 OR p.freelancer_id = $2)
     `, [projectId, userId]);
 
     if (result.rows.length === 0) {
@@ -251,7 +272,9 @@ exports.approveProject = async (req, res) => {
       `SELECT * FROM projects WHERE id = $1 AND client_id = $2`,
       [projectId, userId]
     );
-    if (project.rows.length === 0) return res.status(403).json({ error: "No autorizado" });
+    if (project.rows.length === 0) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
 
     // Verificar que todos los entregables estén aprobados
     const notApproved = await pool.query(
@@ -259,14 +282,40 @@ exports.approveProject = async (req, res) => {
       [projectId]
     );
 
-    if (parseInt(notApproved.rows[0].count) > 0) {
+    if (parseInt(notApproved.rows[0].count, 10) > 0) {
       return res.status(400).json({ error: "Faltan entregables por aprobar" });
     }
 
+    // Marcar proyecto como completado y aprobado por cliente
     await pool.query(
-      `UPDATE projects SET status = 'completed' WHERE id = $1`,
+      `UPDATE projects 
+       SET status = 'completed',
+           approved_by_client = TRUE,
+           completed_at = NOW()
+       WHERE id = $1`,
       [projectId]
     );
+
+    // Obtener el service_id asociado (puede venir directo o desde service_requests)
+    const serviceRes = await pool.query(
+      `SELECT COALESCE(p.service_id, sr.service_id) AS service_id
+       FROM projects p
+       LEFT JOIN service_requests sr ON sr.id = p.service_request_id
+       WHERE p.id = $1`,
+      [projectId]
+    );
+
+    const serviceId = serviceRes.rows[0]?.service_id;
+
+    // Si hay un servicio asociado, incrementar completed_orders
+    if (serviceId) {
+      await pool.query(
+        `UPDATE services
+         SET completed_orders = completed_orders + 1
+         WHERE id = $1`,
+        [serviceId]
+      );
+    }
 
     res.json({ message: "Proyecto aprobado y finalizado." });
   } catch (err) {

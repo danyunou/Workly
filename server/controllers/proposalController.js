@@ -1,3 +1,4 @@
+//proposalController.js
 const pool = require("../config/db");
 
 exports.getProposalsByRequest = async (req, res) => {
@@ -25,7 +26,8 @@ exports.acceptProposal = async (req, res) => {
   try {
     // Verificar que la propuesta exista y pertenezca a una solicitud del cliente
     const proposalCheck = await pool.query(
-      `SELECT p.*, r.client_id FROM proposals p
+      `SELECT p.*, r.client_id
+       FROM proposals p
        JOIN requests r ON p.request_id = r.id
        WHERE p.id = $1`,
       [proposalId]
@@ -46,23 +48,61 @@ exports.acceptProposal = async (req, res) => {
       [proposal.request_id]
     );
 
-    // Cambiar estado de todas las demás propuestas a "rechazada", menos la aceptada
+    // Rechazar otras propuestas
     await pool.query(
-      `UPDATE proposals SET status = 'rejected' WHERE request_id = $1 AND id != $2`,
+      `UPDATE proposals 
+       SET status = 'rejected' 
+       WHERE request_id = $1 AND id != $2`,
       [proposal.request_id, proposalId]
     );
 
-    // Cambiar estado de la propuesta aceptada
+    // Marcar propuesta aceptada
     await pool.query(
       `UPDATE proposals SET status = 'accepted' WHERE id = $1`,
       [proposalId]
     );
 
-    // Crear entrada en tabla projects (modo standby)
+    // Crear proyecto (modo standby) usando columnas de contrato
     await pool.query(
-      `INSERT INTO projects (request_id, freelancer_id, client_id, status, created_at)
-       VALUES ($1, $2, $3, 'pending_contract', NOW())`,
-      [proposal.request_id, proposal.freelancer_id, clientId]
+      `INSERT INTO projects (
+         proposal_id,
+         request_id,
+         freelancer_id,
+         client_id,
+         status,
+         created_at,
+         payment_status,
+         client_accepted,
+         freelancer_accepted,
+         contract_price,
+         contract_deadline,
+         contract_terms,
+         revision_limit,
+         revision_count
+       )
+       VALUES (
+         $1, $2, $3, $4,
+         'pending_contract',
+         NOW(),
+         'pending',
+         FALSE,
+         FALSE,
+         $5,             -- contract_price
+         $6,             -- contract_deadline
+         $7,             -- contract_terms (usamos scope de la propuesta)
+         $8,             -- revision_limit
+         0               -- revision_count
+       )`,
+      [
+        proposalId,
+        proposal.request_id,
+        proposal.freelancer_id,
+        clientId,
+        proposal.proposed_price || null,
+        proposal.proposed_deadline || null,
+        proposal.scope || null,
+        proposal.estimated_days || 0 // revisiones permitidas ~ días estimados (puedes ajustar la lógica)
+      ]
     );
 
     res.json({ message: "Propuesta aceptada y proyecto creado." });
@@ -75,7 +115,7 @@ exports.acceptProposal = async (req, res) => {
 exports.sendProposal = async (req, res) => {
   const { requestId } = req.params;
   const freelancerId = req.user.id;
-  const { message, proposed_price, proposed_deadline } = req.body;
+  const { message, proposed_price, proposed_deadline, estimated_days, scope } = req.body;
 
   try {
     const existing = await pool.query(
@@ -88,9 +128,26 @@ exports.sendProposal = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO proposals (request_id, freelancer_id, message, proposed_price, proposed_deadline)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [requestId, freelancerId, message, proposed_price, proposed_deadline]
+      `INSERT INTO proposals (
+         request_id,
+         freelancer_id,
+         message,
+         proposed_price,
+         proposed_deadline,
+         estimated_days,
+         scope
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        requestId,
+        freelancerId,
+        message,
+        proposed_price,
+        proposed_deadline,
+        estimated_days || null,
+        scope || null
+      ]
     );
 
     res.status(201).json(result.rows[0]);

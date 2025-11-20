@@ -1,3 +1,4 @@
+//requestController.js
 const pool = require("../config/db");
 
 // Obtener solicitudes relacionadas con la(s) categoría(s) del freelancer
@@ -25,14 +26,41 @@ exports.getRequestsForFreelancer = async (req, res) => {
 };
 
 exports.createRequest = async (req, res) => {
-  const { title, description, budget, deadline, category } = req.body;
+  const { 
+    title,
+    description,
+    budget,
+    deadline,
+    category,
+    reference_links,
+    additional_info
+  } = req.body;
+
   const client_id = req.user.id;
 
   try {
     await pool.query(`
-      INSERT INTO requests (title, description, budget, deadline, client_id, category)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [title, description, budget, deadline, client_id, category]);
+      INSERT INTO requests (
+        title,
+        description,
+        budget,
+        deadline,
+        client_id,
+        category,
+        reference_links,
+        additional_info
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [
+      title,
+      description,
+      budget,
+      deadline,
+      client_id,
+      category,
+      reference_links && reference_links.length ? reference_links : null,
+      additional_info || null
+    ]);
 
     res.status(201).json({ message: "Solicitud creada correctamente" });
   } catch (err) {

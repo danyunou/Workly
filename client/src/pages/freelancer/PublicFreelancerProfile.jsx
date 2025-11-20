@@ -24,7 +24,9 @@ export default function PublicFreelancerProfile() {
   }, []);
 
   useEffect(() => {
-    fetch(`https://workly-cy4b.onrender.com/api/freelancerProfile/public/${username}`)
+    fetch(
+      `https://workly-cy4b.onrender.com/api/freelancerProfile/public/${username}`
+    )
       .then((res) => {
         if (!res.ok) throw new Error("No se encontró el perfil");
         return res.json();
@@ -33,7 +35,6 @@ export default function PublicFreelancerProfile() {
         // --- EDUCACIÓN ---
         let education = [];
 
-        // Puede venir como string o como array
         if (typeof data.education === "string") {
           try {
             education = JSON.parse(data.education);
@@ -44,7 +45,6 @@ export default function PublicFreelancerProfile() {
           education = data.education;
         }
 
-        // Normalizar claves a un formato consistente
         const normalizedEducation = education.map((edu) => ({
           institution: edu.institucion || edu.institution || "",
           degree: edu.carrera || edu.degree || "",
@@ -57,8 +57,14 @@ export default function PublicFreelancerProfile() {
         );
 
         // --- PROYECTOS DESTACADOS ---
-        // Espera algo tipo: [{ title, description, link }]
-        const featuredProjects = data.featured_projects || [];
+        let featuredProjects = data.featured_projects || [];
+        if (!Array.isArray(featuredProjects)) {
+          try {
+            featuredProjects = JSON.parse(featuredProjects);
+          } catch {
+            featuredProjects = [];
+          }
+        }
 
         setProfile({
           ...data,
@@ -73,7 +79,14 @@ export default function PublicFreelancerProfile() {
       });
   }, [username]);
 
-  const NavbarToShow = roleId === 2 ? <FreelancerNavbar /> : roleId === 1 ? <Navbar /> : <WelcomeNavbar />;
+  const NavbarToShow =
+    roleId === 2 ? (
+      <FreelancerNavbar />
+    ) : roleId === 1 ? (
+      <Navbar />
+    ) : (
+      <WelcomeNavbar />
+    );
 
   if (error) {
     return (
@@ -209,7 +222,7 @@ export default function PublicFreelancerProfile() {
             </section>
           )}
 
-          {/* REDES SOCIALES (solo si hay links válidos) */}
+          {/* REDES SOCIALES */}
           {profile.social_links?.length > 0 && (
             <section className="section-block">
               <h3>Redes Sociales</h3>
@@ -244,20 +257,32 @@ export default function PublicFreelancerProfile() {
               <div className="projects-grid">
                 {profile.featured_projects.map((proj, i) => (
                   <div key={i} className="project-card">
-                    <h4>{proj.title}</h4>
-                    {proj.description && (
-                      <p className="section-text">{proj.description}</p>
+                    {proj.image_url && (
+                      <div className="project-card-image-wrapper">
+                        <img
+                          src={proj.image_url}
+                          alt={proj.title || `Proyecto ${i + 1}`}
+                          className="project-card-image"
+                        />
+                      </div>
                     )}
-                    {proj.link && (
-                      <a
-                        href={proj.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="section-link"
-                      >
-                        Ver proyecto
-                      </a>
-                    )}
+
+                    <div className="project-card-body">
+                      <h4>{proj.title}</h4>
+                      {proj.description && (
+                        <p className="section-text">{proj.description}</p>
+                      )}
+                      {proj.link && (
+                        <a
+                          href={proj.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="section-link"
+                        >
+                          Ver proyecto
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

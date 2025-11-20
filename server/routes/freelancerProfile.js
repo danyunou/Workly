@@ -35,5 +35,11 @@ console.log("✅ Ruta /api/freelancerProfile/update registrada");
 router.get('/public/:username', freelancerController.getPublicFreelancerProfile);
 
 router.put("/portfolio", authMiddleware, freelancerController.updatePortfolio);
+router.post(
+  "/portfolio/image",
+  authMiddleware,
+  upload.single("image"),
+  freelancerController.uploadPortfolioImage
+);
 
 module.exports = router;

@@ -17,6 +17,10 @@ exports.getAllServices = async (req, res) => {
             'freelancer_id', s.freelancer_id,
             'image_url', s.image_url,
             'created_at', s.created_at,
+            'delivery_time_days', s.delivery_time_days,
+            'rating_avg', s.rating_avg,
+            'rating_count', s.rating_count,
+            'completed_orders', s.completed_orders,
             -- alias del freelancer (si no hay, usamos username)
             'user_alias', COALESCE(fp.alias, u.username),
             -- username real para armar la URL pública
@@ -42,10 +46,8 @@ exports.getAllServices = async (req, res) => {
 };
 
 
-
-
 exports.createService = async (req, res) => {
-  const { title, description, price, category } = req.body;
+  const { title, description, price, category, delivery_time_days } = req.body;
   const freelancer_id = req.user?.id;
 
   try {
@@ -56,11 +58,26 @@ exports.createService = async (req, res) => {
     const imageFile = req.files.image[0];
     const imageUrl = await uploadToS3(imageFile);
 
+    // Si no mandan delivery_time_days, usamos 7 días por defecto
+    const deliveryTime = delivery_time_days
+      ? parseInt(delivery_time_days, 10)
+      : 7;
+
     const result = await pool.query(
-      `INSERT INTO services (title, description, price, freelancer_id, category, image_url, created_at, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, TRUE)
+      `INSERT INTO services (
+         title,
+         description,
+         price,
+         freelancer_id,
+         category,
+         image_url,
+         created_at,
+         is_active,
+         delivery_time_days
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, TRUE, $7)
        RETURNING *`,
-      [title, description, price, freelancer_id, category, imageUrl]
+      [title, description, price, freelancer_id, category, imageUrl, deliveryTime]
     );
 
     res.status(201).json(result.rows[0]);
@@ -80,10 +97,14 @@ exports.getServicesByCategory = async (req, res) => {
         s.id,
         s.title,
         s.price,
+        s.image_url,
+        s.delivery_time_days,
+        s.rating_avg,
+        s.rating_count,
+        s.completed_orders,
         COALESCE(fp.alias, u.username) AS user_alias,
         u.username AS username,
-        u.profile_picture,
-        s.image_url
+        u.profile_picture
       FROM services s
       JOIN users u ON u.id = s.freelancer_id
       LEFT JOIN freelancer_profiles fp ON fp.user_id = s.freelancer_id
@@ -104,7 +125,22 @@ exports.getServicesByFreelancer = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM services WHERE freelancer_id = $1 ORDER BY created_at DESC`,
+      `SELECT 
+         id,
+         title,
+         description,
+         category,
+         price,
+         image_url,
+         created_at,
+         is_active,
+         delivery_time_days,
+         rating_avg,
+         rating_count,
+         completed_orders
+       FROM services
+       WHERE freelancer_id = $1
+       ORDER BY created_at DESC`,
       [freelancerId]
     );
     res.json(result.rows);
@@ -113,6 +149,7 @@ exports.getServicesByFreelancer = async (req, res) => {
     res.status(500).json({ error: "Error al obtener tus servicios" });
   }
 };
+
 
 exports.deleteService = async (req, res) => {
   const serviceId = req.params.id;
@@ -138,16 +175,28 @@ exports.deleteService = async (req, res) => {
   }
 };
 
+
 exports.updateService = async (req, res) => {
   const serviceId = req.params.id;
   const freelancerId = req.user.id;
-  const { title, description, category, price } = req.body;
+  const { title, description, category, price, delivery_time_days } = req.body;
 
   try {
+    const deliveryTime = delivery_time_days
+      ? parseInt(delivery_time_days, 10)
+      : null;
+
     const result = await pool.query(
-      `UPDATE services SET title = $1, description = $2, category = $3, price = $4
-       WHERE id = $5 AND freelancer_id = $6 RETURNING *`,
-      [title, description, category, price, serviceId, freelancerId]
+      `UPDATE services
+       SET
+         title = $1,
+         description = $2,
+         category = $3,
+         price = $4,
+         delivery_time_days = COALESCE($5, delivery_time_days)
+       WHERE id = $6 AND freelancer_id = $7
+       RETURNING *`,
+      [title, description, category, price, deliveryTime, serviceId, freelancerId]
     );
 
     if (result.rowCount === 0) {
@@ -160,6 +209,7 @@ exports.updateService = async (req, res) => {
     res.status(500).json({ error: "Internal server error." });
   }
 };
+
 
 exports.getRequestsForService = async (req, res) => {
   const serviceId = req.params.id;
@@ -197,9 +247,10 @@ exports.acceptServiceRequest = async (req, res) => {
   const freelancerId = req.user?.id;
 
   try {
-    // Validar que la solicitud existe y pertenece a un servicio del freelancer
+    // 1) Validar que la solicitud existe y pertenece a un servicio del freelancer
     const { rows } = await pool.query(
-      `SELECT sr.*, s.freelancer_id FROM service_requests sr
+      `SELECT sr.*, s.freelancer_id, s.id AS service_id
+       FROM service_requests sr
        JOIN services s ON sr.service_id = s.id
        WHERE sr.id = $1`,
       [requestId]
@@ -215,29 +266,58 @@ exports.acceptServiceRequest = async (req, res) => {
       return res.status(403).json({ error: "No autorizado para aceptar esta solicitud." });
     }
 
-    // Actualizar estado de la solicitud
-    await pool.query(`UPDATE service_requests SET status = 'accepted' WHERE id = $1`, [requestId]);
-
-    // Crear proyecto asociado
+    // 2) Actualizar estado de la solicitud
     await pool.query(
-      `INSERT INTO projects (service_request_id, status, started_at)
-       VALUES ($1, 'pending_contract', NOW())`,
+      `UPDATE service_requests
+       SET status = 'accepted'
+       WHERE id = $1`,
       [requestId]
     );
 
-    res.status(200).json({ message: "Solicitud aceptada y proyecto creado." });
+    // 3) Crear proyecto asociado COMPLETO
+    const { rows: projectRows } = await pool.query(
+      `INSERT INTO projects (
+        service_request_id,
+        service_id,
+        client_id,
+        freelancer_id,
+        status,
+        started_at,
+        created_at,
+        payment_status,
+        client_accepted,
+        freelancer_accepted
+      )
+      VALUES ($1, $2, $3, $4, 'pending_contract', NOW(), NOW(), 'pending', FALSE, FALSE)
+      RETURNING *`,
+      [
+        request.id,
+        request.service_id,
+        request.client_id,
+        request.freelancer_id
+      ]
+    );
+
+    const project = projectRows[0];
+
+    res.status(200).json({
+      message: "Solicitud aceptada y proyecto creado.",
+      project
+    });
   } catch (err) {
     console.error("Error al aceptar solicitud:", err);
     res.status(500).json({ error: "Error interno al aceptar la solicitud." });
   }
 };
 
+
 exports.hireService = async (req, res) => {
   const clientId = req.user.id;
   const { serviceId } = req.params;
+  const { message, proposed_deadline, proposed_budget } = req.body;
 
   try {
-    // Validar que el servicio existe
+    // 1) Validar que el servicio existe y está activo
     const { rows: serviceRows } = await pool.query(
       `SELECT * FROM services WHERE id = $1 AND is_active = TRUE`,
       [serviceId]
@@ -249,25 +329,47 @@ exports.hireService = async (req, res) => {
 
     const service = serviceRows[0];
 
-    // Crear proyecto directamente
-    const { rows: project } = await pool.query(
-      `INSERT INTO projects (service_id, client_id, freelancer_id, status, started_at)
-       VALUES ($1, $2, $3, 'pending_contract', NOW())
-       RETURNING *`,
-      [service.id, clientId, service.freelancer_id]
+    // 2) Crear una solicitud de servicio
+    const { rows: srRows } = await pool.query(
+      `INSERT INTO service_requests (
+        service_id,
+        client_id,
+        message,
+        proposed_deadline,
+        proposed_budget,
+        status,
+        created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, 'pending_freelancer', NOW())
+      RETURNING *`,
+      [
+        service.id,
+        clientId,
+        message || null,
+        proposed_deadline || null,
+        proposed_budget || null
+      ]
     );
 
-    res.status(201).json({ message: "Servicio contratado exitosamente", project: project[0] });
+    const serviceRequest = srRows[0];
+
+    res.status(201).json({
+      message: "Solicitud enviada al freelancer. Esperando respuesta.",
+      service_request: serviceRequest
+    });
   } catch (err) {
-    console.error("Error al contratar servicio:", err);
-    res.status(500).json({ error: "Error interno al contratar el servicio" });
+    console.error("Error al solicitar servicio:", err);
+    res.status(500).json({ error: "Error interno al solicitar el servicio" });
   }
 };
+
+
 
 exports.getServiceById = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Aquí ya incluye delivery_time_days, rating_avg, etc. porque usamos *
     const result = await pool.query(`SELECT * FROM services WHERE id = $1`, [id]);
 
     if (result.rowCount === 0) {
@@ -281,3 +383,125 @@ exports.getServiceById = async (req, res) => {
   }
 };
 
+exports.createServiceReview = async (req, res) => {
+  const clientId = req.user.id;
+  const { id: serviceId } = req.params;
+  const { rating, comment } = req.body;
+
+  try {
+    const numericRating = parseInt(rating, 10);
+    if (!numericRating || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({ error: "La calificación debe ser un número entre 1 y 5." });
+    }
+
+    // 1) Verificar que el usuario haya completado al menos un proyecto de este servicio
+    const eligibleRes = await pool.query(
+      `
+      SELECT COUNT(*) AS count
+      FROM projects p
+      LEFT JOIN service_requests sr ON sr.id = p.service_request_id
+      WHERE p.client_id = $1
+        AND p.status = 'completed'
+        AND COALESCE(p.service_id, sr.service_id) = $2
+      `,
+      [clientId, serviceId]
+    );
+
+    const hasCompleted = parseInt(eligibleRes.rows[0].count, 10) > 0;
+
+    if (!hasCompleted) {
+      return res.status(400).json({
+        error: "Solo puedes reseñar servicios en los que hayas completado un proyecto."
+      });
+    }
+
+    // 2) Verificar si el usuario YA tiene una reseña para este servicio
+    const existingRes = await pool.query(
+      `
+      SELECT 1
+      FROM service_reviews
+      WHERE service_id = $1 AND client_id = $2
+      LIMIT 1
+      `,
+      [serviceId, clientId]
+    );
+
+    if (existingRes.rows.length > 0) {
+      return res.status(400).json({
+        error: "Ya has dejado una reseña para este servicio."
+      });
+    }
+
+    // 3) Insertar nueva reseña (solo si no existía antes)
+    await pool.query(
+      `
+      INSERT INTO service_reviews (service_id, client_id, rating, comment)
+      VALUES ($1, $2, $3, $4)
+      `,
+      [serviceId, clientId, numericRating, comment || null]
+    );
+
+    // 4) Recalcular promedio y número de reseñas
+    const aggRes = await pool.query(
+      `
+      SELECT
+        COALESCE(AVG(rating), 0)::NUMERIC(3,2) AS avg_rating,
+        COUNT(*) AS review_count
+      FROM service_reviews
+      WHERE service_id = $1
+      `,
+      [serviceId]
+    );
+
+    const avgRating = aggRes.rows[0].avg_rating;
+    const reviewCount = parseInt(aggRes.rows[0].review_count, 10);
+
+    await pool.query(
+      `
+      UPDATE services
+      SET rating_avg = $1,
+          rating_count = $2
+      WHERE id = $3
+      `,
+      [avgRating, reviewCount, serviceId]
+    );
+
+    res.status(201).json({
+      message: "Reseña guardada correctamente.",
+      rating_avg: avgRating,
+      rating_count: reviewCount
+    });
+  } catch (err) {
+    console.error("Error al crear reseña:", err);
+    res.status(500).json({ error: "Error interno al crear reseña." });
+  }
+};
+
+
+exports.getServiceReviews = async (req, res) => {
+  const { id: serviceId } = req.params;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        r.id,
+        r.rating,
+        r.comment,
+        r.created_at,
+        u.username AS client_username,
+        u.full_name AS client_name
+      FROM service_reviews r
+      JOIN users u ON u.id = r.client_id
+      WHERE r.service_id = $1
+      ORDER BY r.created_at DESC
+      `,
+      [serviceId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error al obtener reseñas del servicio:", err);
+    res.status(500).json({ error: "Error interno al obtener reseñas." });
+  }
+};

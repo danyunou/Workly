@@ -1,24 +1,132 @@
-/* Contenedor principal */
-.dashboard-container {
-  padding: 30px 40px;
-  background-color: #f9f9f9;
-  min-height: 50vh;
+/* Página general del panel */
+.dashboard-page {
+  min-height: 100vh;
+  background: #f3f4f6;
 }
 
-/* Título principal */
-.dashboard-title {
-  font-size: 28px;
+/* Contenedor principal */
+.dashboard-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 30px 24px 40px;
+}
+
+/* Header principal del panel */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 24px;
+}
+
+.dashboard-main-title {
+  font-size: 26px;
   font-weight: 700;
-  color: #333;
-  margin-bottom: 20px;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.dashboard-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  max-width: 520px;
+}
+
+/* Lado derecho del header */
+.dashboard-header-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.dashboard-pill {
+  background-color: #e5f7f1;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.dashboard-outline-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #02ad7a;
+  background-color: #ffffff;
+  color: #028466;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s;
+}
+
+.dashboard-outline-btn:hover {
+  background-color: #02ad7a;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Secciones del panel */
+.dashboard-section {
+  margin-top: 10px;
+}
+
+.dashboard-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+/* Título principal de la sección */
+.dashboard-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
 }
 
 /* Mensaje cuando no hay solicitudes */
-.no-requests {
-  font-size: 16px;
-  color: #666;
-  margin-top: 40px;
+.empty-state {
+  margin-top: 32px;
+  padding: 28px 24px;
+  border-radius: 16px;
+  background-color: #ffffff;
+  border: 1px dashed #d1d5db;
   text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+/* Botón principal reutilizable */
+.primary-button {
+  background-color: #02ad7a;
+  color: #ffffff;
+  border: none;
+  padding: 10px 18px;
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease, box-shadow 0.2s;
+}
+
+.primary-button:hover {
+  background-color: #038b63;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* Rejilla de solicitudes */
@@ -30,36 +138,27 @@
 
 /* Tarjeta de solicitud */
 .request-card {
-  background-color: #fff;
+  background-color: #ffffff;
   border-radius: 16px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 20px;
+  padding: 18px 18px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.25s ease-in-out;
   border: 1px solid #e5e7eb;
 }
 
 .request-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  transform: translateY(-3px);
 }
 
-/* Título */
-.request-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
+.request-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
-}
-
-/* Descripción */
-.request-description {
-  font-size: 14px;
-  color: #4b5563;
-  margin-bottom: 12px;
-  line-height: 1.4;
 }
 
 /* Categoría */
@@ -70,37 +169,182 @@
   font-size: 12px;
   font-weight: 600;
   padding: 4px 10px;
-  border-radius: 20px;
+  border-radius: 999px;
+}
+
+/* Título */
+.request-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+/* Descripción */
+.request-description {
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+/* Meta info (budget + deadline) */
+.request-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 10px;
 }
 
-/* Presupuesto */
 .request-budget {
-  font-size: 15px;
-  font-weight: 600;
-  color: #15803d;
-  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #065f46;
 }
 
-/* Fecha límite */
+.request-budget span {
+  font-weight: 700;
+}
+
 .request-deadline {
   font-size: 12px;
   color: #6b7280;
 }
 
-/* Botón */
+/* Botón dentro de la tarjeta */
 .request-card button {
-  margin-top: 12px;
-  background-color: #10b981;
+  margin-top: 6px;
+  background-color: #02ad7a;
   color: white;
   border: none;
-  padding: 10px;
+  padding: 9px;
   font-size: 14px;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  font-weight: 600;
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s;
 }
 
 .request-card button:hover {
-  background-color: #059669;
+  background-color: #038b63;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+/* Responsive pequeños */
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-header-right {
+    justify-content: flex-start;
+  }
+
+  .dashboard-container {
+    padding-inline: 16px;
+  }
+}
+
+/* Mensajes globales */
+.dashboard-loading,
+.dashboard-error {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.dashboard-loading {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.dashboard-error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+/* Contador por sección (para grandes volúmenes) */
+.dashboard-section-count {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Texto adicional dentro de la tarjeta */
+.request-additional {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+/* Bloque de links de referencia */
+.request-links {
+  margin-bottom: 10px;
+}
+
+.request-links h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.request-links ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.request-links li + li {
+  margin-top: 2px;
+}
+
+.request-links a {
+  font-size: 13px;
+  color: #0369a1;
+  text-decoration: underline;
+}
+
+/* Fecha de creación */
+.request-created {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Distinción visual para solicitudes a servicios */
+.request-category-service {
+  background-color: #ecfdf5;
+  color: #15803d;
+}
+
+/* Pill de estado de solicitud de servicio */
+.status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+/* Puedes ajustar colores por estado */
+.status-pending_freelancer {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-accepted {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-rejected {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-default {
+  background-color: #e5e7eb;
+  color: #4b5563;
 }

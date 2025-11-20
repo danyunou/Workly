@@ -399,3 +399,23 @@ exports.updatePortfolio = async (req, res) => {
       .json({ message: "Error al actualizar el portafolio." });
   }
 };
+
+exports.uploadPortfolioImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ message: "No se envió ninguna imagen." });
+    }
+
+    // uploadToS3 recibe el archivo buffer de multer.memoryStorage()
+    const imageUrl = await uploadToS3(req.file);
+
+    return res.json({ url: imageUrl });
+  } catch (err) {
+    console.error("Error subiendo imagen de portafolio:", err);
+    return res
+      .status(500)
+      .json({ message: "Error al subir la imagen de portafolio." });
+  }
+};
