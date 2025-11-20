@@ -17,4 +17,7 @@ router.put(
   userController.updateUserProfile
 );
 
+// Perfil público del usuario por username
+router.get('/public/:username', userController.getPublicUserProfile);
+
 module.exports = router;

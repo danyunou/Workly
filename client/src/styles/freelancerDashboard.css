@@ -373,3 +373,71 @@
   text-decoration: underline;
   color: #038b63;
 }
+
+/* === MODAL VER SOLICITUD === */
+
+.fd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.fd-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 22px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+
+.fd-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.fd-modal-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.fd-modal-client {
+  margin-bottom: 0.75rem;
+}
+
+.fd-modal-message {
+  font-size: 0.95rem;
+  color: #4b5563;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+}
+
+.fd-modal-meta p {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin-bottom: 0.25rem;
+}
+
+.fd-modal-meta strong {
+  color: #111827;
+}
+
+.fd-modal-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.request-view-btn {
+  width: 100%;
+  margin-top: 0.75rem;
+}

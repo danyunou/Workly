@@ -84,3 +84,59 @@ exports.updateUserProfile = async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };
+
+exports.getPublicUserProfile = async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const userResult = await pool.query(
+      `
+      SELECT
+        id,
+        full_name,
+        username,
+        profile_picture,
+        biography,
+        created_at
+      FROM users
+      WHERE username = $1
+      LIMIT 1
+      `,
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const user = userResult.rows[0];
+
+    // Opcional: estadísticas (solo si existe tabla projects)
+    const stats = await pool.query(
+      `
+      SELECT
+        COUNT(*)::int AS total_projects,
+        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_projects,
+        AVG(rating_for_client)::numeric(10,2) AS avg_rating
+      FROM projects
+      WHERE client_id = $1
+      `,
+      [user.id]
+    );
+
+    return res.json({
+      full_name: user.full_name,
+      username: user.username,
+      avatar_url: user.profile_picture,
+      biography: user.biography,
+      member_since: user.created_at,
+      total_projects: stats.rows[0]?.total_projects ?? 0,
+      completed_projects: stats.rows[0]?.completed_projects ?? 0,
+      avg_rating: stats.rows[0]?.avg_rating ?? null
+    });
+
+  } catch (err) {
+    console.error("Error en getPublicUserProfile:", err);
+    res.status(500).json({ error: "Error obteniendo perfil público" });
+  }
+};

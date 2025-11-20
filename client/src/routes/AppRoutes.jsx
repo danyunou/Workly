@@ -19,6 +19,7 @@ import CreateRequest from "../pages/CreateRequest";
 import MyRequests from "../pages/MyRequests";
 import MyProjects from "../pages/MyProjects";
 import ProjectDetails from "../pages/ProjectDetails";
+import PublicClientProfile from "../pages/PublicClientProfile";
 
 // Admin
 import AdminLayout from "../pages/admin/AdminLayout";
@@ -45,7 +46,6 @@ export default function AppRoutes() {
       <Route path="/verify" element={<Verify />} />
       <Route path="/resend-verification" element={<ResendVerify />} />
       <Route path="/dispute-terms" element={<DisputeTerms />} />
-      <Route path="/freelancer/:username" element={<PublicFreelancerProfile />} />
 
       {/* Privadas generales */}
       <Route
@@ -55,6 +55,22 @@ export default function AppRoutes() {
             <Home />
           </PrivateRoute>
         }
+      />
+      <Route 
+        path="/users/:username" 
+        element={
+          <PrivateRoute>
+            <PublicClientProfile />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/freelancer/:username" 
+        element={
+          <PrivateRoute>
+            <PublicFreelancerProfile />
+          </PrivateRoute>
+        } 
       />
       <Route
         path="/services"

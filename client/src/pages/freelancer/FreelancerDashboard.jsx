@@ -10,6 +10,10 @@ export default function FreelancerDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 🔹 estado para el modal
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,11 +74,6 @@ export default function FreelancerDashboard() {
     navigate(`/requests/${requestId}/propose`);
   };
 
-  const handleGoToServiceRequest = (serviceRequestId) => {
-    // Puedes cambiar esta ruta cuando tengas la página de detalle
-    navigate(`/service-requests/${serviceRequestId}`);
-  };
-
   const handleGoToProjects = () => {
     navigate("/my-projects");
   };
@@ -85,7 +84,17 @@ export default function FreelancerDashboard() {
 
   const handleGoToClientProfile = (username) => {
     if (!username) return;
-    navigate(`/users/${username}`); // ajusta si usas otra ruta para perfil público
+    navigate(`/users/${username}`);
+  };
+
+  const openRequestModal = (request) => {
+    setSelectedRequest(request);
+    setShowRequestModal(true);
+  };
+
+  const closeRequestModal = () => {
+    setShowRequestModal(false);
+    setSelectedRequest(null);
   };
 
   const formatDate = (dateStr) => {
@@ -97,6 +106,13 @@ export default function FreelancerDashboard() {
       month: "long",
       day: "numeric",
     });
+  };
+
+  const mapStatusLabel = (status) => {
+    if (status === "pending_freelancer") return "Pendiente";
+    if (status === "accepted") return "Aceptada";
+    if (status === "rejected") return "Rechazada";
+    return status || "Sin estado";
   };
 
   const totalRequests = serviceRequests.length + customRequests.length;
@@ -138,9 +154,7 @@ export default function FreelancerDashboard() {
           )}
 
           {isLoading ? (
-            <div className="dashboard-loading">
-              Cargando solicitudes...
-            </div>
+            <div className="dashboard-loading">Cargando solicitudes...</div>
           ) : (
             <>
               {/* 1) SOLICITUDES A TUS SERVICIOS */}
@@ -178,15 +192,11 @@ export default function FreelancerDashboard() {
                             Servicio
                           </span>
                           <span
-                            className={`status-pill status-${sr.status || "default"}`}
+                            className={`status-pill status-${
+                              sr.status || "default"
+                            }`}
                           >
-                            {sr.status === "pending_freelancer"
-                              ? "Pendiente"
-                              : sr.status === "accepted"
-                              ? "Aceptada"
-                              : sr.status === "rejected"
-                              ? "Rechazada"
-                              : sr.status || "Sin estado"}
+                            {mapStatusLabel(sr.status)}
                           </span>
                         </div>
 
@@ -205,7 +215,9 @@ export default function FreelancerDashboard() {
                             <img
                               src={sr.client_pfp}
                               alt={
-                                sr.client_username || sr.client_name || "Cliente"
+                                sr.client_username ||
+                                sr.client_name ||
+                                "Cliente"
                               }
                               className="request-client-pfp"
                             />
@@ -239,7 +251,8 @@ export default function FreelancerDashboard() {
                         </div>
 
                         <button
-                          onClick={() => handleGoToServiceRequest(sr.id)}
+                          className="primary-button request-view-btn"
+                          onClick={() => openRequestModal(sr)}
                         >
                           Ver solicitud
                         </button>
@@ -359,7 +372,10 @@ export default function FreelancerDashboard() {
                           </p>
                         </div>
 
-                        <button onClick={() => handlePropose(req.id)}>
+                        <button
+                          className="primary-button"
+                          onClick={() => handlePropose(req.id)}
+                        >
                           Enviar propuesta
                         </button>
                       </article>
@@ -370,6 +386,90 @@ export default function FreelancerDashboard() {
             </>
           )}
         </div>
+
+        {/* 🔹 MODAL VER SOLICITUD */}
+        {showRequestModal && selectedRequest && (
+          <div className="fd-modal-backdrop" onClick={closeRequestModal}>
+            <div
+              className="fd-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className="fd-modal-header">
+                <span className="request-category request-category-service">
+                  Servicio
+                </span>
+                <span
+                  className={`status-pill status-${
+                    selectedRequest.status || "default"
+                  }`}
+                >
+                  {mapStatusLabel(selectedRequest.status)}
+                </span>
+              </header>
+
+              <h3 className="fd-modal-title">
+                {selectedRequest.service_title}
+              </h3>
+
+              <div className="request-client fd-modal-client">
+                {selectedRequest.client_pfp && (
+                  <img
+                    src={selectedRequest.client_pfp}
+                    alt={
+                      selectedRequest.client_username ||
+                      selectedRequest.client_name ||
+                      "Cliente"
+                    }
+                    className="request-client-pfp"
+                  />
+                )}
+                <span
+                  className="request-client-link"
+                  onClick={() =>
+                    handleGoToClientProfile(selectedRequest.client_username)
+                  }
+                >
+                  @{selectedRequest.client_username ||
+                    selectedRequest.client_name ||
+                    "cliente"}
+                </span>
+              </div>
+
+              <p className="fd-modal-message">
+                {selectedRequest.message ||
+                  "El cliente no proporcionó un mensaje adicional."}
+              </p>
+
+              <div className="fd-modal-meta">
+                <p>
+                  <strong>Presupuesto propuesto:</strong>{" "}
+                  {selectedRequest.proposed_budget
+                    ? `$${selectedRequest.proposed_budget} USD`
+                    : "No especificado"}
+                </p>
+                <p>
+                  <strong>Fecha objetivo:</strong>{" "}
+                  {formatDate(selectedRequest.proposed_deadline)}
+                </p>
+                <p>
+                  <strong>Recibida el:</strong>{" "}
+                  {formatDate(selectedRequest.created_at)}
+                </p>
+              </div>
+
+              <footer className="fd-modal-actions">
+                {/* Aquí después puedes poner botones Aceptar / Rechazar */}
+                <button
+                  type="button"
+                  className="dashboard-outline-btn"
+                  onClick={closeRequestModal}
+                >
+                  Cerrar
+                </button>
+              </footer>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );
