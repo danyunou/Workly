@@ -218,6 +218,7 @@ exports.deleteService = async (req, res) => {
   }
 };
 
+
 exports.updateService = async (req, res) => {
   const serviceId = req.params.id;
   const freelancerId = req.user.id;
@@ -231,7 +232,9 @@ exports.updateService = async (req, res) => {
     );
 
     if (existing.rows.length === 0) {
-      return res.status(404).json({ error: "Service not found or unauthorized." });
+      return res
+        .status(404)
+        .json({ error: "Service not found or unauthorized." });
     }
 
     const current = existing.rows[0];
@@ -261,26 +264,30 @@ exports.updateService = async (req, res) => {
       return res.status(400).json({ error: "El título es obligatorio." });
     }
     if (!newDescription) {
-      return res.status(400).json({ error: "La descripción es obligatoria." });
+      return res
+        .status(400)
+        .json({ error: "La descripción es obligatoria." });
     }
     if (!newCategory) {
       return res.status(400).json({ error: "La categoría es obligatoria." });
     }
     if (Number.isNaN(newPrice) || newPrice <= 0) {
-      return res.status(400).json({ error: "El precio debe ser mayor a 0." });
-    }
-    if (Number.isNaN(newDeliveryDays) || newDeliveryDays <= 0) {
       return res
         .status(400)
-        .json({ error: "El tiempo de entrega debe ser mayor a 0 días." });
+        .json({ error: "El precio debe ser mayor a 0." });
+    }
+    if (Number.isNaN(newDeliveryDays) || newDeliveryDays <= 0) {
+      return res.status(400).json({
+        error: "El tiempo de entrega debe ser mayor a 0 días.",
+      });
     }
 
-    // 5) Si hay nueva imagen, úsala — si no, queda igual
+    // 5) Imagen: si hay nueva, úsala; si no, deja la actual
     let newImageUrl = current.image_url;
     if (req.files?.image?.[0]) {
       const file = req.files.image[0];
 
-      // Aquí pondrías tu subida a S3:
+      // TODO: implementar subida a S3 y asignar la URL:
       // newImageUrl = await uploadToS3(file);
 
       console.warn("⚠️ Subida a S3 no implementada en updateService()");
