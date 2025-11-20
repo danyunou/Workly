@@ -1,17 +1,18 @@
+// src/pages/freelancer/MyServicesPage.jsx
 import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import FreelancerNavbar from "../../components/FreelancerNavbar";
 import "../../styles/myServices.css";
 
-export default function MyServicesPage() {
+export default function MyServices() {
   const { token } = useAuth();
 
   const [services, setServices] = useState([]);
   const [freelancerCategories, setFreelancerCategories] = useState([]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [pageError, setPageError] = useState("");   // ⬅️ error de carga de página
-  const [actionError, setActionError] = useState(""); // ⬅️ errores de acciones (aceptar, toggle, etc.)
+  const [pageError, setPageError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   // Modal crear / editar
   const [showModal, setShowModal] = useState(false);
@@ -23,15 +24,15 @@ export default function MyServicesPage() {
     description: "",
     price: "",
     category: "",
-    delivery_time_days: "", // ⬅️ NUEVO campo
+    delivery_time_days: "",
   });
-  const [modalError, setModalError] = useState(""); // ⬅️ errores solo del modal
+  const [modalError, setModalError] = useState("");
 
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
   // Solicitudes por servicio
-  const [requestsMap, setRequestsMap] = useState({}); // { serviceId: [] }
+  const [requestsMap, setRequestsMap] = useState({});
   const [openRequestsServiceId, setOpenRequestsServiceId] = useState(null);
   const [requestsLoadingId, setRequestsLoadingId] = useState(null);
   const [acceptingId, setAcceptingId] = useState(null);
@@ -209,7 +210,7 @@ export default function MyServicesPage() {
     body.append("description", descTrim);
     body.append("price", form.price);
     body.append("category", form.category);
-    body.append("delivery_time_days", String(deliveryDays)); // ⬅️ se envía al back
+    body.append("delivery_time_days", String(deliveryDays)); // se envía al back
 
     if (imageFile) {
       body.append("image", imageFile);
@@ -263,19 +264,16 @@ export default function MyServicesPage() {
   const handleToggleRequests = async (service) => {
     const serviceId = service.id;
 
-    // Si ya está abierto, lo cerramos
     if (openRequestsServiceId === serviceId) {
       setOpenRequestsServiceId(null);
       return;
     }
 
-    // Si ya tenemos en cache, solo abrimos
     if (requestsMap[serviceId]) {
       setOpenRequestsServiceId(serviceId);
       return;
     }
 
-    // Fetch
     try {
       setRequestsLoadingId(serviceId);
       setActionError("");
@@ -325,9 +323,8 @@ export default function MyServicesPage() {
         throw new Error(data.error || "Error al aceptar la solicitud");
       }
 
-      await res.json(); // viene el proyecto creado, si luego lo necesitas
+      await res.json();
 
-      // Actualizar status de la solicitud localmente
       setRequestsMap((prev) => ({
         ...prev,
         [service.id]: (prev[service.id] || []).map((r) =>
@@ -364,7 +361,6 @@ export default function MyServicesPage() {
         let data;
         try {
           data = await res.json();
-          // eslint-disable-next-line no-empty
         } catch {}
         throw new Error(
           (data && data.error) || "Error al cambiar el estado del servicio"

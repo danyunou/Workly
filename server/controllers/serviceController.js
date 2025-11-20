@@ -2,7 +2,7 @@
 const pool = require('../config/db');
 const { uploadToS3 } = require('../services/uploadService');
 
-
+// ================== OBTENER TODOS LOS SERVICIOS (PÚBLICO) ==================
 exports.getAllServices = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -46,7 +46,7 @@ exports.getAllServices = async (req, res) => {
   }
 };
 
-
+// ================== CREAR SERVICIO ==================
 exports.createService = async (req, res) => {
   const { title, description, price, category, delivery_time_days } = req.body;
   const freelancer_id = req.user?.id;
@@ -82,6 +82,12 @@ exports.createService = async (req, res) => {
       ? parseInt(delivery_time_days, 10)
       : 7;
 
+    if (Number.isNaN(deliveryTime) || deliveryTime <= 0) {
+      return res.status(400).json({
+        error: "El tiempo de entrega debe ser un número mayor a 0.",
+      });
+    }
+
     const result = await pool.query(
       `INSERT INTO services (
          title,
@@ -114,11 +120,13 @@ exports.createService = async (req, res) => {
   }
 };
 
+// ================== SERVICIOS POR CATEGORÍA (PÚBLICO) ==================
 exports.getServicesByCategory = async (req, res) => {
   const { category } = req.params;
 
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT
         s.id,
         s.title,
@@ -136,16 +144,18 @@ exports.getServicesByCategory = async (req, res) => {
       LEFT JOIN freelancer_profiles fp ON fp.user_id = s.freelancer_id
       WHERE s.category = $1 AND s.is_active = TRUE  AND s.is_deleted = FALSE
       ORDER BY s.created_at DESC
-    `, [category]);
+    `,
+      [category]
+    );
 
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al filtrar servicios por categoría:', err.message);
-    res.status(500).json({ error: 'Error al filtrar servicios por categoría' });
+    console.error("Error al filtrar servicios por categoría:", err.message);
+    res.status(500).json({ error: "Error al filtrar servicios por categoría" });
   }
 };
 
-
+// ================== SERVICIOS POR FREELANCER (DASHBOARD) ==================
 exports.getServicesByFreelancer = async (req, res) => {
   const freelancerId = req.user.id;
 
@@ -166,7 +176,7 @@ exports.getServicesByFreelancer = async (req, res) => {
          completed_orders
        FROM services
        WHERE freelancer_id = $1
-        AND is_deleted = FALSE
+         AND is_deleted = FALSE
        ORDER BY created_at DESC`,
       [freelancerId]
     );
@@ -177,13 +187,12 @@ exports.getServicesByFreelancer = async (req, res) => {
   }
 };
 
-
+// ================== ELIMINAR SERVICIO (SOFT DELETE) ==================
 exports.deleteService = async (req, res) => {
   const serviceId = req.params.id;
   const userId = req.user?.id;
 
   try {
-    // Asegurarse que el servicio pertenezca al freelancer
     const check = await pool.query(
       `SELECT * FROM services 
        WHERE id = $1 AND freelancer_id = $2 AND is_deleted = FALSE`,
@@ -196,7 +205,6 @@ exports.deleteService = async (req, res) => {
         .json({ error: "Unauthorized, service not found, or already deleted." });
     }
 
-    // Soft delete: lo marcamos como eliminado y lo desactivamos
     const result = await pool.query(
       `UPDATE services
        SET 
@@ -218,7 +226,7 @@ exports.deleteService = async (req, res) => {
   }
 };
 
-
+// ================== ACTUALIZAR SERVICIO (EDITAR) ==================
 exports.updateService = async (req, res) => {
   const serviceId = req.params.id;
   const freelancerId = req.user.id;
@@ -282,18 +290,14 @@ exports.updateService = async (req, res) => {
       });
     }
 
-    // 5) Imagen: si hay nueva, úsala; si no, deja la actual
+    // 5) Imagen: si hay nueva, súbela a S3. Si no, conserva la actual
     let newImageUrl = current.image_url;
     if (req.files?.image?.[0]) {
       const file = req.files.image[0];
-
-      // TODO: implementar subida a S3 y asignar la URL:
-      // newImageUrl = await uploadToS3(file);
-
-      console.warn("⚠️ Subida a S3 no implementada en updateService()");
+      newImageUrl = await uploadToS3(file);
     }
 
-    // 6) Hacer el UPDATE seguro
+    // 6) Hacer el UPDATE seguro (incluyendo delivery_time_days)
     const updated = await pool.query(
       `
       UPDATE services
@@ -326,12 +330,12 @@ exports.updateService = async (req, res) => {
   }
 };
 
+// ================== SOLICITUDES DE UN SERVICIO ==================
 exports.getRequestsForService = async (req, res) => {
   const serviceId = req.params.id;
   const freelancerId = req.user.id;
 
   try {
-    // Verificar si el servicio pertenece al freelancer autenticado
     const { rows: serviceRows } = await pool.query(
       "SELECT * FROM services WHERE id = $1 AND freelancer_id = $2",
       [serviceId, freelancerId]
@@ -341,7 +345,6 @@ exports.getRequestsForService = async (req, res) => {
       return res.status(403).json({ error: "Unauthorized or service not found" });
     }
 
-    // Obtener solicitudes asociadas al servicio
     const { rows: requests } = await pool.query(
       `SELECT 
         sr.id, 
@@ -365,12 +368,12 @@ exports.getRequestsForService = async (req, res) => {
   }
 };
 
+// ================== ACEPTAR SOLICITUD (CREA PROYECTO) ==================
 exports.acceptServiceRequest = async (req, res) => {
   const { requestId } = req.params;
   const freelancerId = req.user?.id;
 
   try {
-    // 1) Validar que la solicitud existe y pertenece a un servicio del freelancer
     const { rows } = await pool.query(
       `SELECT sr.*, s.freelancer_id, s.id AS service_id
        FROM service_requests sr
@@ -389,7 +392,6 @@ exports.acceptServiceRequest = async (req, res) => {
       return res.status(403).json({ error: "No autorizado para aceptar esta solicitud." });
     }
 
-    // 2) Actualizar estado de la solicitud
     await pool.query(
       `UPDATE service_requests
        SET status = 'accepted'
@@ -397,7 +399,6 @@ exports.acceptServiceRequest = async (req, res) => {
       [requestId]
     );
 
-    // 3) Crear proyecto asociado COMPLETO
     const { rows: projectRows } = await pool.query(
       `INSERT INTO projects (
         service_request_id,
@@ -433,14 +434,13 @@ exports.acceptServiceRequest = async (req, res) => {
   }
 };
 
-
+// ================== CLIENTE SOLICITA SERVICIO ==================
 exports.hireService = async (req, res) => {
   const clientId = req.user.id;
   const { serviceId } = req.params;
   const { message, proposed_deadline, proposed_budget } = req.body;
 
   try {
-    // 1) Validar que el servicio existe y está activo
     const { rows: serviceRows } = await pool.query(
       `SELECT * FROM services WHERE id = $1 AND is_active = TRUE`,
       [serviceId]
@@ -452,7 +452,6 @@ exports.hireService = async (req, res) => {
 
     const service = serviceRows[0];
 
-    // 2) Crear una solicitud de servicio
     const { rows: srRows } = await pool.query(
       `INSERT INTO service_requests (
         service_id,
@@ -486,14 +485,15 @@ exports.hireService = async (req, res) => {
   }
 };
 
-
-
+// ================== OBTENER SERVICIO POR ID (PÚBLICO) ==================
 exports.getServiceById = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Aquí ya incluye delivery_time_days, rating_avg, etc. porque usamos *
-    const result = await pool.query(`SELECT * FROM services WHERE id = $1`, [id]);
+    const result = await pool.query(
+      `SELECT * FROM services WHERE id = $1 AND is_deleted = FALSE`,
+      [id]
+    );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Servicio no encontrado" });
@@ -506,6 +506,7 @@ exports.getServiceById = async (req, res) => {
   }
 };
 
+// ================== RESEÑAS ==================
 exports.createServiceReview = async (req, res) => {
   const clientId = req.user.id;
   const { id: serviceId } = req.params;
@@ -517,7 +518,6 @@ exports.createServiceReview = async (req, res) => {
       return res.status(400).json({ error: "La calificación debe ser un número entre 1 y 5." });
     }
 
-    // 1) Verificar que el usuario haya completado al menos un proyecto de este servicio
     const eligibleRes = await pool.query(
       `
       SELECT COUNT(*) AS count
@@ -538,7 +538,6 @@ exports.createServiceReview = async (req, res) => {
       });
     }
 
-    // 2) Verificar si el usuario YA tiene una reseña para este servicio
     const existingRes = await pool.query(
       `
       SELECT 1
@@ -555,7 +554,6 @@ exports.createServiceReview = async (req, res) => {
       });
     }
 
-    // 3) Insertar nueva reseña (solo si no existía antes)
     await pool.query(
       `
       INSERT INTO service_reviews (service_id, client_id, rating, comment)
@@ -564,7 +562,6 @@ exports.createServiceReview = async (req, res) => {
       [serviceId, clientId, numericRating, comment || null]
     );
 
-    // 4) Recalcular promedio y número de reseñas
     const aggRes = await pool.query(
       `
       SELECT
@@ -600,7 +597,6 @@ exports.createServiceReview = async (req, res) => {
   }
 };
 
-
 exports.getServiceReviews = async (req, res) => {
   const { id: serviceId } = req.params;
 
@@ -629,6 +625,7 @@ exports.getServiceReviews = async (req, res) => {
   }
 };
 
+// ================== ACTIVAR / PAUSAR SERVICIO ==================
 exports.setServiceActiveState = async (req, res) => {
   const serviceId = req.params.id;
   const freelancerId = req.user.id;
@@ -661,4 +658,3 @@ exports.setServiceActiveState = async (req, res) => {
     res.status(500).json({ error: "Error interno al cambiar estado." });
   }
 };
-
