@@ -358,3 +358,94 @@ exports.rejectDeliverable = async (req, res) => {
   }
 };
 
+exports.createProjectFromServiceRequest = async (req, res) => {
+  const freelancerId = req.user?.id;
+  const { service_request_id } = req.body;
+
+  if (!service_request_id) {
+    return res.status(400).json({ error: "Falta service_request_id en el body." });
+  }
+
+  try {
+    // 1️⃣ Obtener la solicitud y el servicio asociado
+    const srQuery = await pool.query(
+      `
+      SELECT 
+        sr.*,
+        s.freelancer_id AS owner_freelancer,
+        s.id AS service_id,
+        s.title AS service_title
+      FROM service_requests sr
+      JOIN services s ON s.id = sr.service_id
+      WHERE sr.id = $1
+      `,
+      [service_request_id]
+    );
+
+    if (srQuery.rows.length === 0) {
+      return res.status(404).json({ error: "Solicitud de servicio no encontrada." });
+    }
+
+    const sr = srQuery.rows[0];
+
+    // 2️⃣ Validar que el freelancer logueado es el dueño del servicio
+    if (sr.owner_freelancer !== freelancerId) {
+      return res.status(403).json({
+        error: "No tienes permiso para aceptar esta solicitud.",
+      });
+    }
+
+    // 3️⃣ Evitar aceptar 2 veces
+    if (sr.status !== "pending_freelancer") {
+      return res.status(400).json({
+        error: "La solicitud ya fue respondida.",
+      });
+    }
+
+    // 4️⃣ Crear proyecto con la info de la solicitud
+    const newProject = await pool.query(
+      `
+      INSERT INTO projects (
+        client_id,
+        freelancer_id,
+        service_id,
+        service_request_id,
+        status,
+        contract_price,
+        contract_deadline,
+        created_at
+      )
+      VALUES (
+        $1, $2, $3, $4,
+        'awaiting_contract',
+        $5,
+        $6,
+        NOW()
+      )
+      RETURNING *
+      `,
+      [
+        sr.client_id,             // cliente que hizo la solicitud
+        freelancerId,             // freelancer dueño del servicio
+        sr.service_id,            // servicio relacionado
+        sr.id,                    // service_request_id
+        sr.proposed_budget || null,
+        sr.proposed_deadline || null,
+      ]
+    );
+
+    // 5️⃣ Actualizar estado de la solicitud
+    await pool.query(
+      `UPDATE service_requests SET status = 'accepted' WHERE id = $1`,
+      [service_request_id]
+    );
+
+    return res.status(201).json(newProject.rows[0]);
+
+  } catch (err) {
+    console.error("Error al crear proyecto desde solicitud:", err);
+    return res.status(500).json({
+      error: "Error interno al crear proyecto desde solicitud.",
+    });
+  }
+};

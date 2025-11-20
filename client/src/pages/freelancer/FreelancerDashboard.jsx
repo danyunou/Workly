@@ -14,6 +14,10 @@ export default function FreelancerDashboard() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
 
+  // 🔹 estado para aceptar solicitud / crear proyecto
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,14 +41,11 @@ export default function FreelancerDashboard() {
               },
             }
           ),
-          fetch(
-            "https://workly-cy4b.onrender.com/api/requests/by-freelancer",
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          ),
+          fetch("https://workly-cy4b.onrender.com/api/requests/by-freelancer", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
         ]);
 
         if (!serviceRes.ok) {
@@ -89,12 +90,15 @@ export default function FreelancerDashboard() {
 
   const openRequestModal = (request) => {
     setSelectedRequest(request);
+    setAcceptError(null);
     setShowRequestModal(true);
   };
 
   const closeRequestModal = () => {
     setShowRequestModal(false);
     setSelectedRequest(null);
+    setAcceptError(null);
+    setIsAccepting(false);
   };
 
   const formatDate = (dateStr) => {
@@ -116,6 +120,60 @@ export default function FreelancerDashboard() {
   };
 
   const totalRequests = serviceRequests.length + customRequests.length;
+
+  // 🔹 Aceptar solicitud y crear proyecto
+  const handleAcceptAndCreateProject = async () => {
+    if (!selectedRequest) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    try{
+      setIsAccepting(true);
+      setAcceptError(null);
+
+      // ⚠️ Ajusta esta URL y body según tu backend real
+      const res = await fetch(
+        "https://workly-cy4b.onrender.com/api/projects/from-service-request",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            service_request_id: selectedRequest.id,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("No se pudo crear el proyecto a partir de la solicitud.");
+      }
+
+      const project = await res.json();
+
+      // Cerrar modal y mandar al freelancer al proyecto recién creado
+      closeRequestModal();
+
+      // ⚠️ Ajusta la ruta de detalle de proyecto según tu app
+      if (project && project.id) {
+        navigate(`/projects/${project.id}`);
+      } else {
+        navigate("/my-projects");
+      }
+    } catch (err) {
+      console.error("Error al aceptar solicitud:", err);
+      setAcceptError(
+        err.message || "Ocurrió un error al crear el proyecto."
+      );
+    } finally {
+      setIsAccepting(false);
+    }
+  };
 
   return (
     <>
@@ -186,7 +244,11 @@ export default function FreelancerDashboard() {
                 ) : (
                   <div className="requests-grid">
                     {serviceRequests.map((sr) => (
-                      <article className="request-card" key={sr.id}>
+                      <article
+                        key={sr.id}
+                        className="request-card request-card-clickable"
+                        onClick={() => openRequestModal(sr)}
+                      >
                         <div className="request-card-header">
                           <span className="request-category request-category-service">
                             Servicio
@@ -225,9 +287,10 @@ export default function FreelancerDashboard() {
 
                           <span
                             className="request-client-link"
-                            onClick={() =>
-                              handleGoToClientProfile(sr.client_username)
-                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGoToClientProfile(sr.client_username);
+                            }}
                           >
                             @{sr.client_username || sr.client_name || "cliente"}
                           </span>
@@ -252,7 +315,10 @@ export default function FreelancerDashboard() {
 
                         <button
                           className="primary-button request-view-btn"
-                          onClick={() => openRequestModal(sr)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openRequestModal(sr);
+                          }}
                         >
                           Ver solicitud
                         </button>
@@ -387,7 +453,7 @@ export default function FreelancerDashboard() {
           )}
         </div>
 
-        {/* 🔹 MODAL VER SOLICITUD */}
+        {/* 🔹 MODAL VER / ACEPTAR SOLICITUD */}
         {showRequestModal && selectedRequest && (
           <div className="fd-modal-backdrop" onClick={closeRequestModal}>
             <div
@@ -395,9 +461,14 @@ export default function FreelancerDashboard() {
               onClick={(e) => e.stopPropagation()}
             >
               <header className="fd-modal-header">
-                <span className="request-category request-category-service">
-                  Servicio
-                </span>
+                <div className="fd-modal-header-left">
+                  <span className="request-category request-category-service">
+                    Servicio
+                  </span>
+                  <h3 className="fd-modal-title">
+                    {selectedRequest.service_title}
+                  </h3>
+                </div>
                 <span
                   className={`status-pill status-${
                     selectedRequest.status || "default"
@@ -406,10 +477,6 @@ export default function FreelancerDashboard() {
                   {mapStatusLabel(selectedRequest.status)}
                 </span>
               </header>
-
-              <h3 className="fd-modal-title">
-                {selectedRequest.service_title}
-              </h3>
 
               <div className="request-client fd-modal-client">
                 {selectedRequest.client_pfp && (
@@ -457,8 +524,39 @@ export default function FreelancerDashboard() {
                 </p>
               </div>
 
+              <p className="fd-modal-helper-text">
+                Al aceptar esta solicitud se creará un proyecto con este
+                cliente.
+              </p>
+
+              {acceptError && (
+                <div className="fd-modal-error">
+                  {acceptError}
+                </div>
+              )}
+
               <footer className="fd-modal-actions">
-                {/* Aquí después puedes poner botones Aceptar / Rechazar */}
+                {selectedRequest.status === "pending_freelancer" && (
+                  <button
+                    type="button"
+                    className="primary-button fd-modal-primary-cta"
+                    onClick={handleAcceptAndCreateProject}
+                    disabled={isAccepting}
+                  >
+                    {isAccepting ? "Creando proyecto..." : "Aceptar solicitud"}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="dashboard-outline-btn"
+                  onClick={() =>
+                    handleGoToClientProfile(selectedRequest.client_username)
+                  }
+                >
+                  Ver perfil del cliente
+                </button>
+
                 <button
                   type="button"
                   className="dashboard-outline-btn"

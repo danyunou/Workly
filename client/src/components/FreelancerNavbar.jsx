@@ -54,7 +54,6 @@ export default function FreelancerNavbar() {
               <Link to="/freelancer-profile">Perfil</Link>
               <Link to="/my-projects">Mis proyectos</Link>
               <Link to="/MyServices">Mis servicios</Link>
-              <Link to="/CreateService">Crear servicio</Link>
               <button onClick={handleLogout}>Cerrar sesión</button>
             </div>
           )}

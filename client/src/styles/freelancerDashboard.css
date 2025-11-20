@@ -149,9 +149,19 @@
   border: 1px solid #e5e7eb;
 }
 
+/* Tarjeta clickeable (solicitudes de servicio) */
+.request-card-clickable {
+  cursor: pointer;
+}
+
 .request-card:hover {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
   transform: translateY(-3px);
+}
+
+.request-card-clickable:hover {
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+  transform: translateY(-4px);
 }
 
 .request-card-header {
@@ -374,7 +384,7 @@
   color: #038b63;
 }
 
-/* === MODAL VER SOLICITUD === */
+/* === MODAL VER / ACEPTAR SOLICITUD === */
 
 .fd-modal-backdrop {
   position: fixed;
@@ -402,11 +412,17 @@
   margin-bottom: 0.75rem;
 }
 
+.fd-modal-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .fd-modal-title {
   font-size: 1.35rem;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 0.5rem;
+  margin: 0.25rem 0 0.5rem;
 }
 
 .fd-modal-client {
@@ -430,11 +446,36 @@
   color: #111827;
 }
 
+.fd-modal-helper-text {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+/* Mensaje de error dentro del modal */
+.fd-modal-error {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #b91c1c;
+  background-color: #fef2f2;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #fecaca;
+}
+
 .fd-modal-actions {
   margin-top: 1.25rem;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.fd-modal-primary-cta {
+  min-width: 210px;
 }
 
 .request-view-btn {

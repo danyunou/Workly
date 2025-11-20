@@ -24,4 +24,10 @@ router.post("/deliverables/:deliverableId/approve", authMiddleware, projectContr
 router.post("/:projectId/approve", authMiddleware, projectController.approveProject);
 router.post("/deliverables/:deliverableId/reject", authMiddleware, projectController.rejectDeliverable);
 
+router.post(
+  "/from-service-request",
+  authMiddleware,
+  projectController.createProjectFromServiceRequest
+);
+
 module.exports = router;
