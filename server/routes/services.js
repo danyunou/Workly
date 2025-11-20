@@ -32,7 +32,7 @@ router.get(
   serviceController.getServicesByFreelancer
 );
 
-// Marcar servicio como activo / inactivo (toggle rápido desde el dashboard)
+// Marcar servicio como activo / inactivo 
 router.patch(
   '/:id/active',
   authMiddleware,

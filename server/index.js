@@ -12,11 +12,7 @@ const allowedOrigins = [
   'https://workly-frontend.s3-website.us-east-2.amazonaws.com'
 ];
 
-app.get("/", (req, res) => {
-  res.send("Workly backend está corriendo");
-});
-
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -25,13 +21,23 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // 👈 AGREGADO PATCH
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
+
+// Ruta base (opcional, solo una vez)
+app.get("/", (req, res) => {
+  res.send("Workly backend está corriendo");
+});
+
+// 🔄 CORS
+app.use(cors(corsOptions));
+// Opcional pero recomendado para preflight explícito
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
-
+// Debug
 app.use('/api/_debug', require('./routes/_debug'));
 
 // Rutas API organizadas
@@ -68,11 +74,6 @@ cron.schedule("*/10 * * * *", async () => {
     console.error("[CRON] Error al limpiar:", err.message);
     cronLogger.error(`Error al limpiar registros: ${err.message}`);
   }
-});
-
-// Ruta base
-app.get("/", (req, res) => {
-  res.send("Workly backend está corriendo");
 });
 
 // Puerto
