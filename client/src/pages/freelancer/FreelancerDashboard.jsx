@@ -1,3 +1,4 @@
+// src/pages/freelancer/FreelancerDashboard.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FreelancerNavbar from "../../components/FreelancerNavbar";
@@ -84,9 +85,8 @@ export default function FreelancerDashboard() {
 
   const handleGoToClientProfile = (username) => {
     if (!username) return;
-    navigate(`/client/${username}`); // ajusta la ruta si usas otra
+    navigate(`/users/${username}`); // ajusta si usas otra ruta para perfil público
   };
-
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "Sin fecha definida";
@@ -200,19 +200,26 @@ export default function FreelancerDashboard() {
                             : "El cliente no agregó un mensaje detallado."}
                         </p>
 
-                        <p className="request-additional">
-                          <strong>Cliente: </strong>
-                          {sr.client_username ? (
-                            <span
-                              className="request-client-link"
-                              onClick={() => handleGoToClientProfile(sr.client_username)}
-                            >
-                              @{sr.client_username}
-                            </span>
-                          ) : (
-                            sr.client_name || "Cliente sin nombre"
+                        <div className="request-client">
+                          {sr.client_pfp && (
+                            <img
+                              src={sr.client_pfp}
+                              alt={
+                                sr.client_username || sr.client_name || "Cliente"
+                              }
+                              className="request-client-pfp"
+                            />
                           )}
-                        </p>
+
+                          <span
+                            className="request-client-link"
+                            onClick={() =>
+                              handleGoToClientProfile(sr.client_username)
+                            }
+                          >
+                            @{sr.client_username || sr.client_name || "cliente"}
+                          </span>
+                        </div>
 
                         <div className="request-meta">
                           <p className="request-budget">
@@ -246,7 +253,7 @@ export default function FreelancerDashboard() {
               <section className="dashboard-section">
                 <div className="dashboard-section-header">
                   <h2 className="dashboard-title">
-                    Custom requests que podrían interesarte
+                    Propuestas que podrían interesarte
                   </h2>
                   <span className="dashboard-section-count">
                     {customRequests.length} solicitud
@@ -256,7 +263,7 @@ export default function FreelancerDashboard() {
 
                 {customRequests.length === 0 ? (
                   <div className="empty-state">
-                    <h3>Por ahora no hay custom requests para ti</h3>
+                    <h3>Por ahora no hay propuestas para ti</h3>
                     <p>
                       Cuando un cliente publique una solicitud compatible con tu
                       perfil, aparecerá aquí automáticamente.
@@ -275,6 +282,26 @@ export default function FreelancerDashboard() {
                         <div className="request-card-header">
                           <span className="request-category">
                             {req.category}
+                          </span>
+                        </div>
+
+                        {/* Cliente que publicó la request */}
+                        <div className="request-client">
+                          {req.client_pfp && (
+                            <img
+                              src={req.client_pfp}
+                              alt={req.client_username || "Cliente"}
+                              className="request-client-pfp"
+                            />
+                          )}
+
+                          <span
+                            className="request-client-link"
+                            onClick={() =>
+                              handleGoToClientProfile(req.client_username)
+                            }
+                          >
+                            @{req.client_username || "cliente"}
                           </span>
                         </div>
 

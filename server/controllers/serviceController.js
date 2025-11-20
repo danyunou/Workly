@@ -34,6 +34,7 @@ exports.getAllServices = async (req, res) => {
       JOIN users u ON u.id = s.freelancer_id
       LEFT JOIN freelancer_profiles fp ON fp.user_id = s.freelancer_id
       WHERE s.is_active = TRUE
+      AND s.is_deleted = FALSE
       GROUP BY s.category
       ORDER BY s.category;
     `);
@@ -133,7 +134,7 @@ exports.getServicesByCategory = async (req, res) => {
       FROM services s
       JOIN users u ON u.id = s.freelancer_id
       LEFT JOIN freelancer_profiles fp ON fp.user_id = s.freelancer_id
-      WHERE s.category = $1 AND s.is_active = TRUE
+      WHERE s.category = $1 AND s.is_active = TRUE  AND s.is_deleted = FALSE
       ORDER BY s.created_at DESC
     `, [category]);
 
@@ -165,6 +166,7 @@ exports.getServicesByFreelancer = async (req, res) => {
          completed_orders
        FROM services
        WHERE freelancer_id = $1
+        AND is_deleted = FALSE
        ORDER BY created_at DESC`,
       [freelancerId]
     );
@@ -183,22 +185,39 @@ exports.deleteService = async (req, res) => {
   try {
     // Asegurarse que el servicio pertenezca al freelancer
     const check = await pool.query(
-      `SELECT * FROM services WHERE id = $1 AND freelancer_id = $2`,
+      `SELECT * FROM services 
+       WHERE id = $1 AND freelancer_id = $2 AND is_deleted = FALSE`,
       [serviceId, userId]
     );
 
     if (check.rowCount === 0) {
-      return res.status(403).json({ error: "Unauthorized or service not found." });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized, service not found, or already deleted." });
     }
 
-    await pool.query(`DELETE FROM services WHERE id = $1`, [serviceId]);
+    // Soft delete: lo marcamos como eliminado y lo desactivamos
+    const result = await pool.query(
+      `UPDATE services
+       SET 
+         is_deleted = TRUE,
+         is_active  = FALSE,
+         deleted_at = NOW()
+       WHERE id = $1 AND freelancer_id = $2
+       RETURNING *`,
+      [serviceId, userId]
+    );
 
-    res.json({ message: "Service deleted successfully." });
+    res.json({
+      message: "Service archived (soft delete) successfully.",
+      service: result.rows[0],
+    });
   } catch (err) {
     console.error("Error deleting service:", err);
     res.status(500).json({ error: "Internal server error." });
   }
 };
+
 
 
 exports.updateService = async (req, res) => {
@@ -552,7 +571,9 @@ exports.setServiceActiveState = async (req, res) => {
     const result = await pool.query(
       `UPDATE services
        SET is_active = $1
-       WHERE id = $2 AND freelancer_id = $3
+       WHERE id = $2 
+         AND freelancer_id = $3
+         AND is_deleted = FALSE
        RETURNING *`,
       [is_active, serviceId, freelancerId]
     );
@@ -560,7 +581,7 @@ exports.setServiceActiveState = async (req, res) => {
     if (result.rowCount === 0) {
       return res
         .status(404)
-        .json({ error: "Servicio no encontrado o no autorizado." });
+        .json({ error: "Servicio no encontrado, no autorizado o eliminado." });
     }
 
     res.json(result.rows[0]);
@@ -569,3 +590,4 @@ exports.setServiceActiveState = async (req, res) => {
     res.status(500).json({ error: "Error interno al cambiar estado." });
   }
 };
+

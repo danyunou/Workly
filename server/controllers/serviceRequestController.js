@@ -40,7 +40,12 @@ exports.getRequestsForFreelancer = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT sr.*, s.title AS service_title, u.full_name AS client_name
+      `SELECT 
+         sr.*, 
+         s.title AS service_title, 
+         u.full_name AS client_name,
+         u.username AS client_username,
+         u.profile_picture AS client_pfp
        FROM service_requests sr
        JOIN services s ON sr.service_id = s.id
        JOIN users u ON sr.client_id = u.id
