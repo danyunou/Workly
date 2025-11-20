@@ -62,30 +62,26 @@ export default function Home() {
     }, 200);
   };
 
-  // 🔹 Fecha mínima permitida: como mínimo mañana,
-  // y nunca antes de (hoy + delivery_time_days - 2)
   const getMinDeadline = () => {
-    if (!selectedService?.delivery_time_days) {
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      return d.toISOString().split("T")[0];
-    }
+    if (!selectedService) return "";
 
-    const days = Number(selectedService.delivery_time_days) || 0;
+    const days = Number(selectedService.delivery_time_days);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const base = new Date(today);
-    base.setDate(base.getDate() + 1); // al menos mañana
+    const minDate = new Date(today);
 
-    const estimatedMin = new Date(today);
-    estimatedMin.setDate(
-      estimatedMin.getDate() + Math.max(days - 2, 1)
-    );
+    if (!Number.isFinite(days) || days <= 0) {
+      // fallback: al menos mañana si no hay delivery_time_days
+      minDate.setDate(minDate.getDate() + 1);
+    } else {
+      // mínimo: hoy + delivery_time_days
+      minDate.setDate(minDate.getDate() + days);
+    }
 
-    const minDate = estimatedMin > base ? estimatedMin : base;
     return minDate.toISOString().split("T")[0];
   };
+
 
   const handleSendRequestFromModal = async () => {
     if (!selectedService || isSubmitting) return;
@@ -123,7 +119,7 @@ export default function Home() {
           message: requestMessage,
           proposed_deadline: proposedDeadline || null,
           proposed_budget: proposedBudget || null,
-          // deadline_flexible: isDeadlineFlexible,  <-- cuando quieras usarlo en el back
+          // deadline_flexible: isDeadlineFlexible,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -137,10 +133,21 @@ export default function Home() {
       // Más adelante: navigate("/my-requests");
     } catch (err) {
       console.error("Error al enviar la solicitud:", err);
-      const msg =
-        err.response?.data?.error ||
-        "Hubo un error al enviar la solicitud. Inténtalo de nuevo.";
-      alert(msg);
+
+      // 🔹 Manejo específico para 'ya tienes una solicitud activa'
+      if (err.response?.status === 409) {
+        const msgBack =
+          err.response.data?.error ||
+          "Ya tienes una solicitud activa para este servicio.";
+        alert(
+          `${msgBack}\n\nCuando la sección de 'Mis proyectos / solicitudes' esté disponible, podrás gestionarla desde ahí.`
+        );
+      } else {
+        const msg =
+          err.response?.data?.error ||
+          "Hubo un error al enviar la solicitud. Inténtalo de nuevo.";
+        alert(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -150,215 +157,223 @@ export default function Home() {
     <>
       <Navbar />
       <div className="home-body">
-      <div className="home-inner">
-        <h2 className="home-title">Servicios para ti</h2>
+        <div className="home-inner">
+          <h2 className="home-title">Servicios para ti</h2>
 
-        {categories.map((cat) => (
-          <div className="category-section" key={cat.category}>
-            <div className="category-header">
-              <h3 className="category-title">{cat.category}</h3>
-              {/* <button
-                className="explore-btn"
-                onClick={() => handleExplore(cat.category_id)}
-              >
-                Ver todo
-              </button> */}
-            </div>
-
-            <div className="services-scroll">
-              {cat.services.map((service) => (
-                <div
-                  className="service-card"
-                  key={service.id}
-                  onClick={() => openServiceModal(service)}
+          {categories.map((cat) => (
+            <div className="category-section" key={cat.category}>
+              <div className="category-header">
+                <h3 className="category-title">{cat.category}</h3>
+                {/* <button
+                  className="explore-btn"
+                  onClick={() => handleExplore(cat.category_id)}
                 >
-                  <img
-                    src={service.image_url}
-                    alt={service.title}
-                    className="service-image"
-                  />
+                  Ver todo
+                </button> */}
+              </div>
 
-                  <div className="service-details">
-                    <h4 className="service-title">{service.title}</h4>
+              <div className="services-scroll">
+                {cat.services.map((service) => (
+                  <div
+                    className="service-card"
+                    key={service.id}
+                    onClick={() => openServiceModal(service)}
+                  >
+                    <img
+                      src={service.image_url}
+                      alt={service.title}
+                      className="service-image"
+                    />
 
-                    <button
-                      type="button"
-                      className="service-freelancer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleGoToFreelancer(service.username);
-                      }}
-                    >
-                      {service.profile_picture && (
-                        <img
-                          src={service.profile_picture}
-                          alt={service.user_alias || service.username}
-                          className="service-avatar"
+                    <div className="service-details">
+                      <h4 className="service-title">{service.title}</h4>
+
+                      <button
+                        type="button"
+                        className="service-freelancer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGoToFreelancer(service.username);
+                        }}
+                      >
+                        {service.profile_picture && (
+                          <img
+                            src={service.profile_picture}
+                            alt={service.user_alias || service.username}
+                            className="service-avatar"
+                          />
+                        )}
+
+                        <span className="service-user">
+                          @{service.user_alias || service.username}
+                        </span>
+                      </button>
+
+                      <div className="service-metrics compact-metrics">
+                        <span className="metric-item">
+                          ⭐ {Number(service.rating_avg || 0).toFixed(1)}
+                        </span>
+                        <span className="metric-item">
+                          📦 {service.completed_orders || 0}
+                        </span>
+                        <span className="metric-item">
+                          ⏱️ {service.delivery_time_days} días
+                        </span>
+                      </div>
+
+                      <p className="service-price">
+                        Desde ${service.price} USD
+                      </p>
+
+                      <button
+                        className="hire-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openServiceModal(service);
+                        }}
+                      >
+                        Ver detalles y solicitar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {isModalOpen && selectedService && (
+            <div
+              className={`service-modal-backdrop ${
+                isModalClosing ? "closing" : ""
+              }`}
+              onClick={startCloseModal}
+            >
+              <div
+                className={`service-modal ${
+                  isModalClosing ? "closing" : ""
+                }`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className="service-modal-close"
+                  onClick={startCloseModal}
+                >
+                  ✕
+                </button>
+
+                <div className="service-modal-header">
+                  <h2>{selectedService.title}</h2>
+                  <span className="service-modal-category">
+                    {selectedService.category}
+                  </span>
+                </div>
+
+                <img
+                  src={selectedService.image_url}
+                  alt={selectedService.title}
+                  className="service-modal-image"
+                />
+
+                <div className="service-modal-body">
+                  <p>
+                    <strong>Descripción:</strong>{" "}
+                    {selectedService.description}
+                  </p>
+
+                  <div className="service-modal-meta">
+                    <span>
+                      ⏱️ Entrega estimada:{" "}
+                      {selectedService.delivery_time_days} días
+                    </span>
+                    <span>
+                      ⭐ {Number(selectedService.rating_avg || 0).toFixed(1)} ·{" "}
+                      {selectedService.completed_orders || 0} pedidos
+                    </span>
+                  </div>
+
+                  <p className="service-modal-price">
+                    Desde ${selectedService.price} USD
+                  </p>
+
+                  <div className="service-modal-form">
+                    <h3>Cuéntale al freelancer qué necesitas</h3>
+
+                    <label className="service-modal-label">
+                      Mensaje para el freelancer <span>*</span>
+                      <textarea
+                        className="service-modal-textarea"
+                        placeholder="Describe tu proyecto, objetivos, referencias, etc."
+                        value={requestMessage}
+                        onChange={(e) => setRequestMessage(e.target.value)}
+                      />
+                    </label>
+
+                    <div className="service-modal-form-row">
+                      <label className="service-modal-label">
+                        Fecha límite (opcional)
+                        <input
+                          type="date"
+                          className="service-modal-input"
+                          value={proposedDeadline}
+                          onChange={(e) =>
+                            setProposedDeadline(e.target.value)
+                          }
+                          min={getMinDeadline()}
                         />
-                      )}
+                      </label>
 
-                      <span className="service-user">
-                        @{service.user_alias || service.username}
-                      </span>
-                    </button>
-
-                    <div className="service-metrics compact-metrics">
-                      <span className="metric-item">
-                        ⭐ {Number(service.rating_avg || 0).toFixed(1)}
-                      </span>
-                      <span className="metric-item">
-                        📦 {service.completed_orders || 0}
-                      </span>
-                      <span className="metric-item">
-                        ⏱️ {service.delivery_time_days} días
-                      </span>
+                      <label className="service-modal-label">
+                        Presupuesto aproximado (opcional)
+                        <input
+                          type="number"
+                          min="0"
+                          className="service-modal-input"
+                          placeholder="USD"
+                          value={proposedBudget}
+                          onChange={(e) =>
+                            setProposedBudget(e.target.value)
+                          }
+                        />
+                      </label>
                     </div>
 
-                    <p className="service-price">
-                      Desde ${service.price} USD
-                    </p>
-
-                    <button
-                      className="hire-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openServiceModal(service);
-                      }}
-                    >
-                      Ver detalles y solicitar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {isModalOpen && selectedService && (
-          <div
-            className={`service-modal-backdrop ${
-              isModalClosing ? "closing" : ""
-            }`}
-            onClick={startCloseModal}
-          >
-            <div
-              className={`service-modal ${isModalClosing ? "closing" : ""}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="service-modal-close"
-                onClick={startCloseModal}
-              >
-                ✕
-              </button>
-
-              <div className="service-modal-header">
-                <h2>{selectedService.title}</h2>
-                <span className="service-modal-category">
-                  {selectedService.category}
-                </span>
-              </div>
-
-              <img
-                src={selectedService.image_url}
-                alt={selectedService.title}
-                className="service-modal-image"
-              />
-
-              <div className="service-modal-body">
-                <p>
-                  <strong>Descripción:</strong>{" "}
-                  {selectedService.description}
-                </p>
-
-                <div className="service-modal-meta">
-                  <span>
-                    ⏱️ Entrega estimada:{" "}
-                    {selectedService.delivery_time_days} días
-                  </span>
-                  <span>
-                    ⭐ {Number(selectedService.rating_avg || 0).toFixed(1)} ·{" "}
-                    {selectedService.completed_orders || 0} pedidos
-                  </span>
-                </div>
-
-                <p className="service-modal-price">
-                  Desde ${selectedService.price} USD
-                </p>
-
-                <div className="service-modal-form">
-                  <h3>Cuéntale al freelancer qué necesitas</h3>
-
-                  <label className="service-modal-label">
-                    Mensaje para el freelancer <span>*</span>
-                    <textarea
-                      className="service-modal-textarea"
-                      placeholder="Describe tu proyecto, objetivos, referencias, etc."
-                      value={requestMessage}
-                      onChange={(e) => setRequestMessage(e.target.value)}
-                    />
-                  </label>
-
-                  <div className="service-modal-form-row">
-                    <label className="service-modal-label">
-                      Fecha límite (opcional)
+                    <label className="service-modal-flex-row">
                       <input
-                        type="date"
-                        className="service-modal-input"
-                        value={proposedDeadline}
-                        onChange={(e) => setProposedDeadline(e.target.value)}
-                        min={getMinDeadline()}
+                        type="checkbox"
+                        checked={isDeadlineFlexible}
+                        onChange={(e) =>
+                          setIsDeadlineFlexible(e.target.checked)
+                        }
                       />
-                    </label>
-
-                    <label className="service-modal-label">
-                      Presupuesto aproximado (opcional)
-                      <input
-                        type="number"
-                        min="0"
-                        className="service-modal-input"
-                        placeholder="USD"
-                        value={proposedBudget}
-                        onChange={(e) => setProposedBudget(e.target.value)}
-                      />
+                      <span>Soy flexible con la fecha límite</span>
                     </label>
                   </div>
+                </div>
 
-                  <label className="service-modal-flex-row">
-                    <input
-                      type="checkbox"
-                      checked={isDeadlineFlexible}
-                      onChange={(e) => setIsDeadlineFlexible(e.target.checked)}
-                    />
-                    <span>Soy flexible con la fecha límite</span>
-                  </label>
+                <div className="service-modal-actions">
+                  <button
+                    className="service-modal-hire-btn"
+                    onClick={handleSendRequestFromModal}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting
+                      ? "Enviando..."
+                      : "Enviar solicitud al freelancer"}
+                  </button>
+
+                  <button
+                    className="service-modal-secondary-btn"
+                    onClick={() =>
+                      handleGoToFreelancer(selectedService.username)
+                    }
+                  >
+                    Ver perfil del freelancer
+                  </button>
                 </div>
               </div>
-
-              <div className="service-modal-actions">
-                <button
-                  className="service-modal-hire-btn"
-                  onClick={handleSendRequestFromModal}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting
-                    ? "Enviando..."
-                    : "Enviar solicitud al freelancer"}
-                </button>
-
-                <button
-                  className="service-modal-secondary-btn"
-                  onClick={() =>
-                    handleGoToFreelancer(selectedService.username)
-                  }
-                >
-                  Ver perfil del freelancer
-                </button>
-              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       </div>
     </>
   );

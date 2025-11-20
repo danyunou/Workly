@@ -14,9 +14,17 @@ export default function FreelancerDashboard() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
 
-  // 🔹 estado para aceptar solicitud / crear proyecto
+  // 🔹 aceptar solicitud / crear proyecto
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState(null);
+
+  // 🔹 rechazar solicitud
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectError, setRejectError] = useState(null);
+  const [rejectReason, setRejectReason] = useState(""); // <-- motivo del rechazo
+
+  // 🔹 contador de proyectos activos
+  const [activeProjectsCount, setActiveProjectsCount] = useState(0);
 
   const navigate = useNavigate();
 
@@ -32,7 +40,7 @@ export default function FreelancerDashboard() {
         setIsLoading(true);
         setError(null);
 
-        const [serviceRes, customRes] = await Promise.all([
+        const [serviceRes, customRes, projectsRes] = await Promise.all([
           fetch(
             "https://workly-cy4b.onrender.com/api/service-requests/freelancer",
             {
@@ -42,6 +50,11 @@ export default function FreelancerDashboard() {
             }
           ),
           fetch("https://workly-cy4b.onrender.com/api/requests/by-freelancer", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch("https://workly-cy4b.onrender.com/api/projects/my-projects", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -58,8 +71,24 @@ export default function FreelancerDashboard() {
         const serviceData = await serviceRes.json();
         const customData = await customRes.json();
 
-        setServiceRequests(serviceData);
+        // 🔹 Mostrar solo solicitudes pendientes del freelancer
+        const filteredServiceRequests = serviceData.filter(
+          (sr) => !sr.status || sr.status === "pending_freelancer"
+        );
+
+        setServiceRequests(filteredServiceRequests);
         setCustomRequests(customData);
+
+        // 🔹 Proyectos activos (no completados / cancelados)
+        if (projectsRes.ok) {
+          const projectsData = await projectsRes.json();
+          const activeCount = projectsData.filter(
+            (p) => p.status !== "completed" && p.status !== "cancelled"
+          ).length;
+          setActiveProjectsCount(activeCount);
+        } else {
+          console.error("Error al obtener proyectos para el contador");
+        }
       } catch (err) {
         console.error("Error al cargar datos del dashboard:", err.message);
         setError(err.message || "Error al cargar solicitudes.");
@@ -91,6 +120,8 @@ export default function FreelancerDashboard() {
   const openRequestModal = (request) => {
     setSelectedRequest(request);
     setAcceptError(null);
+    setRejectError(null);
+    setRejectReason(""); // limpiar motivo al abrir
     setShowRequestModal(true);
   };
 
@@ -98,7 +129,10 @@ export default function FreelancerDashboard() {
     setShowRequestModal(false);
     setSelectedRequest(null);
     setAcceptError(null);
+    setRejectError(null);
+    setRejectReason(""); // limpiar motivo al cerrar
     setIsAccepting(false);
+    setIsRejecting(false);
   };
 
   const formatDate = (dateStr) => {
@@ -119,6 +153,7 @@ export default function FreelancerDashboard() {
     return status || "Sin estado";
   };
 
+  // 🔹 Contar solo lo que realmente se muestra
   const totalRequests = serviceRequests.length + customRequests.length;
 
   // 🔹 Aceptar solicitud y crear proyecto
@@ -131,11 +166,10 @@ export default function FreelancerDashboard() {
       return;
     }
 
-    try{
+    try {
       setIsAccepting(true);
       setAcceptError(null);
 
-      // ⚠️ Ajusta esta URL y body según tu backend real
       const res = await fetch(
         "https://workly-cy4b.onrender.com/api/projects/from-service-request",
         {
@@ -151,15 +185,17 @@ export default function FreelancerDashboard() {
       );
 
       if (!res.ok) {
-        throw new Error("No se pudo crear el proyecto a partir de la solicitud.");
+        throw new Error(
+          "No se pudo crear el proyecto a partir de la solicitud."
+        );
       }
 
       const project = await res.json();
 
-      // Cerrar modal y mandar al freelancer al proyecto recién creado
+      // Cerrar modal
       closeRequestModal();
 
-      // ⚠️ Ajusta la ruta de detalle de proyecto según tu app
+      // Redirigir al proyecto
       if (project && project.id) {
         navigate(`/projects/${project.id}`);
       } else {
@@ -167,11 +203,60 @@ export default function FreelancerDashboard() {
       }
     } catch (err) {
       console.error("Error al aceptar solicitud:", err);
-      setAcceptError(
-        err.message || "Ocurrió un error al crear el proyecto."
-      );
+      setAcceptError(err.message || "Ocurrió un error al crear el proyecto.");
     } finally {
       setIsAccepting(false);
+    }
+  };
+
+  // 🔹 Rechazar solicitud con motivo
+  const handleRejectRequest = async () => {
+    if (!selectedRequest) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    if (!rejectReason.trim()) {
+      setRejectError("Por favor indica un motivo para rechazar la solicitud.");
+      return;
+    }
+
+    try {
+      setIsRejecting(true);
+      setRejectError(null);
+
+      const res = await fetch(
+        `https://workly-cy4b.onrender.com/api/service-requests/${selectedRequest.id}/reject`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: rejectReason.trim() }),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "No se pudo rechazar la solicitud.");
+      }
+
+      // Sacar la solicitud de la lista en el front
+      setServiceRequests((prev) =>
+        prev.filter((sr) => sr.id !== selectedRequest.id)
+      );
+
+      // Cerrar modal
+      closeRequestModal();
+    } catch (err) {
+      console.error("Error al rechazar solicitud:", err);
+      setRejectError(err.message || "Error al rechazar la solicitud.");
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -195,6 +280,13 @@ export default function FreelancerDashboard() {
                 {totalRequests} solicitud
                 {totalRequests === 1 ? "" : "es"} en total
               </span>
+
+              <span className="dashboard-pill dashboard-pill-secondary">
+                {activeProjectsCount} proyecto
+                {activeProjectsCount === 1 ? "" : "s"} activo
+                {activeProjectsCount === 1 ? "" : "s"}
+              </span>
+
               <button
                 type="button"
                 className="dashboard-outline-btn"
@@ -229,7 +321,7 @@ export default function FreelancerDashboard() {
 
                 {serviceRequests.length === 0 ? (
                   <div className="empty-state">
-                    <h3>No has recibido solicitudes directas aún</h3>
+                    <h3>No tienes solicitudes pendientes</h3>
                     <p>
                       Cuando un cliente solicite uno de tus servicios
                       publicados, aparecerá aquí.
@@ -453,13 +545,10 @@ export default function FreelancerDashboard() {
           )}
         </div>
 
-        {/* 🔹 MODAL VER / ACEPTAR SOLICITUD */}
+        {/* 🔹 MODAL VER / ACEPTAR / RECHAZAR SOLICITUD */}
         {showRequestModal && selectedRequest && (
           <div className="fd-modal-backdrop" onClick={closeRequestModal}>
-            <div
-              className="fd-modal"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="fd-modal" onClick={(e) => e.stopPropagation()}>
               <header className="fd-modal-header">
                 <div className="fd-modal-header-left">
                   <span className="request-category request-category-service">
@@ -526,25 +615,54 @@ export default function FreelancerDashboard() {
 
               <p className="fd-modal-helper-text">
                 Al aceptar esta solicitud se creará un proyecto con este
-                cliente.
+                cliente, donde podrás gestionar entregables, revisiones y pagos.
               </p>
 
-              {acceptError && (
-                <div className="fd-modal-error">
-                  {acceptError}
+              {/* Bloque para escribir el motivo del rechazo */}
+              {selectedRequest.status === "pending_freelancer" && (
+                <div className="fd-modal-reject-block">
+                  <label className="service-modal-label">
+                    Motivo del rechazo (se enviará al cliente)
+                    <textarea
+                      className="service-modal-textarea"
+                      placeholder="Explica brevemente por qué no puedes tomar este proyecto, o qué tendría que cambiar el cliente."
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                    />
+                  </label>
                 </div>
+              )}
+
+              {acceptError && (
+                <div className="fd-modal-error">{acceptError}</div>
+              )}
+              {rejectError && (
+                <div className="fd-modal-error">{rejectError}</div>
               )}
 
               <footer className="fd-modal-actions">
                 {selectedRequest.status === "pending_freelancer" && (
-                  <button
-                    type="button"
-                    className="primary-button fd-modal-primary-cta"
-                    onClick={handleAcceptAndCreateProject}
-                    disabled={isAccepting}
-                  >
-                    {isAccepting ? "Creando proyecto..." : "Aceptar solicitud"}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="danger-button"
+                      onClick={handleRejectRequest}
+                      disabled={isRejecting}
+                    >
+                      {isRejecting ? "Rechazando..." : "Rechazar solicitud"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="primary-button fd-modal-primary-cta"
+                      onClick={handleAcceptAndCreateProject}
+                      disabled={isAccepting}
+                    >
+                      {isAccepting
+                        ? "Creando proyecto..."
+                        : "Aceptar solicitud y crear proyecto"}
+                    </button>
+                  </>
                 )}
 
                 <button

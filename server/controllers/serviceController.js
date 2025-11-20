@@ -218,42 +218,106 @@ exports.deleteService = async (req, res) => {
   }
 };
 
-
-
 exports.updateService = async (req, res) => {
   const serviceId = req.params.id;
   const freelancerId = req.user.id;
-  const { title, description, category, price, delivery_time_days } = req.body;
 
   try {
-    const deliveryTime = delivery_time_days
-      ? parseInt(delivery_time_days, 10)
-      : null;
-
-    const result = await pool.query(
-      `UPDATE services
-       SET
-         title = $1,
-         description = $2,
-         category = $3,
-         price = $4,
-         delivery_time_days = COALESCE($5, delivery_time_days)
-       WHERE id = $6 AND freelancer_id = $7
-       RETURNING *`,
-      [title, description, category, price, deliveryTime, serviceId, freelancerId]
+    // 1) Obtener datos actuales del servicio
+    const existing = await pool.query(
+      `SELECT * FROM services 
+       WHERE id = $1 AND freelancer_id = $2 AND is_deleted = false`,
+      [serviceId, freelancerId]
     );
 
-    if (result.rowCount === 0) {
+    if (existing.rows.length === 0) {
       return res.status(404).json({ error: "Service not found or unauthorized." });
     }
 
-    res.json(result.rows[0]);
+    const current = existing.rows[0];
+
+    // 2) Leer datos enviados (FormData + multer)
+    let { title, description, category, price, delivery_time_days } = req.body;
+
+    // 3) Conservar valores existentes si no vienen en req.body
+    const newTitle = title?.trim() || current.title;
+    const newDescription = description?.trim() || current.description;
+    const newCategory = category || current.category;
+
+    const newPrice =
+      price !== undefined && price !== null && price !== ""
+        ? Number(price)
+        : Number(current.price);
+
+    const newDeliveryDays =
+      delivery_time_days !== undefined &&
+      delivery_time_days !== null &&
+      delivery_time_days !== ""
+        ? Number(delivery_time_days)
+        : current.delivery_time_days;
+
+    // 4) Validaciones
+    if (!newTitle) {
+      return res.status(400).json({ error: "El título es obligatorio." });
+    }
+    if (!newDescription) {
+      return res.status(400).json({ error: "La descripción es obligatoria." });
+    }
+    if (!newCategory) {
+      return res.status(400).json({ error: "La categoría es obligatoria." });
+    }
+    if (Number.isNaN(newPrice) || newPrice <= 0) {
+      return res.status(400).json({ error: "El precio debe ser mayor a 0." });
+    }
+    if (Number.isNaN(newDeliveryDays) || newDeliveryDays <= 0) {
+      return res
+        .status(400)
+        .json({ error: "El tiempo de entrega debe ser mayor a 0 días." });
+    }
+
+    // 5) Si hay nueva imagen, úsala — si no, queda igual
+    let newImageUrl = current.image_url;
+    if (req.files?.image?.[0]) {
+      const file = req.files.image[0];
+
+      // Aquí pondrías tu subida a S3:
+      // newImageUrl = await uploadToS3(file);
+
+      console.warn("⚠️ Subida a S3 no implementada en updateService()");
+    }
+
+    // 6) Hacer el UPDATE seguro
+    const updated = await pool.query(
+      `
+      UPDATE services
+      SET
+        title = $1,
+        description = $2,
+        category = $3,
+        price = $4,
+        delivery_time_days = $5,
+        image_url = $6
+      WHERE id = $7 AND freelancer_id = $8
+      RETURNING *
+      `,
+      [
+        newTitle,
+        newDescription,
+        newCategory,
+        newPrice,
+        newDeliveryDays,
+        newImageUrl,
+        serviceId,
+        freelancerId,
+      ]
+    );
+
+    return res.json(updated.rows[0]);
   } catch (err) {
     console.error("Error updating service:", err);
     res.status(500).json({ error: "Internal server error." });
   }
 };
-
 
 exports.getRequestsForService = async (req, res) => {
   const serviceId = req.params.id;

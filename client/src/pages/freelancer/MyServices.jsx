@@ -1,4 +1,3 @@
-// src/pages/freelancer/MyServices.jsx
 import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import FreelancerNavbar from "../../components/FreelancerNavbar";
@@ -11,7 +10,8 @@ export default function MyServicesPage() {
   const [freelancerCategories, setFreelancerCategories] = useState([]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [pageError, setPageError] = useState("");   // ⬅️ error de carga de página
+  const [actionError, setActionError] = useState(""); // ⬅️ errores de acciones (aceptar, toggle, etc.)
 
   // Modal crear / editar
   const [showModal, setShowModal] = useState(false);
@@ -23,7 +23,10 @@ export default function MyServicesPage() {
     description: "",
     price: "",
     category: "",
+    delivery_time_days: "", // ⬅️ NUEVO campo
   });
+  const [modalError, setModalError] = useState(""); // ⬅️ errores solo del modal
+
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
@@ -45,11 +48,12 @@ export default function MyServicesPage() {
       description: "",
       price: "",
       category: "",
+      delivery_time_days: "",
     });
     setImageFile(null);
     setPreviewUrl("");
     setCurrentService(null);
-    setError("");
+    setModalError("");
   };
 
   const openCreateModal = () => {
@@ -66,10 +70,14 @@ export default function MyServicesPage() {
       description: service.description || "",
       price: service.price || "",
       category: service.category || "",
+      delivery_time_days:
+        service.delivery_time_days != null
+          ? String(service.delivery_time_days)
+          : "",
     });
     setImageFile(null);
     setPreviewUrl(service.image_url || "");
-    setError("");
+    setModalError("");
     setShowModal(true);
   };
 
@@ -86,7 +94,6 @@ export default function MyServicesPage() {
     });
   };
 
-
   // ========= FETCH INICIAL =========
 
   useEffect(() => {
@@ -95,7 +102,8 @@ export default function MyServicesPage() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        setError("");
+        setPageError("");
+        setActionError("");
 
         const [servicesRes, profileRes] = await Promise.all([
           fetch("https://workly-cy4b.onrender.com/api/services/by-freelancer", {
@@ -133,7 +141,9 @@ export default function MyServicesPage() {
         }
       } catch (err) {
         console.error(err);
-        setError(err.message || "Ocurrió un error al cargar la información.");
+        setPageError(
+          err.message || "Ocurrió un error al cargar la información."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -167,25 +177,31 @@ export default function MyServicesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setModalError("");
 
     const titleTrim = form.title.trim();
     const descTrim = form.description.trim();
+    const deliveryDays = Number(form.delivery_time_days);
 
     if (!titleTrim) {
-      return setError("El título es obligatorio.");
+      return setModalError("El título es obligatorio.");
     }
     if (!descTrim) {
-      return setError("La descripción es obligatoria.");
+      return setModalError("La descripción es obligatoria.");
     }
     if (!form.category) {
-      return setError("Selecciona una categoría.");
+      return setModalError("Selecciona una categoría.");
     }
     if (!form.price || Number(form.price) <= 0) {
-      return setError("El precio debe ser mayor a 0.");
+      return setModalError("El precio debe ser mayor a 0.");
+    }
+    if (!deliveryDays || deliveryDays <= 0) {
+      return setModalError(
+        "Indica el tiempo de entrega (en días) para este servicio."
+      );
     }
     if (modalMode === "create" && !imageFile) {
-      return setError("Por favor, sube una imagen para tu servicio.");
+      return setModalError("Por favor, sube una imagen para tu servicio.");
     }
 
     const body = new FormData();
@@ -193,6 +209,7 @@ export default function MyServicesPage() {
     body.append("description", descTrim);
     body.append("price", form.price);
     body.append("category", form.category);
+    body.append("delivery_time_days", String(deliveryDays)); // ⬅️ se envía al back
 
     if (imageFile) {
       body.append("image", imageFile);
@@ -237,7 +254,7 @@ export default function MyServicesPage() {
       resetForm();
     } catch (err) {
       console.error(err);
-      setError(err.message || "Ocurrió un error al guardar el servicio.");
+      setModalError(err.message || "Ocurrió un error al guardar el servicio.");
     }
   };
 
@@ -261,6 +278,7 @@ export default function MyServicesPage() {
     // Fetch
     try {
       setRequestsLoadingId(serviceId);
+      setActionError("");
       const res = await fetch(
         `https://workly-cy4b.onrender.com/api/services/${serviceId}/requests`,
         {
@@ -277,7 +295,7 @@ export default function MyServicesPage() {
       setOpenRequestsServiceId(serviceId);
     } catch (err) {
       console.error(err);
-      setError(err.message || "Error al obtener solicitudes");
+      setActionError(err.message || "Error al obtener solicitudes");
     } finally {
       setRequestsLoadingId(null);
     }
@@ -286,6 +304,7 @@ export default function MyServicesPage() {
   const handleAcceptRequest = async (req, service) => {
     try {
       setAcceptingId(req.id);
+      setActionError("");
       const res = await fetch(
         `https://workly-cy4b.onrender.com/api/services/requests/${req.id}/accept`,
         {
@@ -317,7 +336,7 @@ export default function MyServicesPage() {
       }));
     } catch (err) {
       console.error(err);
-      setError(err.message || "Error al aceptar la solicitud.");
+      setActionError(err.message || "Error al aceptar la solicitud.");
     } finally {
       setAcceptingId(null);
     }
@@ -328,6 +347,7 @@ export default function MyServicesPage() {
   const handleToggleActive = async (service) => {
     try {
       setTogglingId(service.id);
+      setActionError("");
       const res = await fetch(
         `https://workly-cy4b.onrender.com/api/services/${service.id}/active`,
         {
@@ -358,7 +378,7 @@ export default function MyServicesPage() {
       );
     } catch (err) {
       console.error(err);
-      setError(err.message || "Error al cambiar el estado del servicio.");
+      setActionError(err.message || "Error al cambiar el estado del servicio.");
     } finally {
       setTogglingId(null);
     }
@@ -377,6 +397,7 @@ export default function MyServicesPage() {
 
     try {
       setDeletingId(service.id);
+      setActionError("");
       const res = await fetch(
         `https://workly-cy4b.onrender.com/api/services/${service.id}`,
         {
@@ -398,7 +419,7 @@ export default function MyServicesPage() {
       setServices((prev) => prev.filter((s) => s.id !== service.id));
     } catch (err) {
       console.error(err);
-      setError(err.message || "Error al eliminar el servicio.");
+      setActionError(err.message || "Error al eliminar el servicio.");
     } finally {
       setDeletingId(null);
     }
@@ -427,8 +448,8 @@ export default function MyServicesPage() {
 
         {isLoading ? (
           <p>Cargando servicios...</p>
-        ) : error ? (
-          <p style={{ color: "red" }}>{error}</p>
+        ) : pageError ? (
+          <p style={{ color: "red" }}>{pageError}</p>
         ) : services.length === 0 ? (
           <div className="my-services-empty">
             <h3>Aún no tienes servicios publicados</h3>
@@ -440,209 +461,221 @@ export default function MyServicesPage() {
             </button>
           </div>
         ) : (
-          <ul className="service-list">
-            {services.map((service) => {
-              const requestsForService = requestsMap[service.id] || [];
-              const interestedCount = requestsForService.length;
-              const deliveryDays =
-                service.delivery_time_days != null
-                  ? service.delivery_time_days
-                  : 7;
-              const completedOrders = service.completed_orders || 0;
+          <>
+            {actionError && (
+              <p
+                className="my-services-action-error"
+                style={{ color: "red", marginBottom: "0.75rem" }}
+              >
+                {actionError}
+              </p>
+            )}
 
-              return (
-                <li key={service.id} className="service-item">
-                  {/* Imagen */}
-                  <div className="service-image-wrapper">
-                    {service.image_url ? (
-                      <img
-                        src={service.image_url}
-                        alt={service.title}
-                        className="service-image"
-                      />
-                    ) : (
-                      <span className="service-image-placeholder">
-                        Sin imagen
-                      </span>
-                    )}
-                  </div>
+            <ul className="service-list">
+              {services.map((service) => {
+                const requestsForService = requestsMap[service.id] || [];
+                const interestedCount = requestsForService.length;
+                const deliveryDays =
+                  service.delivery_time_days != null
+                    ? service.delivery_time_days
+                    : 7;
+                const completedOrders = service.completed_orders || 0;
 
-                  {/* Contenido */}
-                  <div className="service-content">
-                    <div className="service-title-row">
-                      <h3>{service.title}</h3>
-                      <span className="service-price">
-                        ${Number(service.price).toFixed(2)} USD
-                      </span>
-                    </div>
-
-                    <p className="service-description">
-                      {service.description}
-                    </p>
-
-                    {/* META */}
-                    <div className="service-meta-row">
-                      {service.category && (
-                        <span className="service-category-chip">
-                          {service.category}
+                return (
+                  <li key={service.id} className="service-item">
+                    {/* Imagen */}
+                    <div className="service-image-wrapper">
+                      {service.image_url ? (
+                        <img
+                          src={service.image_url}
+                          alt={service.title}
+                          className="service-image"
+                        />
+                      ) : (
+                        <span className="service-image-placeholder">
+                          Sin imagen
                         </span>
                       )}
-
-                      <span className="service-pill">
-                        {interestedCount} clientes interesados
-                      </span>
-
-                      <span
-                        className={
-                          "service-status " +
-                          (service.is_active
-                            ? "service-status-active"
-                            : "service-status-inactive")
-                        }
-                      >
-                        {service.is_active ? "Activo" : "Inactivo"}
-                      </span>
                     </div>
 
-                    {/* STATS */}
-                    <div className="service-stats-row">
-                      <span className="service-pill-muted">
-                        Entrega: {deliveryDays} días
-                      </span>
-                      <span className="service-pill-muted">
-                        {completedOrders} pedidos completados
-                      </span>
-                    </div>
-
-                    {/* ACCIONES */}
-                    <div className="service-actions">
-                      <button
-                        className="btn-secondary"
-                        onClick={() => handleToggleRequests(service)}
-                      >
-                        {openRequestsServiceId === service.id
-                          ? "Ocultar solicitudes"
-                          : "Ver solicitudes"}
-                      </button>
-
-                      <button
-                        className={
-                          service.is_active
-                            ? "btn-secondary"
-                            : "btn-primary-outline"
-                        }
-                        onClick={() => handleToggleActive(service)}
-                        disabled={togglingId === service.id}
-                      >
-                        {togglingId === service.id
-                          ? "Actualizando..."
-                          : service.is_active
-                          ? "Pausar servicio"
-                          : "Reactivar servicio"}
-                      </button>
-
-                      <button
-                        className="btn-primary-outline"
-                        onClick={() => openEditModal(service)}
-                      >
-                        Editar
-                      </button>
-
-                      <button
-                        className="btn-secondary-danger"
-                        onClick={() => handleDeleteService(service)}
-                        disabled={deletingId === service.id}
-                      >
-                        {deletingId === service.id
-                          ? "Eliminando..."
-                          : "Eliminar"}
-                      </button>
-                    </div>
-
-                    {/* SOLICITUDES */}
-                    {openRequestsServiceId === service.id && (
-                      <div className="requests-container">
-                        <h4>Solicitudes</h4>
-
-                        {requestsLoadingId === service.id ? (
-                          <p className="no-requests-text">
-                            Cargando solicitudes...
-                          </p>
-                        ) : requestsForService.length === 0 ? (
-                          <p className="no-requests-text">
-                            Aún no hay solicitudes para este servicio.
-                          </p>
-                        ) : (
-                          <ul className="requests-list">
-                            {requestsForService.map((req) => (
-                              <li key={req.id} className="request-item">
-                                <div className="request-main">
-                                  <p>
-                                    <strong>Cliente:</strong>{" "}
-                                    {req.client_name}
-                                  </p>
-                                  {req.message && <p>{req.message}</p>}
-                                </div>
-
-                                <div className="request-meta">
-                                  {req.proposed_budget && (
-                                    <p>
-                                      <strong>Presupuesto:</strong> $
-                                      {req.proposed_budget} USD
-                                    </p>
-                                  )}
-
-                                  {req.proposed_deadline && (
-                                    <p>
-                                      <strong>Fecha solicitada:</strong>{" "}
-                                      {formatDate(req.proposed_deadline)}
-                                    </p>
-                                  )}
-
-                                  <p>
-                                    <strong>Solicitud enviada:</strong>{" "}
-                                    {formatDate(req.created_at)}
-                                  </p>
-
-                                  <p>
-                                    <strong>Estado:</strong>{" "}
-                                    {req.status === "accepted"
-                                      ? "Aceptada"
-                                      : req.status === "rejected"
-                                      ? "Rechazada"
-                                      : "Pendiente"}
-                                  </p>
-                                </div>
-
-                                <div className="request-actions">
-                                  <button
-                                    className="btn-primary"
-                                    disabled={
-                                      req.status === "accepted" ||
-                                      acceptingId === req.id
-                                    }
-                                    onClick={() =>
-                                      handleAcceptRequest(req, service)
-                                    }
-                                  >
-                                    {req.status === "accepted"
-                                      ? "Aceptada"
-                                      : acceptingId === req.id
-                                      ? "Aceptando..."
-                                      : "Aceptar solicitud"}
-                                  </button>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                    {/* Contenido */}
+                    <div className="service-content">
+                      <div className="service-title-row">
+                        <h3>{service.title}</h3>
+                        <span className="service-price">
+                          ${Number(service.price).toFixed(2)} USD
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+
+                      <p className="service-description">
+                        {service.description}
+                      </p>
+
+                      {/* META */}
+                      <div className="service-meta-row">
+                        {service.category && (
+                          <span className="service-category-chip">
+                            {service.category}
+                          </span>
+                        )}
+
+                        <span className="service-pill">
+                          {interestedCount} clientes interesados
+                        </span>
+
+                        <span
+                          className={
+                            "service-status " +
+                            (service.is_active
+                              ? "service-status-active"
+                              : "service-status-inactive")
+                          }
+                        >
+                          {service.is_active ? "Activo" : "Inactivo"}
+                        </span>
+                      </div>
+
+                      {/* STATS */}
+                      <div className="service-stats-row">
+                        <span className="service-pill-muted">
+                          Entrega: {deliveryDays} día
+                          {deliveryDays === 1 ? "" : "s"}
+                        </span>
+                        <span className="service-pill-muted">
+                          {completedOrders} pedidos completados
+                        </span>
+                      </div>
+
+                      {/* ACCIONES */}
+                      <div className="service-actions">
+                        <button
+                          className="btn-secondary"
+                          onClick={() => handleToggleRequests(service)}
+                        >
+                          {openRequestsServiceId === service.id
+                            ? "Ocultar solicitudes"
+                            : "Ver solicitudes"}
+                        </button>
+
+                        <button
+                          className={
+                            service.is_active
+                              ? "btn-secondary"
+                              : "btn-primary-outline"
+                          }
+                          onClick={() => handleToggleActive(service)}
+                          disabled={togglingId === service.id}
+                        >
+                          {togglingId === service.id
+                            ? "Actualizando..."
+                            : service.is_active
+                            ? "Pausar servicio"
+                            : "Reactivar servicio"}
+                        </button>
+
+                        <button
+                          className="btn-primary-outline"
+                          onClick={() => openEditModal(service)}
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          className="btn-secondary-danger"
+                          onClick={() => handleDeleteService(service)}
+                          disabled={deletingId === service.id}
+                        >
+                          {deletingId === service.id
+                            ? "Eliminando..."
+                            : "Eliminar"}
+                        </button>
+                      </div>
+
+                      {/* SOLICITUDES */}
+                      {openRequestsServiceId === service.id && (
+                        <div className="requests-container">
+                          <h4>Solicitudes</h4>
+
+                          {requestsLoadingId === service.id ? (
+                            <p className="no-requests-text">
+                              Cargando solicitudes...
+                            </p>
+                          ) : requestsForService.length === 0 ? (
+                            <p className="no-requests-text">
+                              Aún no hay solicitudes para este servicio.
+                            </p>
+                          ) : (
+                            <ul className="requests-list">
+                              {requestsForService.map((req) => (
+                                <li key={req.id} className="request-item">
+                                  <div className="request-main">
+                                    <p>
+                                      <strong>Cliente:</strong>{" "}
+                                      {req.client_name}
+                                    </p>
+                                    {req.message && <p>{req.message}</p>}
+                                  </div>
+
+                                  <div className="request-meta">
+                                    {req.proposed_budget && (
+                                      <p>
+                                        <strong>Presupuesto:</strong> $
+                                        {req.proposed_budget} USD
+                                      </p>
+                                    )}
+
+                                    {req.proposed_deadline && (
+                                      <p>
+                                        <strong>Fecha solicitada:</strong>{" "}
+                                        {formatDate(req.proposed_deadline)}
+                                      </p>
+                                    )}
+
+                                    <p>
+                                      <strong>Solicitud enviada:</strong>{" "}
+                                      {formatDate(req.created_at)}
+                                    </p>
+
+                                    <p>
+                                      <strong>Estado:</strong>{" "}
+                                      {req.status === "accepted"
+                                        ? "Aceptada"
+                                        : req.status === "rejected"
+                                        ? "Rechazada"
+                                        : "Pendiente"}
+                                    </p>
+                                  </div>
+
+                                  <div className="request-actions">
+                                    <button
+                                      className="btn-primary"
+                                      disabled={
+                                        req.status === "accepted" ||
+                                        acceptingId === req.id
+                                      }
+                                      onClick={() =>
+                                        handleAcceptRequest(req, service)
+                                      }
+                                    >
+                                      {req.status === "accepted"
+                                        ? "Aceptada"
+                                        : acceptingId === req.id
+                                        ? "Aceptando..."
+                                        : "Aceptar solicitud"}
+                                    </button>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
 
         {/* ========== MODAL CREAR / EDITAR ========== */}
@@ -710,25 +743,41 @@ export default function MyServicesPage() {
                     </div>
 
                     <div className="edit-field">
-                      <label>Categoría</label>
-                      <select
-                        name="category"
-                        value={form.category}
+                      <label>Tiempo de entrega (días)</label>
+                      <input
+                        type="number"
+                        name="delivery_time_days"
+                        min={1}
+                        value={form.delivery_time_days}
                         onChange={handleInputChange}
                         required
-                      >
-                        <option value="">Selecciona una categoría</option>
-                        {freelancerCategories.map((cat, idx) => (
-                          <option key={idx} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       <small>
-                        Solo puedes elegir entre las categorías configuradas en
-                        tu perfil de freelancer.
+                        Este valor se usa para calcular la fecha mínima que verá
+                        el cliente al solicitar tu servicio.
                       </small>
                     </div>
+                  </div>
+
+                  <div className="edit-field">
+                    <label>Categoría</label>
+                    <select
+                      name="category"
+                      value={form.category}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Selecciona una categoría</option>
+                      {freelancerCategories.map((cat, idx) => (
+                        <option key={idx} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                    <small>
+                      Solo puedes elegir entre las categorías configuradas en tu
+                      perfil de freelancer.
+                    </small>
                   </div>
                 </div>
 
@@ -765,8 +814,10 @@ export default function MyServicesPage() {
                   </div>
                 </div>
 
-                {error && (
-                  <p style={{ color: "red", fontSize: "0.85rem" }}>{error}</p>
+                {modalError && (
+                  <p style={{ color: "red", fontSize: "0.85rem" }}>
+                    {modalError}
+                  </p>
                 )}
 
                 <div className="edit-service-actions">
