@@ -93,3 +93,23 @@
   text-align: center;
   font-style: italic;
 }
+
+.profile-rating-box {
+  margin-top: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  font-size: 0.9rem;
+}
+
+.profile-rating-main {
+  font-weight: 600;
+  color: #065f46;
+  margin-bottom: 0.15rem;
+}
+
+.profile-rating-sub {
+  color: #047857;
+  font-size: 0.8rem;
+}

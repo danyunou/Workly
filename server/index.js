@@ -54,6 +54,7 @@ app.use('/api/disputes', require('./routes/disputes'));
 app.use('/api', require('./routes/ping'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use("/api/reviews", require("./routes/reviews"));
 
 // Tarea programada para limpiar usuarios no verificados
 const cron = require("node-cron");

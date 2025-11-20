@@ -1,11 +1,12 @@
+// src/pages/PublicClientProfile.jsx
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import "../styles/publicClientProfile.css";
+import "../styles/userProfile.css"; // reutilizamos el mismo estilo
 
 export default function PublicClientProfile() {
   const { username } = useParams();
-  const [profile, setProfile] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -24,7 +25,7 @@ export default function PublicClientProfile() {
         }
 
         const data = await res.json();
-        setProfile(data);
+        setUser(data);
       } catch (err) {
         setError(err.message || "Error al cargar el perfil.");
       } finally {
@@ -35,75 +36,102 @@ export default function PublicClientProfile() {
     fetchProfile();
   }, [username]);
 
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <p style={{ padding: "1.5rem" }}>Cargando perfil...</p>
+      </>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <>
+        <Navbar />
+        <p style={{ padding: "1.5rem", color: "#b91c1c" }}>
+          {error || "No se encontró el perfil."}
+        </p>
+      </>
+    );
+  }
+
+  // Helpers para rating
+  const ratingText = user.avg_rating
+    ? Number(user.avg_rating).toFixed(1)
+    : "Sin calificación";
+
+  const reviewsText =
+    user.reviews_count && user.reviews_count > 0
+      ? `${user.reviews_count} reseña${
+          user.reviews_count === 1 ? "" : "s"
+        }`
+      : "Aún no tiene reseñas";
+
   return (
     <>
       <Navbar />
-      <main className="client-public-page">
-        <div className="client-public-container">
-          
-          {loading && <p>Cargando perfil...</p>}
-          {error && <p className="client-public-error">{error}</p>}
+      <div className="profile-container">
+        <div className="profile-left">
+          <img
+            src={user.profile_picture}
+            alt="Perfil"
+            className="profile-img"
+          />
+          <h3>{user.full_name}</h3>
+          <p>@{user.username}</p>
 
-          {!loading && !error && profile && (
-            <>
-              <header className="client-public-header">
+          <ul className="profile-info">
+            {/* location no existe en la DB, usamos el mismo fallback que en UserProfile */}
+            <li>📍 Ubicado en {user.location || "México"}</li>
+            <li>
+              🕒 Se unió en{" "}
+              {new Date(user.created_at).toLocaleString("es-MX", {
+                month: "long",
+                year: "numeric",
+              })}
+            </li>
+            {/* languages tampoco viene del back, usamos el mismo fallback */}
+            <li>🗣️ {user.languages || "Español"}</li>
+            <li>⏰ {user.communication_hours || "No establecido"}</li>
+          </ul>
 
-                {profile.avatar_url && (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.full_name || username}
-                    className="client-public-avatar"
-                  />
-                )}
+          {/* Bloque de calificación pública */}
+          <div className="profile-rating-box">
+            <div className="profile-rating-main">
+              <span>⭐ {ratingText}</span>
+            </div>
+            <div className="profile-rating-sub">{reviewsText}</div>
+          </div>
 
-                <div>
-                  <h1>{profile.full_name || username}</h1>
-                  <p className="client-public-username">@{username}</p>
-
-                  <p className="client-public-meta">
-                    Miembro desde:{" "}
-                    <span>
-                      {new Date(profile.member_since).toLocaleDateString("es-MX")}
-                    </span>
-                  </p>
-                </div>
-              </header>
-
-              <section className="client-public-section">
-                <h2>Sobre el cliente</h2>
-                <p>
-                  {profile.bio ||
-                    "Este cliente aún no ha agregado una descripción."}
-                </p>
-              </section>
-
-              <section className="client-public-section">
-                <h2>Actividad</h2>
-                <div className="client-public-stats">
-
-                  <div className="client-public-stat-card">
-                    <span className="stat-label">Valoración promedio</span>
-                    <span className="stat-value">
-                      {profile.avg_rating
-                        ? Number(profile.avg_rating).toFixed(1)
-                        : "Sin reseñas"}
-                    </span>
-                  </div>
-
-                  <div className="client-public-stat-card">
-                    <span className="stat-label">Total de reseñas</span>
-                    <span className="stat-value">
-                      {profile.reviews_count ?? 0}
-                    </span>
-                  </div>
-
-                </div>
-              </section>
-
-            </>
-          )}
+          {/* Aquí NO mostramos botón de editar porque es perfil público */}
         </div>
-      </main>
+
+        <div className="profile-right">
+          <h2>Conozcamos a este cliente 👋</h2>
+          <p>
+            Esta información ayuda a los freelancers a entender mejor cómo
+            trabaja este cliente.
+          </p>
+
+          <div className="checklist">
+            <div className="checklist-item">
+              Cómo planea usar Workly:{" "}
+              {user.usage_preference || "No especificado"}
+            </div>
+            <div className="checklist-item">
+              Biografía:{" "}
+              {user.biography ||
+                "Este cliente aún no ha agregado una biografía."}
+            </div>
+          </div>
+
+          <div className="comments-section">
+            <h3>Comentarios de freelancers</h3>
+            <p>Aún no hay comentarios públicos.</p>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
