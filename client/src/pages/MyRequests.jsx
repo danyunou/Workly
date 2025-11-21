@@ -1,44 +1,18 @@
+// src/pages/MyRequests.jsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "../styles/MyRequests.css";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
 
-const CATEGORIES = [
-  "Artes gráficas y diseño",
-  "Marketing",
-  "Escritura y traduccion",
-  "Video y animacion",
-  "Musica y audio",
-  "Programacion y tencología",
-  "Negocios",
-  "Estilo de vida",
-  "Datos",
-  "Fotografía",
-];
-
 const MyRequests = () => {
-  const [customRequests, setCustomRequests] = useState([]);
   const [serviceRequests, setServiceRequests] = useState([]);
 
   // solo un item abierto a la vez
-  const [expandedItem, setExpandedItem] = useState(null); // {type:'custom'|'service', id:number}
-  const [proposals, setProposals] = useState({});
+  const [expandedItem, setExpandedItem] = useState(null); // {type:'service', id:number}
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Modal crear solicitud personalizada
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    title: "",
-    description: "",
-    budget: "",
-    deadline: "",
-    category: "",
-  });
-  const [createError, setCreateError] = useState("");
-  const [createSubmitting, setCreateSubmitting] = useState(false);
 
   // Notificaciones en la página
   const [notification, setNotification] = useState(null);
@@ -74,20 +48,13 @@ const MyRequests = () => {
       setLoading(true);
       setError(null);
 
-      const [customRes, serviceRes] = await Promise.all([
-        api.get("/requests/by-client"),
-        api.get("/service-requests/by-client"),
-      ]);
+      const serviceRes = await api.get("/service-requests/by-client");
 
-      const visibleCustom = customRes.data.filter(
-        (req) => req.status !== "hired"
-      );
-
+      // Solo mostramos solicitudes que NO estén aceptadas
       const visibleService = serviceRes.data.filter(
         (sr) => sr.status !== "accepted"
       );
 
-      setCustomRequests(visibleCustom);
       setServiceRequests(visibleService);
     } catch (err) {
       console.error("Error cargando solicitudes:", err);
@@ -121,19 +88,6 @@ const MyRequests = () => {
     return `$${num.toLocaleString()}`;
   };
 
-  const statusLabelRequest = (status) => {
-    switch (status) {
-      case "open":
-        return "Abierta";
-      case "hired":
-        return "Contratado";
-      case "closed":
-        return "Cerrada";
-      default:
-        return status || "Sin estado";
-    }
-  };
-
   const statusLabelServiceRequest = (status) => {
     switch (status) {
       case "pending_freelancer":
@@ -157,28 +111,6 @@ const MyRequests = () => {
   };
 
   // toggles (accordion)
-  const toggleCustomItem = async (id) => {
-    const isSame =
-      expandedItem && expandedItem.type === "custom" && expandedItem.id === id;
-
-    if (isSame) {
-      setExpandedItem(null);
-      return;
-    }
-
-    if (!proposals[id]) {
-      try {
-        const res = await api.get(`/proposals/by-request/${id}`);
-        const filtered = res.data.filter((p) => p.status !== "accepted");
-        setProposals((prev) => ({ ...prev, [id]: filtered }));
-      } catch (err) {
-        console.error("Error fetching proposals:", err);
-      }
-    }
-
-    setExpandedItem({ type: "custom", id });
-  };
-
   const toggleServiceItem = (id) => {
     const isSame =
       expandedItem && expandedItem.type === "service" && expandedItem.id === id;
@@ -190,7 +122,7 @@ const MyRequests = () => {
     }
   };
 
-  // acciones
+  // aceptar propuesta (cuando venga de custom antes, pero lo dejamos por si tu back usa este endpoint
   const handleAcceptProposal = async (proposalId) => {
     try {
       await api.post(`/proposals/accept/${proposalId}`);
@@ -202,48 +134,6 @@ const MyRequests = () => {
     } catch (error) {
       console.error("Error al aceptar propuesta:", error);
       showNotification("error", "Hubo un error al aceptar la propuesta.");
-    }
-  };
-
-  // crear custom
-  const openCreateModal = () => {
-    setCreateError("");
-    setCreateForm({
-      title: "",
-      description: "",
-      budget: "",
-      deadline: "",
-      category: "",
-    });
-    setIsCreateModalOpen(true);
-  };
-
-  const closeCreateModal = () => {
-    setIsCreateModalOpen(false);
-  };
-
-  const handleCreateChange = (e) => {
-    const { name, value } = e.target;
-    setCreateForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    setCreateError("");
-    try {
-      setCreateSubmitting(true);
-      await api.post("/requests/create", createForm);
-      closeCreateModal();
-      await fetchData();
-      showNotification("success", "Solicitud creada correctamente.");
-    } catch (err) {
-      console.error("Error al crear solicitud:", err);
-      const msg =
-        err.response?.data?.error || "Ocurrió un error al crear la solicitud.";
-      setCreateError(msg);
-      showNotification("error", msg);
-    } finally {
-      setCreateSubmitting(false);
     }
   };
 
@@ -353,18 +243,14 @@ const MyRequests = () => {
             <div>
               <h1 className="my-requests-title">Mis solicitudes</h1>
               <p className="my-requests-subtitle">
-                Revisa las propuestas que publicaste y las solicitudes que has
-                enviado directamente a servicios. Desde aquí puedes aceptar
-                freelancers o reenviar solicitudes rechazadas.
+                Revisa las solicitudes que has enviado directamente a servicios.
+                Desde aquí puedes ver su estado, los motivos de rechazo y
+                reenviarlas si lo necesitas.
               </p>
             </div>
 
             <div className="my-requests-header-right">
               <div className="my-requests-metrics">
-                <div className="metric-card">
-                  <span className="metric-label">Custom requests</span>
-                  <span className="metric-value">{customRequests.length}</span>
-                </div>
                 <div className="metric-card">
                   <span className="metric-label">
                     Solicitudes a servicios (activas)
@@ -382,13 +268,6 @@ const MyRequests = () => {
                   onClick={handleRefresh}
                 >
                   Actualizar
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary header-btn"
-                  onClick={openCreateModal}
-                >
-                  Crear solicitud personalizada
                 </button>
               </div>
             </div>
@@ -410,193 +289,15 @@ const MyRequests = () => {
           {error && <div className="my-requests-error">{error}</div>}
 
           <div className="my-requests-sections">
-            {/* CUSTOM REQUESTS */}
-            <section className="requests-section">
-              <div className="section-header">
-                <div>
-                  <h2>Solicitudes personalizadas</h2>
-                  <p>
-                    Publicaciones abiertas a toda la comunidad de freelancers.
-                    Aquí ves solo las propuestas enviadas o rechazadas.
-                  </p>
-                </div>
-              </div>
-
-              {customRequests.length === 0 ? (
-                <div className="empty-state">
-                  <h3>No tienes solicitudes personalizadas aún</h3>
-                  <p>
-                    Crea una nueva propuesta para recibir ofertas de varios
-                    freelancers al mismo tiempo.
-                  </p>
-                  <button
-                    className="btn-primary empty-cta-btn"
-                    onClick={openCreateModal}
-                  >
-                    Crear solicitud personalizada
-                  </button>
-                </div>
-              ) : (
-                <ul className="request-cards-list">
-                  {customRequests.map((req) => {
-                    const isExpanded =
-                      expandedItem?.type === "custom" &&
-                      expandedItem.id === req.id;
-
-                    return (
-                      <li
-                        key={req.id}
-                        className={`request-card custom-request-card ${
-                          isExpanded ? "request-card-expanded" : ""
-                        }`}
-                      >
-                        <div className="request-card-main">
-                          <div>
-                            <div className="card-top-row">
-                              <span className="badge badge-type">Custom</span>
-                              <span className="badge badge-status">
-                                {statusLabelRequest(req.status)}
-                              </span>
-                            </div>
-
-                            <h3 className="request-card-title">
-                              {req.title}
-                            </h3>
-                            <p className="request-card-description">
-                              {req.description}
-                            </p>
-                          </div>
-
-                          <button
-                            className="toggle-details-btn"
-                            onClick={() => toggleCustomItem(req.id)}
-                          >
-                            {isExpanded ? "Ocultar" : "Ver solicitud"}
-                          </button>
-                        </div>
-
-                        {isExpanded && (
-                          <>
-                            <div className="request-card-meta">
-                              <div>
-                                <span className="meta-label">Presupuesto</span>
-                                <span className="meta-value">
-                                  {formatCurrency(req.budget)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="meta-label">
-                                  Fecha de entrega deseada
-                                </span>
-                                <span className="meta-value">
-                                  {formatDate(req.deadline)}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="proposal-section">
-                              <h4>
-                                Propuestas enviadas / rechazadas (
-                                {proposals[req.id]?.length || 0})
-                              </h4>
-                              {proposals[req.id]?.length > 0 ? (
-                                <ul className="proposal-list">
-                                  {proposals[req.id].map((prop) => (
-                                    <li
-                                      key={prop.id}
-                                      className="proposal-card-item"
-                                    >
-                                      <div className="proposal-header">
-                                        <button
-                                          className="freelancer-link"
-                                          onClick={() =>
-                                            goToFreelancer(
-                                              prop.freelancer_username
-                                            )
-                                          }
-                                        >
-                                          {prop.freelancer_name ||
-                                            prop.freelancer_username ||
-                                            "Ver freelancer"}
-                                        </button>
-                                        <span className="proposal-status-label">
-                                          {prop.status === "rejected"
-                                            ? "Rechazada"
-                                            : "Enviada"}
-                                        </span>
-                                      </div>
-
-                                      <p className="proposal-message">
-                                        {prop.message}
-                                      </p>
-
-                                      <div className="proposal-meta">
-                                        <div>
-                                          <span className="meta-label">
-                                            Presupuesto propuesto
-                                          </span>
-                                          <span className="meta-value">
-                                            {formatCurrency(
-                                              prop.proposed_price ??
-                                                prop.offer_budget
-                                            )}
-                                          </span>
-                                        </div>
-                                        <div>
-                                          <span className="meta-label">
-                                            Plazo estimado
-                                          </span>
-                                          <span className="meta-value">
-                                            {prop.proposed_deadline
-                                              ? formatDate(
-                                                  prop.proposed_deadline
-                                                )
-                                              : prop.estimated_days
-                                              ? `${prop.estimated_days} días`
-                                              : "Sin definir"}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      {prop.status === "pending" && (
-                                        <div className="proposal-actions">
-                                          <button
-                                            className="btn-primary"
-                                            onClick={() =>
-                                              handleAcceptProposal(prop.id)
-                                            }
-                                          >
-                                            Aceptar propuesta
-                                          </button>
-                                        </div>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p className="no-proposals">
-                                  Aún no tienes propuestas enviadas o
-                                  rechazadas.
-                                </p>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-
-            {/* SERVICE REQUESTS */}
+            {/* SOLO SERVICE REQUESTS */}
             <section className="requests-section">
               <div className="section-header">
                 <div>
                   <h2>Solicitudes enviadas a servicios</h2>
                   <p>
                     Mensajes que enviaste directamente a servicios específicos.
-                    Solo se muestran las solicitudes enviadas o rechazadas.
+                    Solo se muestran las solicitudes enviadas o rechazadas (las
+                    aceptadas ya se transforman en proyectos).
                   </p>
                 </div>
               </div>
@@ -726,108 +427,6 @@ const MyRequests = () => {
           </div>
         </div>
       </div>
-
-      {/* MODAL CREAR SOLICITUD */}
-      {isCreateModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Crear nueva solicitud</h3>
-              <button className="modal-close" onClick={closeCreateModal}>
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleCreateSubmit} className="modal-body">
-              <div className="form-field">
-                <span>Título del proyecto</span>
-                <input
-                  type="text"
-                  name="title"
-                  value={createForm.title}
-                  onChange={handleCreateChange}
-                  required
-                />
-              </div>
-
-              <div className="form-field">
-                <span>Descripción detallada</span>
-                <textarea
-                  name="description"
-                  rows={4}
-                  value={createForm.description}
-                  onChange={handleCreateChange}
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-field">
-                  <span>Presupuesto (USD)</span>
-                  <input
-                    type="number"
-                    name="budget"
-                    min={1}
-                    value={createForm.budget}
-                    onChange={handleCreateChange}
-                    required
-                  />
-                </div>
-                <div className="form-field">
-                  <span>Fecha de entrega deseada</span>
-                  <input
-                    type="date"
-                    name="deadline"
-                    value={createForm.deadline}
-                    onChange={handleCreateChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-field">
-                <span>Categoría</span>
-                <select
-                  name="category"
-                  value={createForm.category}
-                  onChange={handleCreateChange}
-                  required
-                >
-                  <option value="">Selecciona una categoría</option>
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {createError && (
-                <p className="my-requests-error inline-error">
-                  {createError}
-                </p>
-              )}
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={closeCreateModal}
-                  disabled={createSubmitting}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={createSubmitting}
-                >
-                  {createSubmitting ? "Publicando..." : "Publicar solicitud"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* MODAL REENVIAR SOLICITUD */}
       {isResendModalOpen && resendForm.requestId && (

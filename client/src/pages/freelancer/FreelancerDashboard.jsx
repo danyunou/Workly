@@ -6,7 +6,6 @@ import "../../styles/freelancerDashboard.css";
 
 export default function FreelancerDashboard() {
   const [serviceRequests, setServiceRequests] = useState([]);
-  const [customRequests, setCustomRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -40,7 +39,7 @@ export default function FreelancerDashboard() {
         setIsLoading(true);
         setError(null);
 
-        const [serviceRes, customRes, projectsRes] = await Promise.all([
+        const [serviceRes, projectsRes] = await Promise.all([
           fetch(
             "https://workly-cy4b.onrender.com/api/service-requests/freelancer",
             {
@@ -49,11 +48,6 @@ export default function FreelancerDashboard() {
               },
             }
           ),
-          fetch("https://workly-cy4b.onrender.com/api/requests/by-freelancer", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
           fetch("https://workly-cy4b.onrender.com/api/projects/my-projects", {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -64,12 +58,8 @@ export default function FreelancerDashboard() {
         if (!serviceRes.ok) {
           throw new Error("Error al obtener solicitudes de tus servicios");
         }
-        if (!customRes.ok) {
-          throw new Error("Error al obtener custom requests");
-        }
 
         const serviceData = await serviceRes.json();
-        const customData = await customRes.json();
 
         // 🔹 Mostrar solo solicitudes pendientes del freelancer
         const filteredServiceRequests = serviceData.filter(
@@ -77,7 +67,6 @@ export default function FreelancerDashboard() {
         );
 
         setServiceRequests(filteredServiceRequests);
-        setCustomRequests(customData);
 
         // 🔹 Proyectos activos (no completados / cancelados)
         if (projectsRes.ok) {
@@ -99,10 +88,6 @@ export default function FreelancerDashboard() {
 
     fetchData();
   }, [navigate]);
-
-  const handlePropose = (requestId) => {
-    navigate(`/requests/${requestId}/propose`);
-  };
 
   const handleGoToProjects = () => {
     navigate("/my-projects");
@@ -153,8 +138,8 @@ export default function FreelancerDashboard() {
     return status || "Sin estado";
   };
 
-  // 🔹 Contar solo lo que realmente se muestra
-  const totalRequests = serviceRequests.length + customRequests.length;
+  // 🔹 Contar solo lo que realmente se muestra (ahora solo serviceRequests)
+  const totalRequests = serviceRequests.length;
 
   // 🔹 Aceptar solicitud y crear proyecto
   const handleAcceptAndCreateProject = async () => {
@@ -270,15 +255,15 @@ export default function FreelancerDashboard() {
             <div>
               <h1 className="dashboard-main-title">Panel de freelancer</h1>
               <p className="dashboard-subtitle">
-                Gestiona las solicitudes que recibes en tus servicios y descubre
-                custom requests de clientes que buscan a alguien como tú.
+                Gestiona las solicitudes que recibes en tus servicios y
+                conviértelas en proyectos activos.
               </p>
             </div>
 
             <div className="dashboard-header-right">
               <span className="dashboard-pill">
                 {totalRequests} solicitud
-                {totalRequests === 1 ? "" : "es"} en total
+                {totalRequests === 1 ? "" : "es"} pendiente
               </span>
 
               <span className="dashboard-pill dashboard-pill-secondary">
@@ -413,128 +398,6 @@ export default function FreelancerDashboard() {
                           }}
                         >
                           Ver solicitud
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              {/* 2) CUSTOM REQUESTS (PUBLICADAS POR CLIENTES) */}
-              <section className="dashboard-section">
-                <div className="dashboard-section-header">
-                  <h2 className="dashboard-title">
-                    Propuestas que podrían interesarte
-                  </h2>
-                  <span className="dashboard-section-count">
-                    {customRequests.length} solicitud
-                    {customRequests.length === 1 ? "" : "es"}
-                  </span>
-                </div>
-
-                {customRequests.length === 0 ? (
-                  <div className="empty-state">
-                    <h3>Por ahora no hay propuestas para ti</h3>
-                    <p>
-                      Cuando un cliente publique una solicitud compatible con tu
-                      perfil, aparecerá aquí automáticamente.
-                    </p>
-                    <button
-                      className="primary-button"
-                      onClick={handleGoToServices}
-                    >
-                      Revisar mis servicios
-                    </button>
-                  </div>
-                ) : (
-                  <div className="requests-grid">
-                    {customRequests.map((req) => (
-                      <article className="request-card" key={req.id}>
-                        <div className="request-card-header">
-                          <span className="request-category">
-                            {req.category}
-                          </span>
-                        </div>
-
-                        {/* Cliente que publicó la request */}
-                        <div className="request-client">
-                          {req.client_pfp && (
-                            <img
-                              src={req.client_pfp}
-                              alt={req.client_username || "Cliente"}
-                              className="request-client-pfp"
-                            />
-                          )}
-
-                          <span
-                            className="request-client-link"
-                            onClick={() =>
-                              handleGoToClientProfile(req.client_username)
-                            }
-                          >
-                            @{req.client_username || "cliente"}
-                          </span>
-                        </div>
-
-                        <h3 className="request-title">{req.title}</h3>
-
-                        <p className="request-description">
-                          {req.description && req.description.length > 120
-                            ? req.description.slice(0, 120) + "..."
-                            : req.description}
-                        </p>
-
-                        {req.additional_info && (
-                          <p className="request-additional">
-                            <strong>Información adicional:</strong>{" "}
-                            {req.additional_info}
-                          </p>
-                        )}
-
-                        {req.reference_links &&
-                          req.reference_links.length > 0 && (
-                            <div className="request-links">
-                              <h4>Referencias:</h4>
-                              <ul>
-                                {req.reference_links.map((link, idx) => (
-                                  <li key={idx}>
-                                    <a
-                                      href={link}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      Link #{idx + 1}
-                                    </a>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                        <div className="request-meta">
-                          <p className="request-budget">
-                            Presupuesto estimado:{" "}
-                            <span>
-                              {req.budget
-                                ? `$${req.budget} USD`
-                                : "No especificado"}
-                            </span>
-                          </p>
-
-                          <p className="request-deadline">
-                            Fecha límite: {formatDate(req.deadline)}
-                          </p>
-
-                          <p className="request-created">
-                            Publicada el: {formatDate(req.created_at)}
-                          </p>
-                        </div>
-
-                        <button
-                          className="primary-button"
-                          onClick={() => handlePropose(req.id)}
-                        >
-                          Enviar propuesta
                         </button>
                       </article>
                     ))}

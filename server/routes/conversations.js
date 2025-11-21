@@ -4,28 +4,27 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const conversationController = require("../controllers/conversationController");
 
-// Obtener conversación por service_request
+// Chat de solicitudes de servicio
 router.get(
-  "/by-service-request/:id",
+  "/by-service-request/:requestId",
   authMiddleware,
-  conversationController.getByServiceRequest
+  conversationController.getOrCreateByServiceRequest
 );
 
-// Obtener conversación por project
+// Chat de proyectos
 router.get(
-  "/by-project/:id",
+  "/by-project/:projectId",
   authMiddleware,
-  conversationController.getByProject
+  conversationController.getOrCreateByProject
 );
 
-// Obtener mensajes de una conversación
+// Mensajes
 router.get(
   "/:conversationId/messages",
   authMiddleware,
   conversationController.getMessages
 );
 
-// Enviar mensaje (texto)
 router.post(
   "/:conversationId/messages",
   authMiddleware,

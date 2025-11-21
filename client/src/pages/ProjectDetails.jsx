@@ -615,7 +615,7 @@ export default function ProjectDetail() {
         {/* Header */}
         <div className="project-header">
           <div className="project-header-main">
-            <h2>Proyecto #{project.id}</h2>
+            <h2>ID de seguimiento - #{project.id}</h2>
             <p className="project-header-subtitle">
               {service_title ||
                 "Aquí se centralizan el contrato, el alcance, el chat y las entregas de este proyecto."}
