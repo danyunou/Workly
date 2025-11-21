@@ -8,23 +8,24 @@ const conversationController = require("../controllers/conversationController");
 router.get(
   "/by-service-request/:requestId",
   authMiddleware,
-  conversationController.getOrCreateByServiceRequest
+  conversationController.getByServiceRequest
 );
 
 // Chat de proyectos
 router.get(
   "/by-project/:projectId",
   authMiddleware,
-  conversationController.getOrCreateByProject
+  conversationController.getByProject
 );
 
-// Mensajes
+// Obtener mensajes de una conversación
 router.get(
   "/:conversationId/messages",
   authMiddleware,
   conversationController.getMessages
 );
 
+// Enviar mensaje en una conversación
 router.post(
   "/:conversationId/messages",
   authMiddleware,
