@@ -123,7 +123,7 @@ exports.rejectVerification = async (req, res) => {
 
 exports.getAllDisputes = async (req, res) => {
   try {
-    // 1) Disputas + info base del proyecto y de los usuarios
+    // 1) Disputas + info del proyecto + cliente/freelancer + resumen de scope
     const { rows: baseDisputes } = await pool.query(
       `
       SELECT 
@@ -131,80 +131,119 @@ exports.getAllDisputes = async (req, res) => {
         d.project_id,
         d.opened_by,
         d.opened_at,
-        d.description       AS dispute_description,
+        d.description         AS dispute_description,
         d.policy_accepted,
-        d.status            AS dispute_status,
+        d.status              AS dispute_status,
         d.resolution,
         d.created_at,
 
-        -- Quien abrió la disputa
-        u.email             AS opened_by_email,
-        u.full_name         AS opened_by_name,
+        -- quien abrió la disputa
+        u.email               AS opened_by_email,
+        u.full_name           AS opened_by_name,
 
-        -- Proyecto
-        p.title             AS project_title,
-        p.description       AS project_description,
-        p.status            AS project_status,
-        p.deadline          AS project_deadline,
-        p.budget            AS project_budget,
-        p.scope             AS project_scope,   -- si no tienes esta columna, bórrala
+        -- proyecto base
+        p.status              AS project_status,
+        p.client_id,
+        p.freelancer_id,
+        p.contract_price,
+        p.contract_deadline,
 
-        -- Cliente
-        uc.id               AS client_id,
-        uc.full_name        AS client_name,
-        uc.email            AS client_email,
+        -- cliente
+        uc.full_name          AS client_name,
+        uc.email              AS client_email,
 
-        -- Freelancer
-        uf.id               AS freelancer_id,
-        uf.full_name        AS freelancer_name,
-        uf.email            AS freelancer_email
+        -- freelancer
+        uf.full_name          AS freelancer_name,
+        uf.email              AS freelancer_email,
+
+        -- servicio / solicitud / propuesta
+        s.title               AS service_title,
+        s.description         AS service_description,
+        s.price               AS service_price,
+
+        sr.proposed_budget    AS service_request_budget,
+        pr.proposed_price     AS proposal_price,
+
+        -- último scope de proyecto (si existe)
+        scope.scope_title,
+        scope.scope_description,
+        scope.scope_deliverables,
+        scope.scope_deadline,
+        scope.scope_price
 
       FROM disputes d
       JOIN users u  ON u.id  = d.opened_by
       JOIN projects p ON p.id = d.project_id
       JOIN users uc ON uc.id = p.client_id
       JOIN users uf ON uf.id = p.freelancer_id
-      WHERE d.status = 'open'
+      LEFT JOIN services s           ON s.id  = p.service_id
+      LEFT JOIN service_requests sr  ON sr.id = p.service_request_id
+      LEFT JOIN proposals pr         ON pr.id = p.proposal_id
+
+      -- último project_scope por versión
+      LEFT JOIN LATERAL (
+        SELECT 
+          ps.title        AS scope_title,
+          ps.description  AS scope_description,
+          ps.deliverables AS scope_deliverables,
+          ps.deadline     AS scope_deadline,
+          ps.price        AS scope_price
+        FROM project_scopes ps
+        WHERE ps.project_id = p.id
+        ORDER BY ps.version DESC
+        LIMIT 1
+      ) AS scope ON TRUE
+
+      WHERE d.status IN ('open', 'pendiente')   -- por si tienes ambos estados
       ORDER BY d.opened_at DESC
       `
     );
 
-    // 2) Para cada disputa, traer entregables, mensajes y logs
+    // 2) para cada disputa, traemos entregables, mensajes y logs
     const disputesWithDetails = [];
 
     for (const row of baseDisputes) {
       const [deliverablesRes, messagesRes, logsRes] = await Promise.all([
-        // ENTREGABLES
+        // ENTREGABLES del proyecto
         pool.query(
           `
           SELECT 
             id,
-            description,
             file_url,
-            status,
-            created_at,
-            submitted_by
+            uploaded_at       AS created_at,
+            freelancer_id     AS submitted_by,
+            ('Versión ' || COALESCE(version, 1))::text AS description,
+            CASE
+              WHEN approved_by_client THEN 'approved'
+              WHEN rejected_by_client THEN 'rejected'
+              ELSE 'pending'
+            END AS status,
+            rejection_message
           FROM deliverables
           WHERE project_id = $1
-          ORDER BY created_at ASC
-        `,
+          ORDER BY uploaded_at ASC
+          `,
           [row.project_id]
         ),
-        // MENSAJES (CHAT)
+
+        // MENSAJES (chat) del proyecto:
+        // conversations vincula project_id -> messages
         pool.query(
           `
-          SELECT
-            id,
-            sender_id,
-            message,
-            created_at
-          FROM messages
-          WHERE project_id = $1
-          ORDER BY created_at ASC
-        `,
+          SELECT 
+            m.id,
+            m.sender_id,
+            m.content       AS message,
+            m.created_at
+          FROM messages m
+          JOIN conversations c ON c.id = m.conversation_id
+          WHERE c.project_id = $1
+          ORDER BY m.created_at ASC
+          `,
           [row.project_id]
         ),
-        // LOGS DE LA DISPUTA
+
+        // LOGS de la disputa
         pool.query(
           `
           SELECT
@@ -212,17 +251,52 @@ exports.getAllDisputes = async (req, res) => {
             action_by,
             action_type,
             action_description,
-            timestamp
+            "timestamp"
           FROM dispute_logs
           WHERE dispute_id = $1
-          ORDER BY timestamp ASC
-        `,
+          ORDER BY "timestamp" ASC
+          `,
           [row.id]
         ),
       ]);
 
+      // armar campos "bonitos" para el front
+      const project_title =
+        row.scope_title ||
+        row.service_title ||
+        "Proyecto sin título";
+
+      const project_description =
+        row.scope_description ||
+        row.service_description ||
+        "";
+
+      const project_scope =
+        row.scope_deliverables ||
+        null;
+
+      const project_budget =
+        row.scope_price ||
+        row.contract_price ||
+        row.service_price ||
+        row.service_request_budget ||
+        row.proposal_price ||
+        null;
+
+      const project_deadline =
+        row.scope_deadline ||
+        row.contract_deadline ||
+        null;
+
       disputesWithDetails.push({
         ...row,
+        project_title,
+        project_description,
+        project_scope,
+        project_budget,
+        project_deadline,
+        client_id: row.client_id,
+        freelancer_id: row.freelancer_id,
         deliverables: deliverablesRes.rows,
         messages: messagesRes.rows,
         logs: logsRes.rows,
@@ -236,7 +310,6 @@ exports.getAllDisputes = async (req, res) => {
   }
 };
 
-
 exports.acceptDispute = async (req, res) => {
   const adminId = req.user.id;
   const disputeId = req.params.id;
@@ -247,7 +320,7 @@ exports.acceptDispute = async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // 1) Traer la disputa + proyecto + cliente/freelancer
+    // 1) Traer disputa + proyecto + cliente/freelancer
     const disputeRes = await client.query(
       `
       SELECT 
@@ -269,10 +342,10 @@ exports.acceptDispute = async (req, res) => {
 
     const dispute = disputeRes.rows[0];
 
-    // 2) Actualizar la disputa como resuelta, guardando la resolución
     const resolutionText =
       reason || "Disputa aceptada por el administrador y proyecto reabierto.";
 
+    // 2) Actualizar disputa
     await client.query(
       `
       UPDATE disputes
@@ -285,7 +358,7 @@ exports.acceptDispute = async (req, res) => {
       [adminId, resolutionText, disputeId]
     );
 
-    // 3) Reabrir el proyecto (estado in_progress)
+    // 3) Reabrir el proyecto
     await client.query(
       `
       UPDATE projects
@@ -295,7 +368,7 @@ exports.acceptDispute = async (req, res) => {
       [dispute.project_id]
     );
 
-    // 4) Registrar logs de la decisión
+    // 4) Logs
     await client.query(
       `
       INSERT INTO dispute_logs (dispute_id, action_by, action_type, action_description)
@@ -307,7 +380,7 @@ exports.acceptDispute = async (req, res) => {
       [disputeId, adminId, resolutionText, dispute.freelancer_id, dispute.client_id]
     );
 
-    // 5) Notificaciones a cliente y freelancer
+    // 5) Notificaciones
     try {
       await createNotificationForUser(
         dispute.freelancer_id,
@@ -324,7 +397,6 @@ exports.acceptDispute = async (req, res) => {
       );
     } catch (notifyErr) {
       console.error("Error al crear notificaciones de aceptación de disputa:", notifyErr);
-      // No hacemos rollback solo por notificaciones
     }
 
     await client.query("COMMIT");
@@ -338,18 +410,16 @@ exports.acceptDispute = async (req, res) => {
   }
 };
 
-
 exports.rejectDispute = async (req, res) => {
   const adminId = req.user.id;
   const disputeId = req.params.id;
-  const { reason } = req.body; // viene del front
+  const { reason } = req.body;
 
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // 1) Traer la disputa + proyecto + cliente/freelancer
     const disputeRes = await client.query(
       `
       SELECT 
@@ -374,7 +444,6 @@ exports.rejectDispute = async (req, res) => {
     const resolutionText =
       reason || "Disputa rechazada por el administrador.";
 
-    // 2) Marcar la disputa como 'irresoluble' y guardar la resolución
     await client.query(
       `
       UPDATE disputes
@@ -387,7 +456,6 @@ exports.rejectDispute = async (req, res) => {
       [adminId, resolutionText, disputeId]
     );
 
-    // 3) Logs de la decisión
     await client.query(
       `
       INSERT INTO dispute_logs (dispute_id, action_by, action_type, action_description)
@@ -399,7 +467,6 @@ exports.rejectDispute = async (req, res) => {
       [disputeId, adminId, resolutionText, dispute.client_id, dispute.freelancer_id]
     );
 
-    // 4) Notificaciones a cliente y freelancer
     try {
       await createNotificationForUser(
         dispute.client_id,
