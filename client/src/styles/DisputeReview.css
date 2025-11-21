@@ -1,48 +1,294 @@
 /* Página de disputas */
 .dispute-page {
   width: 100%;
-  min-height: 70vh;
+  min-height: 80vh;
   padding: 20px;
   box-sizing: border-box;
 
   display: flex;
-  flex-direction: column;    /* cuadro + botón uno debajo del otro */
-  justify-content: center;   /* centrado vertical */
-  align-items: center;       /* centrado horizontal */
+  flex-direction: column;
+  align-items: center;
   gap: 1.5rem;
+
+  background: #f5f7fb;
 }
 
-/* Cuadro principal */
+/* Contenedor principal */
 .dispute-wrapper {
-  background: white;
+  background: #ffffff;
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   width: 100%;
-  max-width: 420px;
-  text-align: center;
-  font-family: "Segoe UI", sans-serif;
+  max-width: 1100px;
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.dispute-header-main {
+  margin-bottom: 1.5rem;
 }
 
 .dispute-wrapper h2 {
-  font-size: 2rem;
-  color: #333;
+  font-size: 1.9rem;
+  color: #222;
+  margin-bottom: 0.25rem;
+}
+
+.dispute-subtitle {
+  font-size: 0.95rem;
+  color: #777;
+}
+
+/* Tarjeta de cada disputa */
+.dispute-card {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Header de la tarjeta */
+.dispute-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
-/* Tarjetas de disputas (cuando sí hay) */
-.dispute-card {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 10px;
-  background: #f8f8f8;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  text-align: left;
+.dispute-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #111827;
+}
+
+.dispute-project-title {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+  color: #4b5563;
+}
+
+.dispute-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Badges */
+.dispute-status {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Status colors */
+.badge-open {
+  background: rgba(2, 173, 122, 0.1);
+  color: #038b63;
+}
+
+.badge-resuelta {
+  background: rgba(37, 99, 235, 0.09);
+  color: #2563eb;
+}
+
+.badge-irresoluble {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.badge-amount {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #111827;
+  color: #f9fafb;
+}
+
+/* Secciones dentro de la tarjeta */
+.dispute-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dispute-section h5 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+}
+
+.dispute-section p {
+  margin: 0.15rem 0;
+  font-size: 0.9rem;
+  color: #111827;
+}
+
+.dispute-resolution {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: #ecfdf5;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+}
+
+/* Grid cliente / freelancer */
+.dispute-grid {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+/* Contador pill */
+.pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 0 0.35rem;
+  margin-left: 0.3rem;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Listas (entregables, mensajes, logs) */
+.dispute-list {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.dispute-list-item {
+  padding: 0.5rem 0.4rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dispute-list-item:nth-child(odd) {
+  background: #ffffff;
+}
+
+.dispute-list-item:nth-child(even) {
+  background: #f3f4f6;
+}
+
+.dispute-list-title {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #111827;
+}
+
+.dispute-list-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.dispute-list-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+/* Badge de estado del entregable */
+.badge-deliverable {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+/* Puedes ajustar nombres de estados reales de tu tabla */
+.badge-completed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+
+.badge-pending,
+.badge-pendiente {
+  background: rgba(251, 191, 36, 0.15);
+  color: #d97706;
+}
+
+/* Link pequeño */
+.link-small {
+  font-size: 0.78rem;
+  color: #0369a1;
+  text-decoration: underline;
+}
+
+/* Mensajes y logs */
+.dispute-messages .dispute-list-item,
+.dispute-logs .dispute-list-item {
+  align-items: flex-start;
+}
+
+/* Texto apagado */
+.dispute-muted {
+  font-size: 0.88rem;
+  color: #9ca3af;
+}
+
+/* Acciones admin */
+.dispute-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .dispute-card button {
-  margin-right: 1rem;
-  margin-top: 10px;
+  margin: 0;
+}
+
+/* Botones aceptar / rechazar */
+.btn-accept,
+.btn-reject {
+  padding: 0.55rem 1.3rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
+}
+
+.btn-accept {
+  background: #02ad7a;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(2, 173, 122, 0.4);
+}
+
+.btn-accept:hover {
+  background: #038b63;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(2, 173, 122, 0.5);
+}
+
+.btn-reject {
+  background: #f87171;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(248, 113, 113, 0.4);
+}
+
+.btn-reject:hover {
+  background: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(248, 113, 113, 0.5);
 }
 
 /* Botón de regresar */
@@ -54,9 +300,30 @@
   cursor: pointer;
   font-size: 0.95rem;
   transition: 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .back-button:hover {
   background: #f4f4f4;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dispute-wrapper {
+    padding: 1.25rem;
+  }
+
+  .dispute-card {
+    padding: 1.1rem;
+  }
+
+  .dispute-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dispute-header-right {
+    align-self: flex-start;
+  }
 }
