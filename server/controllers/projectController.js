@@ -1,7 +1,11 @@
-// projectController.js
+// server/controllers/projectController.js
 const pool = require("../config/db");
-const { uploadToS3 } = require('../services/uploadService');
+const { uploadToS3 } = require("../services/uploadService");
 const { createNotificationForUser } = require("./notificationController");
+
+/* =========================
+ *  LISTADO Y DETALLE
+ * ========================= */
 
 exports.getMyProjects = async (req, res) => {
   const userId = req.user?.id;
@@ -143,6 +147,10 @@ exports.getProjectById = async (req, res) => {
   }
 };
 
+/* =========================
+ *  CONTRATO (ACEPTAR / EDITAR)
+ * ========================= */
+
 exports.acceptContract = async (req, res) => {
   const userId = req.user?.id;
   const roleId = req.user?.role_id;
@@ -150,10 +158,16 @@ exports.acceptContract = async (req, res) => {
 
   try {
     const columnToUpdate =
-      roleId === 1 ? "client_accepted" : roleId === 2 ? "freelancer_accepted" : null;
+      roleId === 1
+        ? "client_accepted"
+        : roleId === 2
+        ? "freelancer_accepted"
+        : null;
 
     if (!columnToUpdate) {
-      return res.status(403).json({ error: "Rol no autorizado para aceptar contrato" });
+      return res
+        .status(403)
+        .json({ error: "Rol no autorizado para aceptar contrato" });
     }
 
     // 1️⃣ Marcar aceptación del rol
@@ -192,12 +206,18 @@ exports.acceptContract = async (req, res) => {
         );
       }
     } catch (notifyErr) {
-      console.error("Error creando notificación en acceptContract:", notifyErr);
+      console.error(
+        "Error creando notificación en acceptContract:",
+        notifyErr
+      );
     }
 
     // 2️⃣ Si ambos ya aceptaron → pasar a 'awaiting_payment'
     if (project.client_accepted && project.freelancer_accepted) {
-      if (project.status === "awaiting_contract" || project.status === "pending_contract") {
+      if (
+        project.status === "awaiting_contract" ||
+        project.status === "pending_contract"
+      ) {
         const statusRes = await pool.query(
           `
           UPDATE projects
@@ -218,7 +238,10 @@ exports.acceptContract = async (req, res) => {
             `/projects/${project.id}`
           );
         } catch (notifyErr) {
-          console.error("Error creando notificación de awaiting_payment:", notifyErr);
+          console.error(
+            "Error creando notificación de awaiting_payment:",
+            notifyErr
+          );
         }
       }
     }
@@ -235,19 +258,145 @@ exports.acceptContract = async (req, res) => {
   }
 };
 
+exports.updateContract = async (req, res) => {
+  const userId = req.user?.id;
+  const projectId = req.params.id;
+  const { contract_price, contract_deadline } = req.body;
+
+  try {
+    // 1️⃣ Verificar que el usuario es parte del proyecto
+    const projectRes = await pool.query(
+      `
+      SELECT 
+        id,
+        status,
+        client_id,
+        freelancer_id,
+        client_accepted,
+        freelancer_accepted
+      FROM projects
+      WHERE id = $1
+        AND (client_id = $2 OR freelancer_id = $2)
+      `,
+      [projectId, userId]
+    );
+
+    if (projectRes.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Proyecto no encontrado o sin acceso" });
+    }
+
+    const project = projectRes.rows[0];
+
+    // 2️⃣ Restringir estados en los que se puede editar
+    if (
+      project.status === "completed" ||
+      project.status === "cancelled" ||
+      project.status === "in_progress" ||
+      project.status === "in_revision"
+    ) {
+      return res.status(400).json({
+        error:
+          "El contrato ya no puede modificarse en el estado actual del proyecto.",
+      });
+    }
+
+    // 3️⃣ Construir SET dinámico
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (contract_price !== undefined) {
+      fields.push(`contract_price = $${idx++}`);
+      values.push(contract_price);
+    }
+
+    if (contract_deadline !== undefined) {
+      fields.push(`contract_deadline = $${idx++}`);
+      values.push(contract_deadline);
+    }
+
+    if (fields.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "No se recibieron cambios para el contrato." });
+    }
+
+    // Siempre que se edita el contrato:
+    //  - se resetean las aceptaciones
+    //  - el estado vuelve a 'awaiting_contract'
+    fields.push("client_accepted = FALSE");
+    fields.push("freelancer_accepted = FALSE");
+    fields.push(`status = 'awaiting_contract'`);
+    fields.push("updated_at = NOW()");
+
+    const updateQuery = `
+      UPDATE projects
+      SET ${fields.join(", ")}
+      WHERE id = $${idx}
+      RETURNING *;
+    `;
+    values.push(projectId);
+
+    const updatedRes = await pool.query(updateQuery, values);
+    const updatedProject = updatedRes.rows[0];
+
+    // 🔔 Notificaciones a ambos: contrato modificado
+    try {
+      const msg = `El contrato del proyecto #${updatedProject.id} fue modificado. Deben revisarlo y aceptarlo nuevamente.`;
+
+      await createNotificationForUser(
+        updatedProject.client_id,
+        msg,
+        "info",
+        `/projects/${updatedProject.id}`
+      );
+
+      await createNotificationForUser(
+        updatedProject.freelancer_id,
+        msg,
+        "info",
+        `/projects/${updatedProject.id}`
+      );
+    } catch (notifyErr) {
+      console.error(
+        "Error creando notificación en updateContract:",
+        notifyErr
+      );
+    }
+
+    return res.json({
+      message: "Contrato actualizado. Ambos deben aceptarlo de nuevo.",
+      project: updatedProject,
+    });
+  } catch (err) {
+    console.error("Error al actualizar contrato:", err);
+    return res
+      .status(500)
+      .json({ error: "Error interno al actualizar contrato" });
+  }
+};
+
+/* =========================
+ *  ENTREGABLES
+ * ========================= */
+
 exports.uploadDeliverable = async (req, res) => {
   const userId = req.user.id;
   const { projectId, deliverableId } = req.body;
   const file = req.file;
 
   try {
-    if (!file) return res.status(400).json({ error: "No se envió archivo" });
+    if (!file)
+      return res.status(400).json({ error: "No se envió archivo" });
 
     const { rows } = await pool.query(
       `SELECT * FROM projects WHERE id = $1 AND freelancer_id = $2`,
       [projectId, userId]
     );
-    if (rows.length === 0) return res.status(403).json({ error: "No autorizado" });
+    if (rows.length === 0)
+      return res.status(403).json({ error: "No autorizado" });
 
     const project = rows[0];
 
@@ -282,7 +431,10 @@ exports.uploadDeliverable = async (req, res) => {
         `/projects/${projectId}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificación en uploadDeliverable:", notifyErr);
+      console.error(
+        "Error creando notificación en uploadDeliverable:",
+        notifyErr
+      );
     }
 
     res.json({ message: "Entregable enviado" });
@@ -294,7 +446,6 @@ exports.uploadDeliverable = async (req, res) => {
 
 exports.getDeliverables = async (req, res) => {
   const userId = req.user.id;
-  const roleId = req.user.role_id;
   const projectId = req.params.id;
 
   try {
@@ -305,7 +456,9 @@ exports.getDeliverables = async (req, res) => {
     );
 
     if (projectRes.rows.length === 0) {
-      return res.status(403).json({ error: "No autorizado para ver este proyecto" });
+      return res
+        .status(403)
+        .json({ error: "No autorizado para ver este proyecto" });
     }
 
     const { rows } = await pool.query(
@@ -338,11 +491,19 @@ exports.approveDeliverable = async (req, res) => {
     );
 
     const deliverable = result.rows[0];
-    if (!deliverable) return res.status(404).json({ error: "Entregable no encontrado" });
-    if (deliverable.client_id !== userId) return res.status(403).json({ error: "No autorizado" });
+    if (!deliverable)
+      return res
+        .status(404)
+        .json({ error: "Entregable no encontrado" });
+    if (deliverable.client_id !== userId)
+      return res.status(403).json({ error: "No autorizado" });
 
     await pool.query(
-      `UPDATE deliverables SET approved_by_client = TRUE, rejected_by_client = FALSE, rejection_message = NULL WHERE id = $1`,
+      `UPDATE deliverables 
+       SET approved_by_client = TRUE, 
+           rejected_by_client = FALSE, 
+           rejection_message = NULL 
+       WHERE id = $1`,
       [deliverableId]
     );
 
@@ -355,12 +516,73 @@ exports.approveDeliverable = async (req, res) => {
         `/projects/${deliverable.project_id}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificación en approveDeliverable:", notifyErr);
+      console.error(
+        "Error creando notificación en approveDeliverable:",
+        notifyErr
+      );
     }
 
     res.json({ message: "Entregable aprobado correctamente" });
   } catch (err) {
     console.error("Error al aprobar entregable:", err);
+    res.status(500).json({ error: "Error interno" });
+  }
+};
+
+exports.rejectDeliverable = async (req, res) => {
+  const userId = req.user.id;
+  const { deliverableId } = req.params;
+  const { reason } = req.body;
+
+  try {
+    const result = await pool.query(
+      `SELECT d.*, p.client_id, p.freelancer_id, p.id AS project_id
+       FROM deliverables d
+       JOIN projects p ON d.project_id = p.id
+       WHERE d.id = $1`,
+      [deliverableId]
+    );
+
+    const deliverable = result.rows[0];
+    if (!deliverable)
+      return res
+        .status(404)
+        .json({ error: "Entregable no encontrado" });
+    if (deliverable.client_id !== userId)
+      return res.status(403).json({ error: "No autorizado" });
+
+    await pool.query(
+      `UPDATE deliverables
+       SET rejected_by_client = TRUE,
+           rejection_message = $1,
+           approved_by_client = FALSE
+       WHERE id = $2`,
+      [reason, deliverableId]
+    );
+
+    // 🔔 Notificación al freelancer: entregable rechazado
+    try {
+      const preview =
+        reason && reason.length > 80
+          ? reason.slice(0, 77).trimEnd() + "..."
+          : reason || "El cliente ha rechazado el entregable.";
+
+      await createNotificationForUser(
+        deliverable.freelancer_id,
+        `Un entregable del proyecto #${deliverable.project_id} fue rechazado. Motivo: "${preview}"`,
+        "warning",
+        `/projects/${deliverable.project_id}`
+      );
+    } catch (notifyErr) {
+      console.error(
+        "Error creando notificación en rejectDeliverable:",
+        notifyErr
+      );
+    }
+
+    res.json({ message: "Entregable rechazado correctamente" });
+  } catch (err) {
+    console.error("Error al rechazar entregable:", err);
     res.status(500).json({ error: "Error interno" });
   }
 };
@@ -388,7 +610,9 @@ exports.approveProject = async (req, res) => {
     );
 
     if (parseInt(notApproved.rows[0].count, 10) > 0) {
-      return res.status(400).json({ error: "Faltan entregables por aprobar" });
+      return res
+        .status(400)
+        .json({ error: "Faltan entregables por aprobar" });
     }
 
     // Marcar proyecto como completado y aprobado por cliente
@@ -440,7 +664,10 @@ exports.approveProject = async (req, res) => {
         `/projects/${projectId}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificación en approveProject:", notifyErr);
+      console.error(
+        "Error creando notificación en approveProject:",
+        notifyErr
+      );
     }
 
     res.json({ message: "Proyecto aprobado y finalizado." });
@@ -450,63 +677,18 @@ exports.approveProject = async (req, res) => {
   }
 };
 
-exports.rejectDeliverable = async (req, res) => {
-  const userId = req.user.id;
-  const { deliverableId } = req.params;
-  const { reason } = req.body;
-
-  try {
-    const result = await pool.query(
-      `SELECT d.*, p.client_id, p.freelancer_id, p.id AS project_id
-       FROM deliverables d
-       JOIN projects p ON d.project_id = p.id
-       WHERE d.id = $1`,
-      [deliverableId]
-    );
-
-    const deliverable = result.rows[0];
-    if (!deliverable) return res.status(404).json({ error: "Entregable no encontrado" });
-    if (deliverable.client_id !== userId) return res.status(403).json({ error: "No autorizado" });
-
-    await pool.query(
-      `UPDATE deliverables
-       SET rejected_by_client = TRUE,
-           rejection_message = $1,
-           approved_by_client = FALSE
-       WHERE id = $2`,
-      [reason, deliverableId]
-    );
-
-    // 🔔 Notificación al freelancer: entregable rechazado
-    try {
-      const preview =
-        reason && reason.length > 80
-          ? reason.slice(0, 77).trimEnd() + "..."
-          : reason || "El cliente ha rechazado el entregable.";
-
-      await createNotificationForUser(
-        deliverable.freelancer_id,
-        `Un entregable del proyecto #${deliverable.project_id} fue rechazado. Motivo: "${preview}"`,
-        "warning",
-        `/projects/${deliverable.project_id}`
-      );
-    } catch (notifyErr) {
-      console.error("Error creando notificación en rejectDeliverable:", notifyErr);
-    }
-
-    res.json({ message: "Entregable rechazado correctamente" });
-  } catch (err) {
-    console.error("Error al rechazar entregable:", err);
-    res.status(500).json({ error: "Error interno" });
-  }
-};
+/* =========================
+ *  CREACIÓN DE PROYECTO
+ * ========================= */
 
 exports.createProjectFromServiceRequest = async (req, res) => {
   const freelancerId = req.user?.id;
   const { service_request_id } = req.body;
 
   if (!service_request_id) {
-    return res.status(400).json({ error: "Falta service_request_id en el body." });
+    return res
+      .status(400)
+      .json({ error: "Falta service_request_id en el body." });
   }
 
   try {
@@ -526,7 +708,9 @@ exports.createProjectFromServiceRequest = async (req, res) => {
     );
 
     if (srQuery.rows.length === 0) {
-      return res.status(404).json({ error: "Solicitud de servicio no encontrada." });
+      return res
+        .status(404)
+        .json({ error: "Solicitud de servicio no encontrada." });
     }
 
     const sr = srQuery.rows[0];
@@ -568,10 +752,10 @@ exports.createProjectFromServiceRequest = async (req, res) => {
       RETURNING *
       `,
       [
-        sr.client_id,             // cliente que hizo la solicitud
-        freelancerId,             // freelancer dueño del servicio
-        sr.service_id,            // servicio relacionado
-        sr.id,                    // service_request_id
+        sr.client_id, // cliente que hizo la solicitud
+        freelancerId, // freelancer dueño del servicio
+        sr.service_id, // servicio relacionado
+        sr.id, // service_request_id
         sr.proposed_budget || null,
         sr.proposed_deadline || null,
       ]
@@ -594,11 +778,13 @@ exports.createProjectFromServiceRequest = async (req, res) => {
         `/projects/${project.id}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificación en createProjectFromServiceRequest:", notifyErr);
+      console.error(
+        "Error creando notificación en createProjectFromServiceRequest:",
+        notifyErr
+      );
     }
 
     return res.status(201).json(project);
-
   } catch (err) {
     console.error("Error al crear proyecto desde solicitud:", err);
     return res.status(500).json({
@@ -644,7 +830,7 @@ exports.createProjectFromProposal = async (req, res) => {
         proposal.freelancer_id,
         proposal.service_request_id,
         proposal.proposed_price,
-        proposal.estimated_deadline, // o como se llame
+        proposal.estimated_deadline, // adapta al nombre real del campo si difiere
       ]
     );
 
@@ -736,7 +922,10 @@ exports.createProjectFromProposal = async (req, res) => {
         `/projects/${project.id}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificaciones en createProjectFromProposal:", notifyErr);
+      console.error(
+        "Error creando notificaciones en createProjectFromProposal:",
+        notifyErr
+      );
     }
 
     res.status(201).json(project);
@@ -749,120 +938,194 @@ exports.createProjectFromProposal = async (req, res) => {
   }
 };
 
-exports.updateContract = async (req, res) => {
-  const userId = req.user?.id;
-  const projectId = req.params.id;
-  // desde el front mandarías estos nombres:
-  const { contract_price, contract_deadline } = req.body;
+/* =========================
+ *  SCOPE (project_scopes)
+ * ========================= */
+
+exports.getCurrentScope = async (req, res) => {
+  const { projectId } = req.params;
 
   try {
-    // 1️⃣ Verificar que el usuario es parte del proyecto
-    const projectRes = await pool.query(
-      `
-      SELECT 
-        id,
-        status,
-        client_id,
-        freelancer_id,
-        client_accepted,
-        freelancer_accepted
-      FROM projects
-      WHERE id = $1
-        AND (client_id = $2 OR freelancer_id = $2)
-      `,
-      [projectId, userId]
+    const { rows } = await pool.query(
+      `SELECT *
+       FROM project_scopes
+       WHERE project_id = $1
+       ORDER BY version DESC
+       LIMIT 1`,
+      [projectId]
     );
 
-    if (projectRes.rows.length === 0) {
+    if (!rows.length) {
       return res
         .status(404)
-        .json({ error: "Proyecto no encontrado o sin acceso" });
+        .json({ error: "No hay scope para este proyecto" });
     }
 
-    const project = projectRes.rows[0];
+    res.json(rows[0]);
+  } catch (error) {
+    console.error("Error al obtener scope actual:", error);
+    res.status(500).json({ error: "Error al obtener scope actual" });
+  }
+};
 
-    // 2️⃣ Restringir estados en los que se puede editar
-    if (
-      project.status === "completed" ||
-      project.status === "cancelled" ||
-      project.status === "in_progress" ||
-      project.status === "in_revision"
-    ) {
-      return res.status(400).json({
-        error:
-          "El contrato ya no puede modificarse en el estado actual del proyecto.",
-      });
-    }
+exports.getHistory = async (req, res) => {
+  const { projectId } = req.params;
 
-    // 3️⃣ Construir SET dinámico
-    const fields = [];
-    const values = [];
-    let idx = 1;
+  try {
+    const { rows } = await pool.query(
+      `SELECT * 
+       FROM project_scopes
+       WHERE project_id = $1
+       ORDER BY version ASC`,
+      [projectId]
+    );
 
-    if (contract_price !== undefined) {
-      fields.push(`contract_price = $${idx++}`);
-      values.push(contract_price);
-    }
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener historial de scopes:", error);
+    res.status(500).json({ error: "Error al obtener historial de scopes" });
+  }
+};
 
-    if (contract_deadline !== undefined) {
-      // Postgres acepta string tipo '2025-11-30'
-      fields.push(`contract_deadline = $${idx++}`);
-      values.push(contract_deadline);
-    }
+exports.createNewScopeVersion = async (req, res) => {
+  const { projectId } = req.params;
+  const {
+    title,
+    description,
+    deliverables,
+    exclusions,
+    revision_limit,
+    deadline,
+    price,
+  } = req.body;
+  const userId = req.user.id;
 
-    if (fields.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "No se recibieron cambios para el contrato." });
-    }
+  const client = await pool.connect();
 
-    // Siempre que se edita el contrato:
-    //  - se resetean las aceptaciones
-    //  - el estado vuelve a 'awaiting_contract'
-    fields.push("client_accepted = FALSE");
-    fields.push("freelancer_accepted = FALSE");
-    fields.push(`status = 'awaiting_contract'`);
-    fields.push("updated_at = NOW()");
+  try {
+    await client.query("BEGIN");
 
-    const updateQuery = `
-      UPDATE projects
-      SET ${fields.join(", ")}
-      WHERE id = $${idx}
-      RETURNING *;
-    `;
-    values.push(projectId);
+    // 1) Obtener versión actual
+    const lastScopeRes = await client.query(
+      `SELECT version
+       FROM project_scopes
+       WHERE project_id = $1
+       ORDER BY version DESC
+       LIMIT 1`,
+      [projectId]
+    );
 
-    const updatedRes = await pool.query(updateQuery, values);
-    const updatedProject = updatedRes.rows[0];
+    const lastVersion = lastScopeRes.rows[0]?.version || 0;
+    const newVersion = lastVersion + 1;
 
-    // 🔔 Notificaciones a ambos: contrato modificado
+    // 2) Crear nueva versión
+    const scopeRes = await client.query(
+      `INSERT INTO project_scopes (
+        project_id,
+        version,
+        title,
+        description,
+        deliverables,
+        exclusions,
+        revision_limit,
+        deadline,
+        price,
+        created_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *`,
+      [
+        projectId,
+        newVersion,
+        title,
+        description,
+        deliverables,
+        exclusions,
+        revision_limit,
+        deadline,
+        price,
+        userId,
+      ]
+    );
+
+    // 3) Resetear aceptaciones de contrato (y opcionalmente actualizar precio/deadline)
+    const projRes = await client.query(
+      `UPDATE projects
+       SET client_accepted = FALSE,
+           freelancer_accepted = FALSE,
+           contract_price = COALESCE($2, contract_price),
+           contract_deadline = COALESCE($3, contract_deadline)
+       WHERE id = $1
+       RETURNING client_id, freelancer_id`,
+      [projectId, price, deadline]
+    );
+
+    const project = projRes.rows[0];
+
+    // 4) Mensaje de sistema en el chat (si ya hay conversación)
+    await client.query(
+      `INSERT INTO messages (
+        conversation_id,
+        sender_id,
+        content,
+        type,
+        is_read,
+        created_at
+      )
+      SELECT c.id, $2,
+        $3,
+        'system',
+        FALSE,
+        NOW()
+      FROM conversations c
+      WHERE c.project_id = $1`,
+      [
+        projectId,
+        userId,
+        `Se creó la versión ${newVersion} del alcance del proyecto.`,
+      ]
+    );
+
+    // 🔔 5) NOTIFICACIONES
     try {
-      const msg =
-        `El contrato del proyecto #${updatedProject.id} fue modificado. Deben revisarlo y aceptarlo nuevamente.`;
+      const isClient = userId === project.client_id;
+      const actorLabel = isClient ? "El cliente" : "El freelancer";
 
+      const message =
+        `${actorLabel} creó la versión ${newVersion} del alcance del proyecto. ` +
+        `Es necesario revisar y aceptar nuevamente el contrato.`;
+
+      // Notificar al cliente
       await createNotificationForUser(
-        updatedProject.client_id,
-        msg,
+        project.client_id,
+        message,
         "info",
-        `/projects/${updatedProject.id}`
+        `/projects/${projectId}`
       );
 
+      // Notificar al freelancer
       await createNotificationForUser(
-        updatedProject.freelancer_id,
-        msg,
+        project.freelancer_id,
+        message,
         "info",
-        `/projects/${updatedProject.id}`
+        `/projects/${projectId}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificación en updateContract:", notifyErr);
+      console.error(
+        "Error creando notificaciones en createNewScopeVersion:",
+        notifyErr
+      );
     }
 
-    return res.json({
-      message: "Contrato actualizado. Ambos deben aceptarlo de nuevo.",
-      project: updatedProject,
-    });
-  } catch (err) {
-    console.error("Error al actualizar contrato:", err);
-    return res.status(500).json({ error: "Error interno al actualizar contrato" });
+    await client.query("COMMIT");
+    res.status(201).json(scopeRes.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error al crear nueva versión de scope:", error);
+    res
+      .status(500)
+      .json({ error: "Error al crear nueva versión de scope" });
+  } finally {
+    client.release();
   }
 };

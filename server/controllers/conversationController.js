@@ -2,80 +2,30 @@
 const pool = require("../config/db");
 const { createNotificationForUser } = require("./notificationController");
 
-/**
- * Obtener o crear conversación ligada a una service_request
- * (se mantiene el nombre getByServiceRequest para no tocar rutas)
- */
+// 🔹 Obtener conversación por service_request (si existe)
 exports.getByServiceRequest = async (req, res) => {
-  const serviceRequestId = req.params.requestId || req.params.id;
-  const userId = req.user?.id || null;
+  const { id } = req.params;
 
   try {
-    // 1) Buscar conversación existente
-    const existing = await pool.query(
+    const { rows } = await pool.query(
       `SELECT * FROM conversations WHERE service_request_id = $1`,
-      [serviceRequestId]
+      [id]
     );
 
-    if (existing.rows.length) {
-      return res.json(existing.rows[0]);
+    if (!rows.length) {
+      return res
+        .status(404)
+        .json({ error: "No se encontró conversación" });
     }
 
-    // 2) Obtener datos de la solicitud y participantes
-    const srRes = await pool.query(
-      `SELECT 
-         sr.id,
-         sr.client_id,
-         s.freelancer_id
-       FROM service_requests sr
-       JOIN services s ON s.id = sr.service_id
-       WHERE sr.id = $1`,
-      [serviceRequestId]
-    );
-
-    if (!srRes.rows.length) {
-      return res.status(404).json({ error: "Solicitud de servicio no encontrada" });
-    }
-
-    const sr = srRes.rows[0];
-
-    // 3) Si tenemos userId, validamos que sea cliente o freelancer
-    if (
-      userId &&
-      userId !== sr.client_id &&
-      userId !== sr.freelancer_id
-    ) {
-      return res.status(403).json({
-        error: "No estás autorizado para ver esta conversación",
-      });
-    }
-
-    // 4) Crear la conversación
-    const insert = await pool.query(
-      `INSERT INTO conversations (
-         service_request_id,
-         project_id,
-         client_id,
-         freelancer_id,
-         created_by,
-         created_at
-       )
-       VALUES ($1, NULL, $2, $3, $4, NOW())
-       RETURNING *`,
-      [serviceRequestId, sr.client_id, sr.freelancer_id, userId]
-    );
-
-    return res.status(201).json(insert.rows[0]);
+    res.json(rows[0]);
   } catch (error) {
-    console.error("Error en getByServiceRequest (get/crear):", error);
-    res.status(500).json({ error: "Error al obtener/crear conversación" });
+    console.error("Error al obtener conversación:", error);
+    res.status(500).json({ error: "Error al obtener conversación" });
   }
 };
 
-/**
- * Obtener o crear conversación ligada a un proyecto
- * (se mantiene el nombre getByProject para no tocar rutas)
- */
+// 🔹 Obtener o crear conversación ligada a un proyecto
 exports.getByProject = async (req, res) => {
   const projectId = req.params.projectId || req.params.id;
   const userId = req.user?.id || null;
@@ -91,18 +41,11 @@ exports.getByProject = async (req, res) => {
       return res.json(existing.rows[0]);
     }
 
-    // 2) Obtener datos del proyecto y participantes combinando tablas
+    // 2) Obtener datos del proyecto y participantes
     const projectRes = await pool.query(
-      `SELECT
-         p.id,
-         p.client_id             AS p_client_id,
-         p.freelancer_id         AS p_freelancer_id,
-         sr.client_id            AS sr_client_id,
-         s.freelancer_id         AS s_freelancer_id
-       FROM projects p
-       LEFT JOIN service_requests sr ON sr.id = p.service_request_id
-       LEFT JOIN services         s  ON s.id  = p.service_id
-       WHERE p.id = $1`,
+      `SELECT id, client_id, freelancer_id
+       FROM projects
+       WHERE id = $1`,
       [projectId]
     );
 
@@ -112,35 +55,18 @@ exports.getByProject = async (req, res) => {
 
     const project = projectRes.rows[0];
 
-    // 3) Determinar cliente y freelancer con fallback
-    const clientId =
-      project.p_client_id || project.sr_client_id || null;
-    const freelancerId =
-      project.p_freelancer_id || project.s_freelancer_id || null;
-
-    // Si no tenemos participantes, no podemos crear conversación
-    if (!clientId || !freelancerId) {
-      console.error(
-        "No se pudieron determinar client_id / freelancer_id para el proyecto",
-        { projectId, clientId, freelancerId }
-      );
-      return res
-        .status(409)
-        .json({ error: "No se pudo crear la conversación del proyecto" });
-    }
-
-    // 4) Validar que el usuario autenticado sea participante (si lo tenemos)
+    // 3) Si tenemos userId, validamos que sea participante
     if (
       userId &&
-      userId !== clientId &&
-      userId !== freelancerId
+      userId !== project.client_id &&
+      userId !== project.freelancer_id
     ) {
       return res.status(403).json({
         error: "No estás autorizado para ver esta conversación del proyecto",
       });
     }
 
-    // 5) Crear la conversación
+    // 4) Crear la conversación
     const insert = await pool.query(
       `INSERT INTO conversations (
          project_id,
@@ -152,28 +78,26 @@ exports.getByProject = async (req, res) => {
        )
        VALUES ($1, NULL, $2, $3, $4, NOW())
        RETURNING *`,
-      [projectId, clientId, freelancerId, userId || clientId]
+      [projectId, project.client_id, project.freelancer_id, userId]
     );
 
     return res.status(201).json(insert.rows[0]);
   } catch (error) {
     console.error("Error en getByProject (get/crear):", error);
-    res.status(500).json({ error: "Error al obtener/crear conversación" });
+    res
+      .status(500)
+      .json({ error: "Error al obtener/crear conversación" });
   }
 };
 
-/**
- * Obtener mensajes de una conversación
- */
+// 🔹 Obtener mensajes de una conversación
 exports.getMessages = async (req, res) => {
   const { conversationId } = req.params;
   const userId = req.user?.id; // viene del authMiddleware
 
   try {
     const { rows } = await pool.query(
-      `SELECT 
-         m.*,
-         COALESCE(u.full_name, u.username, 'Usuario') AS username
+      `SELECT m.*, u.username
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE m.conversation_id = $1
@@ -181,7 +105,7 @@ exports.getMessages = async (req, res) => {
       [conversationId]
     );
 
-    // Marcar como leídos los mensajes del otro usuario
+    // 🔹 Marcar como leídos los mensajes del otro usuario al abrir la conversación
     if (userId) {
       try {
         await pool.query(
@@ -197,6 +121,7 @@ exports.getMessages = async (req, res) => {
           "Error al marcar mensajes como leídos (getMessages):",
           err
         );
+        // No rompemos la respuesta al cliente por esto
       }
     }
 
@@ -207,20 +132,20 @@ exports.getMessages = async (req, res) => {
   }
 };
 
-/**
- * Enviar mensaje a una conversación
- */
+// 🔹 Enviar mensaje en una conversación
 exports.postMessage = async (req, res) => {
   const { conversationId } = req.params;
   const { content } = req.body;
   const sender_id = req.user.id;
 
   if (!content || !content.trim()) {
-    return res.status(400).json({ error: "El mensaje no puede estar vacío" });
+    return res
+      .status(400)
+      .json({ error: "El mensaje no puede estar vacío" });
   }
 
   try {
-    // 1) Verificar que la conversación exista y que el usuario pertenece a ella
+    // 1️⃣ Verificar que la conversación exista y que el usuario pertenece a ella
     const convoRes = await pool.query(
       `SELECT id, client_id, freelancer_id, project_id, service_request_id
        FROM conversations
@@ -229,7 +154,9 @@ exports.postMessage = async (req, res) => {
     );
 
     if (!convoRes.rows.length) {
-      return res.status(404).json({ error: "La conversación no existe" });
+      return res
+        .status(404)
+        .json({ error: "La conversación no existe" });
     }
 
     const conversation = convoRes.rows[0];
@@ -239,11 +166,12 @@ exports.postMessage = async (req, res) => {
       sender_id !== conversation.freelancer_id
     ) {
       return res.status(403).json({
-        error: "No estás autorizado para enviar mensajes en esta conversación",
+        error:
+          "No estás autorizado para enviar mensajes en esta conversación",
       });
     }
 
-    // 2) Insertar el mensaje
+    // 2️⃣ Insertar el mensaje
     const { rows } = await pool.query(
       `INSERT INTO messages (
         conversation_id,
@@ -260,7 +188,7 @@ exports.postMessage = async (req, res) => {
 
     const message = rows[0];
 
-    // 3) Notificar al otro usuario
+    // 3️⃣ Notificar al otro usuario
     try {
       const targetUserId =
         sender_id === conversation.client_id
@@ -268,11 +196,13 @@ exports.postMessage = async (req, res) => {
           : conversation.client_id;
 
       if (targetUserId) {
+        // Preview corto del mensaje
         const preview =
           content.length > 80
             ? content.slice(0, 77).trimEnd() + "..."
             : content;
 
+        // Ruta de detalle: proyecto o solicitudes
         let link = null;
         if (conversation.project_id) {
           link = `/projects/${conversation.project_id}`;
@@ -288,7 +218,10 @@ exports.postMessage = async (req, res) => {
         );
       }
     } catch (notifyError) {
-      console.error("Error al crear notificación de nuevo mensaje:", notifyError);
+      console.error(
+        "Error al crear notificación de nuevo mensaje:",
+        notifyError
+      );
       // No rompemos el flujo principal si falla la notificación
     }
 
