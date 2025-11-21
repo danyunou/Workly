@@ -18,6 +18,10 @@ export default function Home() {
   const [isDeadlineFlexible, setIsDeadlineFlexible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 🔹 Mensaje dentro del modal (éxito / info / error)
+  const [requestAlert, setRequestAlert] = useState(null);
+  // { type: 'info' | 'error' | 'success', message: string }
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,6 +50,8 @@ export default function Home() {
     setProposedDeadline("");
     setProposedBudget(service?.price ? String(service.price) : "");
     setIsDeadlineFlexible(false);
+    setIsSubmitting(false);
+    setRequestAlert(null); // 🔹 limpiar mensaje previo
   };
 
   const startCloseModal = () => {
@@ -59,6 +65,7 @@ export default function Home() {
       setProposedBudget("");
       setIsDeadlineFlexible(false);
       setIsSubmitting(false);
+      setRequestAlert(null); // 🔹 limpiar mensaje
     }, 200);
   };
 
@@ -81,7 +88,6 @@ export default function Home() {
 
     return minDate.toISOString().split("T")[0];
   };
-
 
   const handleSendRequestFromModal = async () => {
     if (!selectedService || isSubmitting) return;
@@ -112,6 +118,7 @@ export default function Home() {
 
     try {
       setIsSubmitting(true);
+      setRequestAlert(null); // limpiar mensajes anteriores
 
       await axios.post(
         `https://workly-cy4b.onrender.com/api/services/hire/${selectedService.id}`,
@@ -126,6 +133,8 @@ export default function Home() {
         }
       );
 
+      // Si quieres, podemos mostrar el mensaje también dentro del modal,
+      // pero por ahora mantenemos el comportamiento original:
       alert(
         "Tu solicitud fue enviada al freelancer. Te avisaremos cuando la acepte."
       );
@@ -139,14 +148,18 @@ export default function Home() {
         const msgBack =
           err.response.data?.error ||
           "Ya tienes una solicitud activa para este servicio.";
-        alert(
-          `${msgBack}\n\nCuando la sección de 'Mis proyectos / solicitudes' esté disponible, podrás gestionarla desde ahí.`
-        );
+        setRequestAlert({
+          type: "info",
+          message: `${msgBack} Podrás gestionarla desde la sección "Mis propuestas".`,
+        });
       } else {
         const msg =
           err.response?.data?.error ||
           "Hubo un error al enviar la solicitud. Inténtalo de nuevo.";
-        alert(msg);
+        setRequestAlert({
+          type: "error",
+          message: msg,
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -296,6 +309,15 @@ export default function Home() {
                   </p>
 
                   <div className="service-modal-form">
+                    {/* 🔹 Mensaje dentro del modal */}
+                    {requestAlert && (
+                      <div
+                        className={`service-modal-alert service-modal-alert--${requestAlert.type}`}
+                      >
+                        {requestAlert.message}
+                      </div>
+                    )}
+
                     <h3>Cuéntale al freelancer qué necesitas</h3>
 
                     <label className="service-modal-label">

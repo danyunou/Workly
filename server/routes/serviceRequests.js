@@ -1,15 +1,50 @@
+// routes/serviceRequests.js
 const express = require("express");
 const router = express.Router();
-const auth = require("../middleware/authMiddleware");
+
+const serviceRequestController = require("../controllers/serviceRequestController");
+const authMiddleware = require("../middleware/authMiddleware");
 const ensureFreelancer = require("../middleware/ensureFreelancer");
-const controller = require("../controllers/serviceRequestController");
+const ensureClient = require("../middleware/ensureClient");
 
-router.post("/", auth, controller.createServiceRequest);
+// Crear solicitud de servicio (cliente -> freelancer)
+router.post(
+  "/",
+  authMiddleware,
+  ensureClient,
+  serviceRequestController.createServiceRequest
+);
 
-router.get("/freelancer", auth, ensureFreelancer, controller.getRequestsForFreelancer);
+// Solicitudes para el freelancer dueño del servicio
+router.get(
+  "/freelancer",
+  authMiddleware,
+  ensureFreelancer,
+  serviceRequestController.getRequestsForFreelancer
+);
 
-router.post("/:id/reject", auth, ensureFreelancer, controller.rejectServiceRequest);
+// Solicitudes que ha enviado el cliente a servicios
+router.get(
+  "/by-client",
+  authMiddleware,
+  ensureClient,
+  serviceRequestController.getRequestsByClient
+);
 
-router.put("/:id/resend", auth, controller.resendServiceRequest);
+// Rechazar solicitud (freelancer)
+router.post(
+  "/:id/reject",
+  authMiddleware,
+  ensureFreelancer,
+  serviceRequestController.rejectServiceRequest
+);
+
+// Reenviar solicitud rechazada (cliente)
+router.post(
+  "/:id/resend",
+  authMiddleware,
+  ensureClient,
+  serviceRequestController.resendServiceRequest
+);
 
 module.exports = router;

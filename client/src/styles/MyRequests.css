@@ -1,23 +1,474 @@
-.my-requests {
-  max-width: 800px;
-  margin: auto;
-  padding: 2rem;
+/* Página general */
+.my-requests-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+  padding-top: 80px; /* separa del navbar fijo */
 }
 
-.request-list {
+.my-requests-container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 30px 18px 40px;
+}
+
+/* Header */
+.my-requests-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 26px;
+}
+
+.my-requests-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.my-requests-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  max-width: 520px;
+}
+
+/* Métricas */
+.my-requests-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.metric-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  min-width: 140px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.metric-value {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Error / loading */
+.my-requests-loading {
+  text-align: center;
+  color: #6b7280;
+  margin-top: 40px;
+}
+
+.my-requests-error {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #b91c1c;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+/* Layout de secciones */
+.my-requests-sections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .my-requests-sections {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.requests-section {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px 16px 20px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  border: 1px solid #e5e7eb;
+}
+
+/* Header de sección */
+.section-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.section-header p {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+/* Estado vacío */
+.empty-state {
+  border-radius: 12px;
+  border: 1px dashed #d1d5db;
+  padding: 18px 14px;
+  text-align: left;
+  background: #f9fafb;
+}
+
+.empty-state h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.empty-state p {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Cards de solicitudes */
+.request-cards-list {
   list-style: none;
   padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.request-item {
-  background-color: #f4f4f4;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+.request-card {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 14px 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
 }
 
-.request-item h3 {
-  margin-top: 0;
-  color: #222;
+/* Header de cada card */
+.request-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 10px;
+}
+
+.request-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.request-card-description {
+  font-size: 13px;
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+/* Meta info (presupuesto, fechas, etc.) */
+.request-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.request-card-meta > div {
+  min-width: 120px;
+}
+
+.meta-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.meta-value {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 500;
+}
+
+/* Mensaje de solicitud servicio */
+.service-request-message {
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.service-request-message p {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #374151;
+}
+
+/* Chips de estado */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.status-chip.neutral {
+  background: #e5f3ff;
+  color: #1d4ed8;
+}
+
+.status-chip.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-chip.success {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.status-chip.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Botones */
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease,
+    background-color 0.08s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: #02ad7a;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.4);
+}
+
+.btn-primary:hover {
+  background: #039268;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 5px rgba(16, 185, 129, 0.4);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #0369a1;
+  border: 1px solid #cbd5f5;
+}
+
+.btn-secondary:hover {
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #6b7280;
+}
+
+.btn-ghost:hover {
+  background: #f3f4f6;
+}
+
+/* Acciones de cada request */
+.request-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+/* Propuestas */
+.proposal-section {
+  margin-top: 10px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 8px;
+}
+
+.proposal-section h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.proposal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proposal-card-item {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.proposal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 6px;
+}
+
+.proposal-freelancer {
+  font-size: 13px;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.proposal-message {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.proposal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.proposal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Link tipo botón */
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  color: #0369a1;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Botón de título de servicio */
+.service-title-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  cursor: pointer;
+  text-align: left;
+}
+
+.service-title-button:hover {
+  text-decoration: underline;
+}
+
+/* Caja de rechazo + reenvío */
+.rejection-box {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #fecaca;
+}
+
+.rejection-reason {
+  font-size: 13px;
+  color: #b91c1c;
+  margin-bottom: 8px;
+}
+
+/* Formulario de reenvío */
+.resend-form {
+  margin-top: 6px;
+  background: #fefce8;
+  border-radius: 10px;
+  border: 1px solid #facc15;
+  padding: 10px 10px 12px;
+}
+
+.resend-form h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #854d0e;
+  margin-bottom: 6px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.form-field span {
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.form-field textarea,
+.form-field input {
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 7px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.form-row .form-field {
+  flex: 1 1 150px;
+}
+
+.resend-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+  .my-requests-header {
+    flex-direction: column;
+  }
+
+  .request-card {
+    padding: 12px 10px;
+  }
+
+  .request-card-meta {
+    flex-direction: column;
+  }
 }

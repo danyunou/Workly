@@ -473,6 +473,39 @@
   transform: translateY(-1px);
 }
 
+/* === ALERTAS DENTRO DEL MODAL DE SERVICIO === */
+
+.service-modal-alert {
+  margin-bottom: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+
+/* Info (por ejemplo, ya tienes una solicitud activa) */
+.service-modal-alert--info {
+  background-color: #e0f2fe; /* azul clarito */
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+/* Error genérico */
+.service-modal-alert--error {
+  background-color: #fee2e2; /* rojo clarito */
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* (por si después quieres usar éxito dentro del modal) */
+.service-modal-alert--success {
+  background-color: #dcfce7;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+
 /* === RESPONSIVE === */
 
 @media (max-width: 768px) {
@@ -501,3 +534,4 @@
     padding: 0.8rem 1rem 1.1rem;
   }
 }
+

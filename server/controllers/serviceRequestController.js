@@ -101,6 +101,35 @@ exports.getRequestsForFreelancer = async (req, res) => {
   }
 };
 
+exports.getRequestsByClient = async (req, res) => {
+  const client_id = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `SELECT
+         sr.*,
+         s.id AS service_id,
+         s.title AS service_title,
+         u.full_name AS freelancer_name,
+         u.username AS freelancer_username,
+         u.profile_picture AS freelancer_pfp
+       FROM service_requests sr
+       JOIN services s ON sr.service_id = s.id
+       JOIN users u ON s.freelancer_id = u.id
+       WHERE sr.client_id = $1
+       ORDER BY sr.created_at DESC`,
+      [client_id]
+    );
+
+    return res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching client service requests:", err);
+    return res
+      .status(500)
+      .json({ error: "Error interno al obtener tus solicitudes." });
+  }
+};
+
 /* ======================================================
    3. RECHAZAR SOLICITUD + MOTIVO (freelancer)
    ====================================================== */
