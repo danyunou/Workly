@@ -3,6 +3,33 @@ const pool = require('../config/db');
 const { uploadToS3 } = require('../services/uploadService');
 const { createNotificationForUser } = require("./notificationController");
 
+// =======================================
+// ⭐ Helper LOCAL para obtener rating (NO usa "reviews")
+// =======================================
+async function getUserReviewStats(userId) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      CASE
+        WHEN COUNT(*) > 0 THEN ROUND(AVG(rating)::numeric, 1)
+        ELSE NULL
+      END AS avg_rating,
+      COUNT(*) AS review_count
+    FROM project_reviews
+    WHERE target_id = $1
+    `,
+    [userId]
+  );
+
+  if (rows.length === 0) {
+    return { avg_rating: null, review_count: 0 };
+  }
+
+  return rows[0];
+}
+
+
+
 exports.createFreelancerProfile = async (req, res) => {
   const {
     full_name,
