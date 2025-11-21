@@ -1,6 +1,7 @@
-//projectController.js
+// projectController.js
 const pool = require("../config/db");
 const { uploadToS3 } = require('../services/uploadService');
+const { createNotificationForUser } = require("./notificationController");
 
 exports.getMyProjects = async (req, res) => {
   const userId = req.user?.id;
@@ -157,7 +158,7 @@ exports.acceptContract = async (req, res) => {
       SET ${columnToUpdate} = TRUE
       WHERE id = $1
         AND (client_id = $2 OR freelancer_id = $2)
-      RETURNING id, status, client_accepted, freelancer_accepted;
+      RETURNING id, status, client_accepted, freelancer_accepted, client_id, freelancer_id;
       `,
       [projectId, userId]
     );
@@ -170,6 +171,24 @@ exports.acceptContract = async (req, res) => {
 
     let project = acceptRes.rows[0];
     let newStatus = project.status;
+
+    // 🔔 Notificar a la otra parte que alguien aceptó el contrato
+    try {
+      const isClient = roleId === 1;
+      const targetUserId = isClient ? project.freelancer_id : project.client_id;
+      const actorLabel = isClient ? "El cliente" : "El freelancer";
+
+      if (targetUserId) {
+        await createNotificationForUser(
+          targetUserId,
+          `${actorLabel} ha aceptado el contrato del proyecto #${project.id}.`,
+          "info",
+          `/projects/${project.id}`
+        );
+      }
+    } catch (notifyErr) {
+      console.error("Error creando notificación en acceptContract:", notifyErr);
+    }
 
     // 2️⃣ Si ambos ya aceptaron → pasar a 'awaiting_payment'
     if (project.client_accepted && project.freelancer_accepted) {
@@ -184,6 +203,18 @@ exports.acceptContract = async (req, res) => {
           [project.id]
         );
         newStatus = statusRes.rows[0].status;
+
+        // 🔔 Notificación al cliente: listo para pagar
+        try {
+          await createNotificationForUser(
+            project.client_id,
+            `El contrato del proyecto #${project.id} ha sido aceptado por ambas partes. Ya puedes realizar el pago.`,
+            "success",
+            `/projects/${project.id}`
+          );
+        } catch (notifyErr) {
+          console.error("Error creando notificación de awaiting_payment:", notifyErr);
+        }
       }
     }
 
@@ -213,6 +244,8 @@ exports.uploadDeliverable = async (req, res) => {
     );
     if (rows.length === 0) return res.status(403).json({ error: "No autorizado" });
 
+    const project = rows[0];
+
     const fileUrl = await uploadToS3(file);
 
     if (deliverableId) {
@@ -235,13 +268,24 @@ exports.uploadDeliverable = async (req, res) => {
       );
     }
 
+    // 🔔 Notificación al cliente: nuevo entregable
+    try {
+      await createNotificationForUser(
+        project.client_id,
+        `Tienes un nuevo entregable en el proyecto #${projectId}.`,
+        "info",
+        `/projects/${projectId}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en uploadDeliverable:", notifyErr);
+    }
+
     res.json({ message: "Entregable enviado" });
   } catch (err) {
     console.error("Error al subir entregable:", err);
     res.status(500).json({ error: "Error interno" });
   }
 };
-
 
 exports.getDeliverables = async (req, res) => {
   const userId = req.user.id;
@@ -281,7 +325,7 @@ exports.approveDeliverable = async (req, res) => {
   try {
     // Verifica que el usuario es cliente del proyecto relacionado
     const result = await pool.query(
-      `SELECT d.*, p.client_id
+      `SELECT d.*, p.client_id, p.freelancer_id, p.id AS project_id
        FROM deliverables d
        JOIN projects p ON p.id = d.project_id
        WHERE d.id = $1`,
@@ -293,9 +337,21 @@ exports.approveDeliverable = async (req, res) => {
     if (deliverable.client_id !== userId) return res.status(403).json({ error: "No autorizado" });
 
     await pool.query(
-      `UPDATE deliverables SET approved_by_client = TRUE WHERE id = $1`,
+      `UPDATE deliverables SET approved_by_client = TRUE, rejected_by_client = FALSE, rejection_message = NULL WHERE id = $1`,
       [deliverableId]
     );
+
+    // 🔔 Notificación al freelancer: entregable aprobado
+    try {
+      await createNotificationForUser(
+        deliverable.freelancer_id,
+        `Un entregable del proyecto #${deliverable.project_id} fue aprobado por el cliente.`,
+        "success",
+        `/projects/${deliverable.project_id}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en approveDeliverable:", notifyErr);
+    }
 
     res.json({ message: "Entregable aprobado correctamente" });
   } catch (err) {
@@ -317,6 +373,8 @@ exports.approveProject = async (req, res) => {
     if (project.rows.length === 0) {
       return res.status(403).json({ error: "No autorizado" });
     }
+
+    const proj = project.rows[0];
 
     // Verificar que todos los entregables estén aprobados
     const notApproved = await pool.query(
@@ -359,6 +417,27 @@ exports.approveProject = async (req, res) => {
       );
     }
 
+    // 🔔 Notificaciones al finalizar proyecto
+    try {
+      // Cliente (confirmación)
+      await createNotificationForUser(
+        proj.client_id,
+        `Has marcado el proyecto #${projectId} como completado.`,
+        "success",
+        `/projects/${projectId}`
+      );
+
+      // Freelancer
+      await createNotificationForUser(
+        proj.freelancer_id,
+        `El cliente ha marcado el proyecto #${projectId} como completado.`,
+        "info",
+        `/projects/${projectId}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en approveProject:", notifyErr);
+    }
+
     res.json({ message: "Proyecto aprobado y finalizado." });
   } catch (err) {
     console.error("Error al aprobar proyecto:", err);
@@ -373,7 +452,7 @@ exports.rejectDeliverable = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT d.*, p.client_id
+      `SELECT d.*, p.client_id, p.freelancer_id, p.id AS project_id
        FROM deliverables d
        JOIN projects p ON d.project_id = p.id
        WHERE d.id = $1`,
@@ -392,6 +471,23 @@ exports.rejectDeliverable = async (req, res) => {
        WHERE id = $2`,
       [reason, deliverableId]
     );
+
+    // 🔔 Notificación al freelancer: entregable rechazado
+    try {
+      const preview =
+        reason && reason.length > 80
+          ? reason.slice(0, 77).trimEnd() + "..."
+          : reason || "El cliente ha rechazado el entregable.";
+
+      await createNotificationForUser(
+        deliverable.freelancer_id,
+        `Un entregable del proyecto #${deliverable.project_id} fue rechazado. Motivo: "${preview}"`,
+        "warning",
+        `/projects/${deliverable.project_id}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en rejectDeliverable:", notifyErr);
+    }
 
     res.json({ message: "Entregable rechazado correctamente" });
   } catch (err) {
@@ -476,13 +572,27 @@ exports.createProjectFromServiceRequest = async (req, res) => {
       ]
     );
 
+    const project = newProject.rows[0];
+
     // 5️⃣ Actualizar estado de la solicitud
     await pool.query(
       `UPDATE service_requests SET status = 'accepted' WHERE id = $1`,
       [service_request_id]
     );
 
-    return res.status(201).json(newProject.rows[0]);
+    // 🔔 Notificación al cliente: solicitud aceptada y proyecto creado
+    try {
+      await createNotificationForUser(
+        sr.client_id,
+        `Tu solicitud de servicio "${sr.service_title}" fue aceptada. Se creó el proyecto #${project.id}.`,
+        "success",
+        `/projects/${project.id}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en createProjectFromServiceRequest:", notifyErr);
+    }
+
+    return res.status(201).json(project);
 
   } catch (err) {
     console.error("Error al crear proyecto desde solicitud:", err);
@@ -602,6 +712,28 @@ exports.createProjectFromProposal = async (req, res) => {
     );
 
     await client.query("COMMIT");
+
+    // 🔔 Notificaciones para ambos
+    try {
+      // Cliente
+      await createNotificationForUser(
+        proposal.client_id,
+        `Se creó el proyecto #${project.id} a partir de la propuesta aceptada.`,
+        "success",
+        `/projects/${project.id}`
+      );
+
+      // Freelancer
+      await createNotificationForUser(
+        proposal.freelancer_id,
+        `Se creó el proyecto #${project.id} con tu propuesta. El contrato está pendiente de aceptación.`,
+        "info",
+        `/projects/${project.id}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificaciones en createProjectFromProposal:", notifyErr);
+    }
+
     res.status(201).json(project);
   } catch (error) {
     await client.query("ROLLBACK");
@@ -645,7 +777,6 @@ exports.updateContract = async (req, res) => {
     const project = projectRes.rows[0];
 
     // 2️⃣ Restringir estados en los que se puede editar
-    // (ajústalo a lo que quieras)
     if (
       project.status === "completed" ||
       project.status === "cancelled" ||
@@ -698,6 +829,28 @@ exports.updateContract = async (req, res) => {
 
     const updatedRes = await pool.query(updateQuery, values);
     const updatedProject = updatedRes.rows[0];
+
+    // 🔔 Notificaciones a ambos: contrato modificado
+    try {
+      const msg =
+        `El contrato del proyecto #${updatedProject.id} fue modificado. Deben revisarlo y aceptarlo nuevamente.`;
+
+      await createNotificationForUser(
+        updatedProject.client_id,
+        msg,
+        "info",
+        `/projects/${updatedProject.id}`
+      );
+
+      await createNotificationForUser(
+        updatedProject.freelancer_id,
+        msg,
+        "info",
+        `/projects/${updatedProject.id}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en updateContract:", notifyErr);
+    }
 
     return res.json({
       message: "Contrato actualizado. Ambos deben aceptarlo de nuevo.",

@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { createNotificationForUser } = require("./notificationController");
 
 exports.getCurrentScope = async (req, res) => {
   const { projectId } = req.params;
@@ -104,16 +105,19 @@ exports.createNewScopeVersion = async (req, res) => {
       ]
     );
 
-    // 3) Resetear aceptaciones de contrato (asumiendo columnas)
-    await client.query(
+    // 3) Resetear aceptaciones de contrato
+    const projRes = await client.query(
       `UPDATE projects
        SET client_accepted = FALSE,
            freelancer_accepted = FALSE,
            contract_price = COALESCE($2, contract_price),
            contract_deadline = COALESCE($3, contract_deadline)
-       WHERE id = $1`,
+       WHERE id = $1
+       RETURNING client_id, freelancer_id`,
       [projectId, price, deadline]
     );
+
+    const project = projRes.rows[0];
 
     // 4) Mensaje de sistema en el chat
     await client.query(
@@ -138,6 +142,34 @@ exports.createNewScopeVersion = async (req, res) => {
         `Se creó la versión ${newVersion} del alcance del proyecto.`,
       ]
     );
+
+    // 🔔 5) NOTIFICACIONES
+    try {
+      const isClient = userId === project.client_id;
+      const actorLabel = isClient ? "El cliente" : "El freelancer";
+
+      const message =
+        `${actorLabel} creó la versión ${newVersion} del alcance del proyecto. ` +
+        `Es necesario revisar y aceptar nuevamente el contrato.`;
+
+      // Notificar al cliente
+      await createNotificationForUser(
+        project.client_id,
+        message,
+        "info",
+        `/projects/${projectId}`
+      );
+
+      // Notificar al freelancer
+      await createNotificationForUser(
+        project.freelancer_id,
+        message,
+        "info",
+        `/projects/${projectId}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificaciones en createNewScopeVersion:", notifyErr);
+    }
 
     await client.query("COMMIT");
     res.status(201).json(scopeRes.rows[0]);

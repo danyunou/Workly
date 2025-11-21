@@ -37,7 +37,7 @@ export default function FreelancerNavbar() {
       </div>
 
       <div className="navbar-right">
-        <Link to="/Notifications" className="logo-container">
+        <Link to="/notifications" className="logo-container">
           <img src={notifications} />
         </Link>
 

@@ -20,6 +20,8 @@ import MyRequests from "../pages/MyRequests";
 import MyProjects from "../pages/MyProjects";
 import ProjectDetails from "../pages/ProjectDetails";
 import PublicClientProfile from "../pages/PublicClientProfile";
+import Notifications from "../pages/Notifications";
+
 
 // Admin
 import AdminLayout from "../pages/admin/AdminLayout";
@@ -122,7 +124,14 @@ export default function AppRoutes() {
       />
       <Route path="/my-projects" element={<MyProjects />} />
       <Route path="/projects/:id" element={<ProjectDetails />} />
-
+      <Route
+        path="/notifications"
+        element={
+          <PrivateRoute>
+            <Notifications />
+          </PrivateRoute>
+        }
+      />
       {/* Privadas solo admin */}
       <Route
         path="/admin"

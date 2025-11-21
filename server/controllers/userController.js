@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const { uploadToS3 } = require("../services/uploadService");
 const { getUserReviewStats } = require("./reviewController");
+const { createNotificationForUser } = require("./notificationController");
 
 exports.getUserProfile = async (req, res) => {
   const userId = req.user?.id;

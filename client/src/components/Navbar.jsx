@@ -39,7 +39,7 @@ export default function Navbar() {
 
       <div className="navbar-right">
         <Link to="/freelancer-register">Conviértete en vendedor</Link>
-        <Link to="/Notifications" className="logo-container">
+        <Link to="/notifications" className="logo-container">
           <img src={notifications} />
         </Link>
 

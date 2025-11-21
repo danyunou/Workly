@@ -1,5 +1,6 @@
 // server/controllers/serviceRequestController.js
 const pool = require("../config/db");
+const { createNotificationForUser } = require("./notificationController");
 
 /* ======================================================
    1. CREAR SOLICITUD DE SERVICIO (cliente -> freelancer)

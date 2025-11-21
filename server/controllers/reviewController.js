@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { createNotificationForUser } = require("./notificationController");
 
 exports.createUserReview = async (req, res) => {
   const reviewerId = req.user?.id;

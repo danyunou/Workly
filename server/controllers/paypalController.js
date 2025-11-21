@@ -1,5 +1,7 @@
+// server/controllers/paypalController.js
 const paypalService = require('../services/paypalService');
 const pool = require('../config/db');
+const { createNotificationForUser } = require("./notificationController");
 
 exports.createOrderController = async (req, res) => {
   const { projectId } = req.params;
@@ -12,6 +14,7 @@ exports.createOrderController = async (req, res) => {
       SELECT 
         p.id,
         p.client_id,
+        p.freelancer_id,
         p.status,
         p.contract_price,
         p.client_accepted,
@@ -43,11 +46,19 @@ exports.createOrderController = async (req, res) => {
 
     const project = rows[0];
 
-    // Debe estar listo para pago (nuevo flujo = awaiting_payment)
+    // Debe estar listo para pago
     if (
       project.status !== 'awaiting_payment' &&
       project.status !== 'pending_contract' // compatibilidad con proyectos viejos
     ) {
+      // 🔔 Notificación al cliente: intento de pago en estado inválido
+      await createNotificationForUser(
+        userId,
+        "Intentaste realizar un pago, pero el proyecto todavía no está listo para pagar.",
+        "warning",
+        `/projects/${projectId}`
+      );
+
       return res.status(400).json({
         error: "El proyecto todavía no está listo para pagar.",
       });
@@ -55,6 +66,14 @@ exports.createOrderController = async (req, res) => {
 
     // Deben haber aceptado contrato ambas partes
     if (!project.client_accepted || !project.freelancer_accepted) {
+      // 🔔 Notificación al cliente
+      await createNotificationForUser(
+        userId,
+        "El contrato aún no está aceptado por ambas partes. Revisa los términos antes de pagar.",
+        "warning",
+        `/projects/${projectId}`
+      );
+
       return res.status(400).json({
         error: "El contrato debe estar aceptado por ambas partes antes del pago.",
       });
@@ -62,42 +81,79 @@ exports.createOrderController = async (req, res) => {
 
     const amount = project.contract_price ?? project.amount;
     if (!amount || Number(amount) <= 0) {
+      // 🔔 Notificación al cliente
+      await createNotificationForUser(
+        userId,
+        "No se pudo iniciar el pago porque el proyecto no tiene un monto definido.",
+        "error",
+        `/projects/${projectId}`
+      );
+
       return res.status(400).json({
         error: "El proyecto no tiene un monto de contrato definido.",
       });
     }
 
     const orderId = await paypalService.createOrder(amount);
+
+    // (Opcional) Notificación suave al cliente de que se inició el flujo de pago
+    await createNotificationForUser(
+      userId,
+      "Se inició el proceso de pago con PayPal para tu proyecto.",
+      "info",
+      `/projects/${projectId}`
+    );
+
     res.json({ id: orderId });
   } catch (err) {
     console.error('Error creating PayPal order:', err.message);
+
+    // 🔔 Notificación de error genérico al cliente
+    try {
+      await createNotificationForUser(
+        req.user.id,
+        "Ocurrió un error al iniciar el pago con PayPal. Inténtalo de nuevo más tarde.",
+        "error",
+        `/projects/${req.params.projectId}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en createOrderController:", notifyErr);
+    }
+
     res.status(500).json({ error: err.message });
   }
 };
 
 exports.captureOrderController = async (req, res) => {
   const { orderID, projectId } = req.body;
+  const userId = req.user.id; // cliente que está confirmando el pago
 
   try {
     const status = await paypalService.captureOrder(orderID);
 
     if (status === "COMPLETED") {
-      // Opcional: validar que esté awaiting_payment antes de marcarlo en progreso
+      // Obtener info del proyecto para validar estado y notificar
       const { rows } = await pool.query(
-        `SELECT status FROM projects WHERE id = $1`,
+        `SELECT id, client_id, freelancer_id, status FROM projects WHERE id = $1`,
         [projectId]
       );
+
       if (rows.length === 0) {
         return res.status(404).json({ error: "Proyecto no encontrado" });
       }
 
-      if (rows[0].status !== 'awaiting_payment' &&
-          rows[0].status !== 'pending_contract') {
+      const project = rows[0];
+
+      if (
+        project.status !== 'awaiting_payment' &&
+        project.status !== 'pending_contract'
+      ) {
         return res.status(400).json({
           error: "El proyecto no está en un estado válido para iniciar tras el pago.",
         });
       }
 
+      // Actualizar proyecto como en progreso
       await pool.query(
         `
         UPDATE projects
@@ -109,12 +165,59 @@ exports.captureOrderController = async (req, res) => {
         [projectId]
       );
 
+      // 🔔 Notificaciones después de pago exitoso
+      try {
+        // Cliente
+        await createNotificationForUser(
+          project.client_id,
+          "Tu pago se ha procesado correctamente. El proyecto ahora está en progreso.",
+          "success",
+          `/projects/${projectId}`
+        );
+
+        // Freelancer
+        await createNotificationForUser(
+          project.freelancer_id,
+          "El cliente ha realizado el pago. El proyecto ahora está en progreso y puedes continuar con el trabajo.",
+          "info",
+          `/projects/${projectId}`
+        );
+      } catch (notifyErr) {
+        console.error("Error creando notificaciones tras pago exitoso:", notifyErr);
+      }
+
       res.json({ message: "Pago exitoso y proyecto iniciado." });
     } else {
+      // Pago no completado
+      // 🔔 Notificación de fallo al cliente
+      try {
+        await createNotificationForUser(
+          userId,
+          "El pago con PayPal no se completó. Puedes intentarlo de nuevo desde el proyecto.",
+          "warning",
+          `/projects/${projectId}`
+        );
+      } catch (notifyErr) {
+        console.error("Error creando notificación de pago no completado:", notifyErr);
+      }
+
       res.status(400).json({ error: "Pago no completado" });
     }
   } catch (err) {
     console.error('Error capturing PayPal order:', err.message);
+
+    // 🔔 Notificación de error técnico al cliente
+    try {
+      await createNotificationForUser(
+        userId,
+        "Ocurrió un error al confirmar el pago con PayPal. Si el cargo aparece en tu cuenta, contacta soporte.",
+        "error",
+        `/projects/${projectId}`
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en captureOrderController:", notifyErr);
+    }
+
     res.status(500).json({ error: err.message });
   }
 };

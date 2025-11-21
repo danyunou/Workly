@@ -1,5 +1,9 @@
 // controllers/disputeController.js
 const pool = require("../config/db");
+const { createNotificationForUser } = require("./notificationController");
+
+// Opcional: si tienes un usuario admin dedicado
+const ADMIN_USER_ID = 1; // Cambiar al ID real del admin si aplica
 
 // ==========================
 // 1. Crear disputa
@@ -25,6 +29,8 @@ exports.createDispute = async (req, res) => {
         .json({ error: "No autorizado para abrir disputa" });
     }
 
+    const project = projectRes.rows[0];
+
     // Validar máximo número de disputas por proyecto
     const totalDisputes = await pool.query(
       `SELECT COUNT(*) FROM disputes WHERE project_id = $1`,
@@ -32,12 +38,20 @@ exports.createDispute = async (req, res) => {
     );
 
     if (parseInt(totalDisputes.rows[0].count, 10) >= 5) {
+      // 🔔 Notificación al cliente
+      await createNotificationForUser(
+        userId,
+        "Intentaste abrir una disputa, pero el límite para este proyecto ya fue alcanzado.",
+        "warning",
+        `/projects/${projectId}`
+      );
+
       return res.status(400).json({
         error: "Límite de disputas alcanzado para este proyecto.",
       });
     }
 
-    // Verificar si existe una disputa reciente abierta o ya resuelta
+    // Verificar última disputa
     const existing = await pool.query(
       `SELECT * 
        FROM disputes 
@@ -49,11 +63,30 @@ exports.createDispute = async (req, res) => {
 
     if (existing.rows.length > 0) {
       const lastDispute = existing.rows[0];
+
       if (lastDispute.status === "open") {
-        return res
-          .status(400)
-          .json({ error: "Ya existe una disputa abierta para este proyecto." });
-      } else if (lastDispute.status === "resuelta") {
+        // 🔔 Notificación al cliente
+        await createNotificationForUser(
+          userId,
+          "Ya existe una disputa abierta para este proyecto. Revisa su estado.",
+          "warning",
+          `/projects/${projectId}`
+        );
+
+        return res.status(400).json({
+          error: "Ya existe una disputa abierta para este proyecto.",
+        });
+      }
+
+      if (lastDispute.status === "resuelta") {
+        // 🔔 Notificación al cliente
+        await createNotificationForUser(
+          userId,
+          "Este proyecto ya tiene una disputa resuelta por el administrador.",
+          "info",
+          `/projects/${projectId}`
+        );
+
         return res.status(400).json({
           error: "Este proyecto ya fue resuelto por el administrador.",
         });
@@ -75,7 +108,40 @@ exports.createDispute = async (req, res) => {
       [projectId, userId, description, policyAccepted]
     );
 
-    res.status(201).json(insertRes.rows[0]);
+    const dispute = insertRes.rows[0];
+
+    // NOTIFICACIONES
+    try {
+      const freelancerId = project.freelancer_id;
+
+      // 🔔 Notificación al freelancer
+      await createNotificationForUser(
+        freelancerId,
+        "Se ha abierto una disputa en uno de tus proyectos.",
+        "warning",
+        `/projects/${projectId}`
+      );
+
+      // 🔔 Confirmación al cliente
+      await createNotificationForUser(
+        userId,
+        "Has abierto una disputa correctamente. Un administrador revisará el caso.",
+        "success",
+        `/projects/${projectId}`
+      );
+
+      // 🔔 Notificación al admin (opcional)
+      await createNotificationForUser(
+        ADMIN_USER_ID,
+        `Nueva disputa creada para el proyecto #${projectId}.`,
+        "system",
+        `/admin/disputes`
+      );
+    } catch (err) {
+      console.error("Error al generar notificaciones de disputa:", err);
+    }
+
+    res.status(201).json(dispute);
   } catch (err) {
     console.error("Error al crear disputa:", err);
     res.status(500).json({ error: "Error interno" });
@@ -83,7 +149,7 @@ exports.createDispute = async (req, res) => {
 };
 
 // ==========================
-// 2. Obtener disputas por proyecto (para el cliente actual)
+// 2. Obtener disputas por proyecto
 //    ➜ /api/disputes/by-project/:projectId
 // ==========================
 exports.getDisputeByProject = async (req, res) => {
@@ -91,7 +157,7 @@ exports.getDisputeByProject = async (req, res) => {
   const { projectId } = req.params;
 
   try {
-    // Disputa del usuario actual (cliente) para este proyecto
+    // Disputa del usuario actual (cliente)
     const userDisputeRes = await pool.query(
       `SELECT *
        FROM disputes
@@ -102,7 +168,7 @@ exports.getDisputeByProject = async (req, res) => {
       [projectId, userId]
     );
 
-    // Todas las disputas de este proyecto (para contar límite, etc.)
+    // Todas las disputas del proyecto
     const allDisputesRes = await pool.query(
       `SELECT *
        FROM disputes
@@ -116,7 +182,6 @@ exports.getDisputeByProject = async (req, res) => {
       all: allDisputesRes.rows,
     };
 
-    // Si no hay disputas en absoluto, devolvemos 404 con estructura vacía
     if (!response.user && response.all.length === 0) {
       return res.status(404).json(response);
     }

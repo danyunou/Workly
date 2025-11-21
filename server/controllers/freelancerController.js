@@ -1,6 +1,7 @@
 //freelancerController.js
 const pool = require('../config/db');
 const { uploadToS3 } = require('../services/uploadService');
+const { createNotificationForUser } = require("./notificationController");
 
 exports.createFreelancerProfile = async (req, res) => {
   const {

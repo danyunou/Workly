@@ -1,4 +1,3 @@
-// src/pages/ProjectDetail.jsx
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -34,7 +33,7 @@ export default function ProjectDetail() {
   const [showResubmitForm, setShowResubmitForm] = useState(false);
   const [disputeLimitReached, setDisputeLimitReached] = useState(false);
 
-  // Contrato (edición rápida de monto y fecha)
+  // Contrato (edición rápida de monto y fecha) -> ahora en modal
   const [showEditContract, setShowEditContract] = useState(false);
   const [editAmount, setEditAmount] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
@@ -714,51 +713,6 @@ export default function ProjectDetail() {
                   </p>
                 </div>
               </div>
-
-              {/* Form edición contrato */}
-              {showEditContract && (
-                <form
-                  onSubmit={handleUpdateContract}
-                  className="edit-contract-form"
-                >
-                  <h4>Editar contrato</h4>
-                  <div className="form-row">
-                    <label>
-                      Monto del contrato (USD)
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Fecha límite
-                      <input
-                        type="date"
-                        value={editDeadline}
-                        onChange={(e) => setEditDeadline(e.target.value)}
-                      />
-                    </label>
-                  </div>
-                  <div className="form-actions">
-                    <button type="submit" className="primary-btn">
-                      Guardar cambios
-                    </button>
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => setShowEditContract(false)}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                  <p className="form-helper">
-                    Al modificar el contrato, las aceptaciones de cliente y
-                    freelancer se reiniciarán y deberán aprobarlo nuevamente.
-                  </p>
-                </form>
-              )}
             </section>
 
             {/* Alcance / Scope */}
@@ -870,99 +824,10 @@ export default function ProjectDetail() {
 
                     <button
                       className="scope-new-btn"
-                      onClick={() => setIsNewScopeOpen((v) => !v)}
+                      onClick={() => setIsNewScopeOpen(true)}
                     >
-                      {isNewScopeOpen
-                        ? "Cerrar nueva versión de alcance"
-                        : "Proponer nueva versión de alcance"}
+                      Proponer nueva versión de alcance
                     </button>
-
-                    {isNewScopeOpen && (
-                      <form
-                        className="scope-form"
-                        onSubmit={handleCreateScopeVersion}
-                      >
-                        <label>
-                          Título
-                          <input
-                            type="text"
-                            name="title"
-                            value={newScopeForm.title}
-                            onChange={handleNewScopeChange}
-                            required
-                          />
-                        </label>
-
-                        <label>
-                          Descripción
-                          <textarea
-                            name="description"
-                            rows={3}
-                            value={newScopeForm.description}
-                            onChange={handleNewScopeChange}
-                            required
-                          />
-                        </label>
-
-                        <label>
-                          Entregables (un punto por línea)
-                          <textarea
-                            name="deliverables"
-                            rows={3}
-                            value={newScopeForm.deliverables}
-                            onChange={handleNewScopeChange}
-                          />
-                        </label>
-
-                        <label>
-                          No incluye / exclusiones
-                          <textarea
-                            name="exclusions"
-                            rows={2}
-                            value={newScopeForm.exclusions}
-                            onChange={handleNewScopeChange}
-                          />
-                        </label>
-
-                        <div className="scope-form-row">
-                          <label>
-                            Monto (MXN)
-                            <input
-                              type="number"
-                              step="0.01"
-                              name="price"
-                              value={newScopeForm.price}
-                              onChange={handleNewScopeChange}
-                            />
-                          </label>
-
-                          <label>
-                            Fecha límite
-                            <input
-                              type="date"
-                              name="deadline"
-                              value={newScopeForm.deadline}
-                              onChange={handleNewScopeChange}
-                            />
-                          </label>
-                        </div>
-
-                        <label>
-                          Límite de revisiones
-                          <input
-                            type="number"
-                            min="0"
-                            name="revision_limit"
-                            value={newScopeForm.revision_limit}
-                            onChange={handleNewScopeChange}
-                          />
-                        </label>
-
-                        <button type="submit" className="scope-form-submit">
-                          Guardar versión de alcance
-                        </button>
-                      </form>
-                    )}
                   </>
                 )}
 
@@ -1371,6 +1236,190 @@ export default function ProjectDetail() {
           </p>
         </section>
       </div>
+
+      {/* === MODAL EDITAR CONTRATO === */}
+      {showEditContract && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowEditContract(false)}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>Editar contrato</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowEditContract(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleUpdateContract}
+              className="modal-body edit-contract-form"
+            >
+              <div className="form-row">
+                <label>
+                  Monto del contrato (USD)
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Fecha límite
+                  <input
+                    type="date"
+                    value={editDeadline}
+                    onChange={(e) => setEditDeadline(e.target.value)}
+                  />
+                </label>
+              </div>
+              <p className="form-helper">
+                Al modificar el contrato, las aceptaciones de cliente y
+                freelancer se reiniciarán y deberán aprobarlo nuevamente.
+              </p>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setShowEditContract(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="primary-btn">
+                  Guardar cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* === MODAL NUEVA VERSIÓN DE ALCANCE === */}
+      {isNewScopeOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setIsNewScopeOpen(false)}
+        >
+          <div
+            className="modal modal-large"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>Nueva versión de alcance</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setIsNewScopeOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              className="modal-body scope-form"
+              onSubmit={handleCreateScopeVersion}
+            >
+              <label>
+                Título
+                <input
+                  type="text"
+                  name="title"
+                  value={newScopeForm.title}
+                  onChange={handleNewScopeChange}
+                  required
+                />
+              </label>
+
+              <label>
+                Descripción
+                <textarea
+                  name="description"
+                  rows={3}
+                  value={newScopeForm.description}
+                  onChange={handleNewScopeChange}
+                  required
+                />
+              </label>
+
+              <label>
+                Entregables (un punto por línea)
+                <textarea
+                  name="deliverables"
+                  rows={3}
+                  value={newScopeForm.deliverables}
+                  onChange={handleNewScopeChange}
+                />
+              </label>
+
+              <label>
+                No incluye / exclusiones
+                <textarea
+                  name="exclusions"
+                  rows={2}
+                  value={newScopeForm.exclusions}
+                  onChange={handleNewScopeChange}
+                />
+              </label>
+
+              <div className="scope-form-row">
+                <label>
+                  Monto (MXN)
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="price"
+                    value={newScopeForm.price}
+                    onChange={handleNewScopeChange}
+                  />
+                </label>
+
+                <label>
+                  Fecha límite
+                  <input
+                    type="date"
+                    name="deadline"
+                    value={newScopeForm.deadline}
+                    onChange={handleNewScopeChange}
+                  />
+                </label>
+              </div>
+
+              <label>
+                Límite de revisiones
+                <input
+                  type="number"
+                  min="0"
+                  name="revision_limit"
+                  value={newScopeForm.revision_limit}
+                  onChange={handleNewScopeChange}
+                />
+              </label>
+
+              <div className="modal-footer modal-footer-right">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setIsNewScopeOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="primary-btn">
+                  Guardar versión de alcance
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

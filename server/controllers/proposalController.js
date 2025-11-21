@@ -1,5 +1,6 @@
 // server/controllers/proposalController.js
 const pool = require("../config/db");
+const { createNotificationForUser } = require("./notificationController");
 
 exports.getProposalsByRequest = async (req, res) => {
   const { requestId } = req.params;
@@ -30,7 +31,7 @@ exports.acceptProposal = async (req, res) => {
 
     // 1) Verificar que la propuesta exista y pertenezca a una solicitud del cliente
     const proposalCheck = await client.query(
-      `SELECT p.*, r.client_id
+      `SELECT p.*, r.client_id, r.title AS request_title
        FROM proposals p
        JOIN requests r ON p.request_id = r.id
        WHERE p.id = $1`,
@@ -57,7 +58,16 @@ exports.acceptProposal = async (req, res) => {
       [proposal.request_id]
     );
 
-    // 3) Rechazar otras propuestas de la misma solicitud
+    // 3) Obtener IDs de freelancers con otras propuestas para notificaciones luego
+    const othersRes = await client.query(
+      `SELECT freelancer_id
+       FROM proposals
+       WHERE request_id = $1 AND id != $2`,
+      [proposal.request_id, proposalId]
+    );
+    const otherFreelancers = othersRes.rows.map(r => r.freelancer_id);
+
+    // 4) Rechazar otras propuestas de la misma solicitud
     await client.query(
       `UPDATE proposals 
        SET status = 'rejected' 
@@ -65,13 +75,13 @@ exports.acceptProposal = async (req, res) => {
       [proposal.request_id, proposalId]
     );
 
-    // 4) Marcar propuesta aceptada
+    // 5) Marcar propuesta aceptada
     await client.query(
       `UPDATE proposals SET status = 'accepted' WHERE id = $1`,
       [proposalId]
     );
 
-    // 5) Crear proyecto (pendiente de contrato) usando columnas de la propuesta
+    // 6) Crear proyecto (pendiente de contrato) usando columnas de la propuesta
     const projectRes = await client.query(
       `INSERT INTO projects (
          proposal_id,
@@ -117,7 +127,7 @@ exports.acceptProposal = async (req, res) => {
 
     const project = projectRes.rows[0];
 
-    // 6) Crear conversación asociada al proyecto
+    // 7) Crear conversación asociada al proyecto
     const conversationRes = await client.query(
       `INSERT INTO conversations (project_id, created_at)
        VALUES ($1, NOW())
@@ -127,7 +137,7 @@ exports.acceptProposal = async (req, res) => {
 
     const conversation = conversationRes.rows[0];
 
-    // 7) Crear project_scope v1 basado en la propuesta
+    // 8) Crear project_scope v1 basado en la propuesta
     const scopeTitle = "Alcance inicial del proyecto";
     const scopeDescription =
       proposal.scope ||
@@ -151,7 +161,7 @@ exports.acceptProposal = async (req, res) => {
         project.id,
         scopeTitle,
         scopeDescription,
-        null, // deliverables (puedes luego pasarlo a JSON con items)
+        null, // deliverables
         null, // exclusions
         project.revision_limit || null,
         project.contract_deadline,
@@ -160,7 +170,7 @@ exports.acceptProposal = async (req, res) => {
       ]
     );
 
-    // 8) Mensaje de sistema en el chat
+    // 9) Mensaje de sistema en el chat
     await client.query(
       `INSERT INTO messages (
         conversation_id,
@@ -179,6 +189,40 @@ exports.acceptProposal = async (req, res) => {
     );
 
     await client.query("COMMIT");
+
+    // 🔔 10) NOTIFICACIONES (fuera de la transacción)
+    try {
+      const requestTitle = proposal.request_title || "tu solicitud";
+
+      // a) Freelancer seleccionado
+      await createNotificationForUser(
+        proposal.freelancer_id,
+        `Tu propuesta fue aceptada para "${requestTitle}". Se creó el proyecto #${project.id}.`,
+        "success",
+        `/projects/${project.id}`
+      );
+
+      // b) Cliente (confirmación)
+      await createNotificationForUser(
+        clientId,
+        `Has aceptado una propuesta para "${requestTitle}". Se creó el proyecto #${project.id}.`,
+        "info",
+        `/projects/${project.id}`
+      );
+
+      // c) Otros freelancers cuyas propuestas fueron rechazadas
+      const uniqueOthers = [...new Set(otherFreelancers)];
+      for (const freelancerId of uniqueOthers) {
+        await createNotificationForUser(
+          freelancerId,
+          `La solicitud "${requestTitle}" ya fue contratada y tu propuesta no fue seleccionada.`,
+          "info",
+          `/freelancer/requests` // ajusta a la ruta que uses para ver solicitudes del freelancer
+        );
+      }
+    } catch (notifyErr) {
+      console.error("Error creando notificaciones en acceptProposal:", notifyErr);
+    }
 
     res.json({
       message: "Propuesta aceptada, proyecto y chat creados.",
@@ -205,18 +249,44 @@ exports.sendProposal = async (req, res) => {
     scope,
   } = req.body;
 
-  try{
+  try {
+    // 0) Obtener la solicitud para saber el cliente
+    const reqRes = await pool.query(
+      `SELECT id, client_id, title FROM requests WHERE id = $1`,
+      [requestId]
+    );
+
+    if (reqRes.rows.length === 0) {
+      return res.status(404).json({ error: "Solicitud no encontrada" });
+    }
+
+    const request = reqRes.rows[0];
+
+    // 1) Verificar si ya existe propuesta de este freelancer
     const existing = await pool.query(
       `SELECT * FROM proposals WHERE request_id = $1 AND freelancer_id = $2`,
       [requestId, freelancerId]
     );
 
     if (existing.rowCount > 0) {
+      // 🔔 Notificación al freelancer por intento duplicado
+      try {
+        await createNotificationForUser(
+          freelancerId,
+          "Ya has enviado una propuesta a esta solicitud. Puedes gestionar tus propuestas desde 'Mis propuestas'.",
+          "warning",
+          `/my-proposals` // ajusta a tu ruta real
+        );
+      } catch (notifyErr) {
+        console.error("Error creando notificación en sendProposal (duplicado):", notifyErr);
+      }
+
       return res
         .status(400)
         .json({ error: "Ya has enviado una propuesta a esta solicitud." });
     }
 
+    // 2) Crear propuesta
     const result = await pool.query(
       `INSERT INTO proposals (
          request_id,
@@ -241,7 +311,22 @@ exports.sendProposal = async (req, res) => {
       ]
     );
 
-    res.status(201).json(result.rows[0]);
+    const proposal = result.rows[0];
+
+    // 🔔 3) Notificación al cliente: nueva propuesta recibida
+    try {
+      const title = request.title || "tu solicitud";
+      await createNotificationForUser(
+        request.client_id,
+        `Has recibido una nueva propuesta para "${title}".`,
+        "info",
+        `/my-requests` // ruta donde el cliente ve sus solicitudes
+      );
+    } catch (notifyErr) {
+      console.error("Error creando notificación en sendProposal:", notifyErr);
+    }
+
+    res.status(201).json(proposal);
   } catch (err) {
     console.error("Error sending proposal:", err.message);
     res.status(500).json({ error: "Internal server error" });

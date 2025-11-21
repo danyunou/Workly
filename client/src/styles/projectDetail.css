@@ -58,7 +58,7 @@
   background: #f9fafb;
 }
 
-/* Status colors (ajusta según tus estados reales) */
+/* Status colors */
 .status-pending_contract,
 .status-awaiting_contract {
   background: #fef3c7;
@@ -233,8 +233,10 @@
   color: #4b5563;
 }
 
+/* Formulario editar contrato (ahora dentro de modal) */
+
 .edit-contract-form {
-  margin-top: 0.9rem;
+  margin-top: 0.2rem;
   background: #f9fafb;
   border-radius: 0.8rem;
   padding: 0.9rem 1rem;
@@ -269,15 +271,8 @@
   font-size: 0.9rem;
 }
 
-.edit-contract-form .form-actions {
-  margin-top: 0.8rem;
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
 .edit-contract-form .form-helper {
-  margin-top: 0.5rem;
+  margin-top: 0.6rem;
   font-size: 0.8rem;
   color: #6b7280;
 }
@@ -393,7 +388,7 @@
   margin-bottom: 0.7rem;
 }
 
-/* Form nueva versión de alcance */
+/* Botón nueva versión alcance */
 
 .scope-new-btn {
   margin-top: 0.6rem;
@@ -412,12 +407,14 @@
   background: #d1fae5;
 }
 
+/* Form nueva versión de alcance (usado dentro de modal) */
+
 .scope-form {
-  margin-top: 0.6rem;
-  background: #ecfdf5;
+  margin-top: 0.4rem;
+  background: #f9fafb;
   border-radius: 0.9rem;
   padding: 0.7rem 0.8rem;
-  border: 1px solid #a7f3d0;
+  border: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -453,18 +450,6 @@
 
 .scope-form-row > label {
   flex: 1;
-}
-
-.scope-form-submit {
-  align-self: flex-end;
-  margin-top: 0.3rem;
-  border-radius: 999px;
-  border: none;
-  background: #02ad7a;
-  color: white;
-  font-size: 0.8rem;
-  padding: 0.4rem 0.9rem;
-  cursor: pointer;
 }
 
 /* Historial scope */
@@ -938,6 +923,88 @@
   color: #6b7280;
 }
 
+/* === MODALES GENERALES === */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: flex-start;
+  padding-top: 5rem;
+  justify-content: center;
+  padding-bottom: calc(2rem + 80px) !important;
+  z-index: 50;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 2rem 1.1rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.33);
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden
+}
+
+.modal-large {
+  max-width: 720px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.modal-close-btn {
+  border: none;
+  background: transparent;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0.1rem 0.3rem;
+  border-radius: 999px;
+}
+
+.modal-close-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.modal-body {
+  overflow-y: auto;
+  padding-top: 0.3rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.modal-footer {
+  margin-top: 0.8rem;
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.modal-footer-right {
+  justify-content: flex-end;
+}
+
 /* Responsive */
 
 @media (max-width: 960px) {
@@ -961,6 +1028,10 @@
   .contract-note {
     text-align: left;
     max-width: 100%;
+  }
+
+  .modal {
+    margin: 0 1rem;
   }
 }
 

@@ -1,5 +1,6 @@
 // server/controllers/requestController.js
 const pool = require("../config/db");
+const { createNotificationForUser } = require("./notificationController");
 
 // 🔹 Crear una custom request pública (cliente -> marketplace)
 exports.createRequest = async (req, res) => {
