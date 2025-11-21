@@ -454,25 +454,45 @@ exports.hireService = async (req, res) => {
 
     const service = serviceRows[0];
 
-    // 2) Verificar si YA hay una solicitud pendiente o rechazada
-    //    de este cliente para ESTE MISMO servicio.
-    //    Estas se deben gestionar / reenviar desde "Mis solicitudes".
+    // 2) Verificar si el cliente ya tiene una solicitud ACTIVA
+    // ACTIVO significa:
+    // - pending_freelancer
+    // - pending_client
+    // - rejected (si quieres bloquear reenvío automático)
+
     const { rows: existingRequests } = await pool.query(
       `
       SELECT id, status
       FROM service_requests
       WHERE service_id = $1
         AND client_id = $2
-        AND status IN ('pending_freelancer', 'rejected')
+        AND status IN ('pending_freelancer', 'pending_client', 'rejected')
+      ORDER BY created_at DESC
+      LIMIT 1
       `,
       [service.id, clientId]
     );
 
     if (existingRequests.length > 0) {
-      return res.status(409).json({
-        error:
-          "Ya tienes una solicitud pendiente o rechazada para este servicio. Podrás gestionarla y reenviarla desde 'Mis solicitudes'.",
-      });
+      // Mensajes según estado
+      const reqStatus = existingRequests[0].status;
+
+      let errorMsg = "Ya tienes una solicitud activa para este servicio.";
+
+      if (reqStatus === "pending_freelancer") {
+        errorMsg =
+          "Ya enviaste una solicitud para este servicio. Aún está pendiente de respuesta.";
+      }
+      if (reqStatus === "pending_client") {
+        errorMsg =
+          "Tienes una propuesta pendiente por responder. Gestiónala desde 'Mis solicitudes'.";
+      }
+      if (reqStatus === "rejected") {
+        errorMsg =
+          "Tu última solicitud fue rechazada. Puedes gestionarla y reenviarla desde 'Mis solicitudes'.";
+      }
+
+      return res.status(409).json({ error: errorMsg });
     }
 
     // 3) Crear la nueva solicitud
@@ -504,11 +524,11 @@ exports.hireService = async (req, res) => {
         "Solicitud enviada al freelancer. Podrás gestionarla desde 'Mis solicitudes'.",
       service_request: serviceRequest,
     });
+
   } catch (err) {
     console.error("Error al solicitar servicio:", err);
 
-    // Red de seguridad por si el índice unique_active_service_request
-    // también considera 'rejected' o algún otro estado como activo.
+    // Fix por si el CONSTRAINT todavía marca la solicitud como activa
     if (err.code === "23505" && err.constraint === "unique_active_service_request") {
       return res.status(409).json({
         error:
