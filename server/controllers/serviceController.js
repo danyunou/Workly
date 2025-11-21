@@ -481,6 +481,12 @@ exports.hireService = async (req, res) => {
     });
   } catch (err) {
     console.error("Error al solicitar servicio:", err);
+    if (err.code === "23505" && err.constraint === "unique_active_service_request") {
+      return res.status(409).json({
+        error:
+          "Ya tienes una solicitud activa para este servicio. Revisa el estado de tu solicitud antes de crear una nueva.",
+      });
+    }
     res.status(500).json({ error: "Error interno al solicitar el servicio" });
   }
 };

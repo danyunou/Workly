@@ -20,6 +20,7 @@ import MyRequests from "../pages/MyRequests";
 import MyProjects from "../pages/MyProjects";
 import ProjectDetails from "../pages/ProjectDetails";
 import PublicClientProfile from "../pages/PublicClientProfile";
+import ProjectChatPage from "../pages/ProjectChatPage";
 
 // Admin
 import AdminLayout from "../pages/admin/AdminLayout";
@@ -77,6 +78,14 @@ export default function AppRoutes() {
         element={
           <PrivateRoute>
             <Services />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/chat"
+        element={
+          <PrivateRoute>
+            <ProjectChatPage />
           </PrivateRoute>
         }
       />

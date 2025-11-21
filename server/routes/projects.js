@@ -18,6 +18,12 @@ router.post(
   projectController.uploadDeliverable
 );
 
+router.patch(
+  "/:id/contract",
+  authMiddleware,
+  projectController.updateContract
+);
+
 router.get("/:id/deliverables", authMiddleware, projectController.getDeliverables);
 
 router.post("/deliverables/:deliverableId/approve", authMiddleware, projectController.approveDeliverable);

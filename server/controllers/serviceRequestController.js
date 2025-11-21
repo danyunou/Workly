@@ -8,59 +8,67 @@ exports.createServiceRequest = async (req, res) => {
   const { service_id, message, proposed_deadline, proposed_budget } = req.body;
   const client_id = req.user.id;
 
+  const client = await pool.connect();
+
   try {
-    // 1) Evitar duplicados activos
-    const existing = await pool.query(
-      `
-      SELECT id, status 
-      FROM service_requests 
-      WHERE service_id = $1 
-        AND client_id = $2
-        AND status IN ('pending_freelancer', 'rejected', 'accepted')
-      ORDER BY created_at DESC
-      LIMIT 1
-      `,
-      [service_id, client_id]
-    );
+    await client.query("BEGIN");
 
-    if (existing.rows.length > 0) {
-      return res.status(409).json({
-        error: "Ya existe una solicitud activa para este servicio.",
-        request_id: existing.rows[0].id,
-        status: existing.rows[0].status,
-      });
-    }
-
-    // 2) Crear solicitud
-    const result = await pool.query(
-      `
-      INSERT INTO service_requests (
+    // 1) Crear service_request
+    const serviceRequestResult = await client.query(
+      `INSERT INTO service_requests (
         service_id,
         client_id,
         message,
         proposed_deadline,
         proposed_budget,
         status,
-        revision,
-        created_at,
-        last_status_change_at
+        created_at
       )
-      VALUES ($1, $2, $3, $4, $5, 'pending_freelancer', 1, NOW(), NOW())
-      RETURNING *
-      `,
-      [
-        service_id,
-        client_id,
-        message || null,
-        proposed_deadline || null,
-        proposed_budget || null,
-      ]
+      VALUES ($1, $2, $3, $4, $5, 'pending_freelancer', NOW())
+      RETURNING *`,
+      [service_id, client_id, message, proposed_deadline, proposed_budget]
     );
 
-    return res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error("Error creating service request:", err);
-    res.status(500).json({ error: "Internal server error." });
+    const serviceRequest = serviceRequestResult.rows[0];
+
+    // 2) Crear conversación asociada
+    const conversationResult = await client.query(
+      `INSERT INTO conversations (service_request_id, created_at)
+       VALUES ($1, NOW())
+       RETURNING *`,
+      [serviceRequest.id]
+    );
+
+    const conversation = conversationResult.rows[0];
+
+    // 3) Crear primer mensaje (brief del cliente)
+    if (message && message.trim() !== "") {
+      await client.query(
+        `INSERT INTO messages (
+          conversation_id,
+          sender_id,
+          content,
+          type,
+          is_read,
+          created_at
+        )
+        VALUES ($1, $2, $3, 'user', FALSE, NOW())`,
+        [conversation.id, client_id, message]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    res.status(201).json({
+      ...serviceRequest,
+      conversation_id: conversation.id,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error al crear solicitud de servicio:", error);
+    res.status(500).json({ error: "Error al crear solicitud de servicio" });
+  } finally {
+    client.release();
   }
 };
 
