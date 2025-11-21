@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const projectController = require("../controllers/projectController");
-const scopeController = require("../controllers/scopeController");
+const scopeController = require("../controllers/projectScopeController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 // Si usas multer para entregables:
@@ -69,28 +69,18 @@ router.post(
   projectController.createProjectFromProposal
 );
 
-/* =========================
-   SCOPES DEL PROYECTO
-   ========================= */
-
-// GET alcance actual
-// Front: GET /api/projects/:projectId/scope/current
 router.get(
   "/:projectId/scope/current",
   authMiddleware,
   scopeController.getCurrentScope
 );
 
-// GET historial de versiones
-// Front: GET /api/projects/:projectId/scope/history
 router.get(
   "/:projectId/scope/history",
   authMiddleware,
   scopeController.getHistory
 );
 
-// POST nueva versión de scope
-// Front: POST /api/projects/:projectId/scope
 router.post(
   "/:projectId/scope",
   authMiddleware,
