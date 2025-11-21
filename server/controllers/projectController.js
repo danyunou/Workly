@@ -12,53 +12,59 @@ exports.getMyProjects = async (req, res) => {
     let result;
 
     if (role === "client") {
-      result = await pool.query(`
+      result = await pool.query(
+        `
         SELECT 
           p.id,
           p.status,
           p.started_at,
           p.contract_price,
           p.contract_deadline,
-          COALESCE(s.title, r.title, s2.title) AS service_title,
+          COALESCE(s.title, s2.title) AS service_title,
           u.username AS freelancer_name
         FROM projects p
-        LEFT JOIN requests r ON r.id = p.request_id
-        LEFT JOIN services s ON s.id = p.service_id
-        LEFT JOIN services s2 ON s2.id = (
-          SELECT sr.service_id
-          FROM service_requests sr
-          WHERE sr.id = p.service_request_id
-        )
-        LEFT JOIN users u ON u.id = p.freelancer_id
+        LEFT JOIN services s 
+          ON s.id = p.service_id                    -- proyecto desde servicio publicado
+        LEFT JOIN service_requests sr 
+          ON sr.id = p.service_request_id           -- proyecto desde service_request
+        LEFT JOIN services s2 
+          ON s2.id = sr.service_id                  -- servicio original de la solicitud
+        LEFT JOIN users u 
+          ON u.id = p.freelancer_id
         WHERE p.client_id = $1
         ORDER BY p.started_at DESC NULLS LAST, p.created_at DESC;
-      `, [userId]);
-
+      `,
+        [userId]
+      );
     } else if (role === "freelancer") {
-      result = await pool.query(`
+      result = await pool.query(
+        `
         SELECT 
           p.id,
           p.status,
           p.started_at,
           p.contract_price,
           p.contract_deadline,
-          COALESCE(s.title, r.title, s2.title) AS service_title,
+          COALESCE(s.title, s2.title) AS service_title,
           u.username AS client_name
         FROM projects p
-        LEFT JOIN requests r ON r.id = p.request_id
-        LEFT JOIN services s ON s.id = p.service_id
-        LEFT JOIN services s2 ON s2.id = (
-          SELECT sr.service_id
-          FROM service_requests sr
-          WHERE sr.id = p.service_request_id
-        )
-        LEFT JOIN users u ON u.id = p.client_id
+        LEFT JOIN services s 
+          ON s.id = p.service_id
+        LEFT JOIN service_requests sr 
+          ON sr.id = p.service_request_id
+        LEFT JOIN services s2 
+          ON s2.id = sr.service_id
+        LEFT JOIN users u 
+          ON u.id = p.client_id
         WHERE p.freelancer_id = $1
         ORDER BY p.started_at DESC NULLS LAST, p.created_at DESC;
-      `, [userId]);
-
+      `,
+        [userId]
+      );
     } else {
-      return res.status(403).json({ error: "Rol no autorizado para ver proyectos" });
+      return res
+        .status(403)
+        .json({ error: "Rol no autorizado para ver proyectos" });
     }
 
     res.json(result.rows);
@@ -73,7 +79,8 @@ exports.getProjectById = async (req, res) => {
   const projectId = req.params.id;
 
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT 
         p.*,
         p.client_accepted,
@@ -81,54 +88,52 @@ exports.getProjectById = async (req, res) => {
         u1.username AS client_name,
         u2.username AS freelancer_name,
 
-        -- Título del servicio / request
-        COALESCE(s.title, r.title, s3.title) AS service_title,
+        -- Título del servicio / service_request
+        COALESCE(s.title, s3.title) AS service_title,
 
-        -- Descripción
-        COALESCE(s.description, r.description) AS description,
+        -- Descripción: servicio o mensaje de la solicitud
+        COALESCE(s.description, sr.message) AS description,
 
-        -- Deadline del contrato / request / service_request
+        -- Deadline del contrato / service_request
         COALESCE(
           p.contract_deadline,
-          sr.proposed_deadline,
-          r.deadline
+          sr.proposed_deadline
         ) AS deadline,
 
-        -- Monto
+        -- Monto del proyecto
         COALESCE(
           p.contract_price,
-          s.price,
-          r.budget,
           pr.proposed_price,
-          sr.proposed_budget
+          sr.proposed_budget,
+          s.price
         ) AS amount
 
       FROM projects p
       LEFT JOIN users u1 ON u1.id = p.client_id
       LEFT JOIN users u2 ON u2.id = p.freelancer_id
 
-      -- Servicio publicado
+      -- Proyecto creado directamente desde un servicio
       LEFT JOIN services s ON s.id = p.service_id
 
-      -- Solicitud directa
-      LEFT JOIN requests r ON r.id = p.request_id
-
-      -- Solicitud a un servicio
+      -- Proyecto creado desde service_request
       LEFT JOIN service_requests sr ON sr.id = p.service_request_id
       LEFT JOIN services s3 ON s3.id = sr.service_id
 
-      -- Propuesta aceptada relacionada
+      -- Propuesta aceptada relacionada (si aplica)
       LEFT JOIN proposals pr 
-        ON pr.request_id = r.id 
-       AND pr.freelancer_id = p.freelancer_id 
+        ON pr.id = p.proposal_id
        AND pr.status = 'accepted'
 
       WHERE p.id = $1
         AND (p.client_id = $2 OR p.freelancer_id = $2)
-    `, [projectId, userId]);
+    `,
+      [projectId, userId]
+    );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Proyecto no encontrado o sin acceso" });
+      return res
+        .status(404)
+        .json({ error: "Proyecto no encontrado o sin acceso" });
     }
 
     res.json(result.rows[0]);

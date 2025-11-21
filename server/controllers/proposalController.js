@@ -2,24 +2,6 @@
 const pool = require("../config/db");
 const { createNotificationForUser } = require("./notificationController");
 
-exports.getProposalsByRequest = async (req, res) => {
-  const { requestId } = req.params;
-
-  try {
-    const result = await pool.query(
-      `SELECT p.*, u.full_name AS freelancer_name, u.profile_picture
-       FROM proposals p
-       JOIN users u ON p.freelancer_id = u.id
-       WHERE p.request_id = $1`,
-      [requestId]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error al obtener propuestas:", err);
-    res.status(500).json({ error: "Error al obtener propuestas" });
-  }
-};
-
 exports.acceptProposal = async (req, res) => {
   const { proposalId } = req.params;
   const clientId = req.user.id;
@@ -29,12 +11,21 @@ exports.acceptProposal = async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // 1) Verificar que la propuesta exista y pertenezca a una solicitud del cliente
+    // 1) Verificar que la propuesta exista y pertenezca a una service_request del cliente
     const proposalCheck = await client.query(
-      `SELECT p.*, r.client_id, r.title AS request_title
-       FROM proposals p
-       JOIN requests r ON p.request_id = r.id
-       WHERE p.id = $1`,
+      `
+      SELECT 
+        p.*,
+        sr.client_id,
+        sr.id AS service_request_id,
+        s.title AS service_title
+      FROM proposals p
+      JOIN service_requests sr 
+        ON p.request_id = sr.id               -- request_id AHORA es service_request_id
+      LEFT JOIN services s 
+        ON s.id = sr.service_id
+      WHERE p.id = $1
+      `,
       [proposalId]
     );
 
@@ -52,40 +43,55 @@ exports.acceptProposal = async (req, res) => {
         .json({ error: "No autorizado para aceptar esta propuesta" });
     }
 
-    // 2) Cambiar estado de la solicitud a "hired"
+    // 2) Cambiar estado de la service_request a "accepted"
     await client.query(
-      `UPDATE requests SET status = 'hired' WHERE id = $1`,
-      [proposal.request_id]
+      `
+      UPDATE service_requests 
+      SET status = 'accepted',
+          last_status_change_at = NOW()
+      WHERE id = $1
+      `,
+      [proposal.service_request_id]
     );
 
     // 3) Obtener IDs de freelancers con otras propuestas para notificaciones luego
     const othersRes = await client.query(
-      `SELECT freelancer_id
-       FROM proposals
-       WHERE request_id = $1 AND id != $2`,
-      [proposal.request_id, proposalId]
+      `
+      SELECT freelancer_id
+      FROM proposals
+      WHERE request_id = $1 AND id != $2
+      `,
+      [proposal.service_request_id, proposalId]
     );
-    const otherFreelancers = othersRes.rows.map(r => r.freelancer_id);
+    const otherFreelancers = othersRes.rows.map((r) => r.freelancer_id);
 
-    // 4) Rechazar otras propuestas de la misma solicitud
+    // 4) Rechazar otras propuestas de la misma service_request
     await client.query(
-      `UPDATE proposals 
-       SET status = 'rejected' 
-       WHERE request_id = $1 AND id != $2`,
-      [proposal.request_id, proposalId]
+      `
+      UPDATE proposals 
+      SET status = 'rejected' 
+      WHERE request_id = $1 AND id != $2
+      `,
+      [proposal.service_request_id, proposalId]
     );
 
     // 5) Marcar propuesta aceptada
     await client.query(
-      `UPDATE proposals SET status = 'accepted' WHERE id = $1`,
+      `
+      UPDATE proposals 
+      SET status = 'accepted' 
+      WHERE id = $1
+      `,
       [proposalId]
     );
 
     // 6) Crear proyecto (pendiente de contrato) usando columnas de la propuesta
     const projectRes = await client.query(
-      `INSERT INTO projects (
+      `
+      INSERT INTO projects (
          proposal_id,
-         request_id,
+         request_id,          -- deprecado, lo dejamos por compatibilidad
+         service_request_id,  -- el que realmente se usa ahora
          freelancer_id,
          client_id,
          status,
@@ -100,22 +106,27 @@ exports.acceptProposal = async (req, res) => {
          revision_count
        )
        VALUES (
-         $1, $2, $3, $4,
+         $1,                 -- proposal_id
+         $2,                 -- request_id ( = service_request_id por ahora)
+         $2,                 -- service_request_id
+         $3,                 -- freelancer_id
+         $4,                 -- client_id
          'pending_contract',
          NOW(),
          'pending',
          FALSE,
          FALSE,
-         $5,             -- contract_price
-         $6,             -- contract_deadline
-         $7,             -- contract_terms (usamos scope de la propuesta)
-         $8,             -- revision_limit (usamos estimated_days por ahora)
-         0               -- revision_count
+         $5,                 -- contract_price
+         $6,                 -- contract_deadline
+         $7,                 -- contract_terms (scope)
+         $8,                 -- revision_limit (usamos estimated_days por ahora)
+         0                   -- revision_count
        )
-       RETURNING *`,
+       RETURNING *
+      `,
       [
         proposalId,
-        proposal.request_id,
+        proposal.service_request_id,         // antes era proposal.request_id
         proposal.freelancer_id,
         clientId,
         proposal.proposed_price || null,
@@ -129,9 +140,11 @@ exports.acceptProposal = async (req, res) => {
 
     // 7) Crear conversación asociada al proyecto
     const conversationRes = await client.query(
-      `INSERT INTO conversations (project_id, created_at)
-       VALUES ($1, NOW())
-       RETURNING *`,
+      `
+      INSERT INTO conversations (project_id, created_at)
+      VALUES ($1, NOW())
+      RETURNING *
+      `,
       [project.id]
     );
 
@@ -144,7 +157,8 @@ exports.acceptProposal = async (req, res) => {
       "Alcance inicial basado en la propuesta aceptada de la solicitud.";
 
     await client.query(
-      `INSERT INTO project_scopes (
+      `
+      INSERT INTO project_scopes (
         project_id,
         version,
         title,
@@ -156,7 +170,8 @@ exports.acceptProposal = async (req, res) => {
         price,
         created_by
       )
-      VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `,
       [
         project.id,
         scopeTitle,
@@ -172,7 +187,8 @@ exports.acceptProposal = async (req, res) => {
 
     // 9) Mensaje de sistema en el chat
     await client.query(
-      `INSERT INTO messages (
+      `
+      INSERT INTO messages (
         conversation_id,
         sender_id,
         content,
@@ -180,7 +196,8 @@ exports.acceptProposal = async (req, res) => {
         is_read,
         created_at
       )
-      VALUES ($1, $2, $3, 'system', FALSE, NOW())`,
+      VALUES ($1, $2, $3, 'system', FALSE, NOW())
+      `,
       [
         conversation.id,
         clientId,
@@ -192,7 +209,7 @@ exports.acceptProposal = async (req, res) => {
 
     // 🔔 10) NOTIFICACIONES (fuera de la transacción)
     try {
-      const requestTitle = proposal.request_title || "tu solicitud";
+      const requestTitle = proposal.service_title || "tu solicitud";
 
       // a) Freelancer seleccionado
       await createNotificationForUser(
@@ -217,7 +234,7 @@ exports.acceptProposal = async (req, res) => {
           freelancerId,
           `La solicitud "${requestTitle}" ya fue contratada y tu propuesta no fue seleccionada.`,
           "info",
-          `/freelancer/requests` // ajusta a la ruta que uses para ver solicitudes del freelancer
+          `/freelancer/requests`
         );
       }
     } catch (notifyErr) {

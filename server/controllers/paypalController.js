@@ -20,19 +20,18 @@ exports.createOrderController = async (req, res) => {
         p.client_accepted,
         p.freelancer_accepted,
         COALESCE(
-          p.contract_price,
-          s.price,
-          r.budget,
-          pr.proposed_price,
-          sr.proposed_budget
+          p.contract_price,        -- siempre manda primero lo pactado en contrato
+          pr.proposed_price,       -- si vino de una propuesta
+          sr.proposed_budget,      -- si fue una solicitud de servicio con presupuesto
+          s.price                  -- precio fijo del servicio publicado
         ) AS amount
       FROM projects p
-      LEFT JOIN services s ON s.id = p.service_id
-      LEFT JOIN requests r ON r.id = p.request_id
-      LEFT JOIN service_requests sr ON sr.id = p.service_request_id
+      LEFT JOIN services s 
+        ON s.id = p.service_id
+      LEFT JOIN service_requests sr 
+        ON sr.id = p.service_request_id
       LEFT JOIN proposals pr 
-        ON pr.request_id = r.id 
-       AND pr.freelancer_id = p.freelancer_id 
+        ON pr.id = p.proposal_id
        AND pr.status = 'accepted'
       WHERE p.id = $1
         AND p.client_id = $2
@@ -48,10 +47,9 @@ exports.createOrderController = async (req, res) => {
 
     // Debe estar listo para pago
     if (
-      project.status !== 'awaiting_payment' &&
-      project.status !== 'pending_contract' // compatibilidad con proyectos viejos
+      project.status !== "awaiting_payment" &&
+      project.status !== "pending_contract" // compatibilidad con proyectos viejos
     ) {
-      // 🔔 Notificación al cliente: intento de pago en estado inválido
       await createNotificationForUser(
         userId,
         "Intentaste realizar un pago, pero el proyecto todavía no está listo para pagar.",
@@ -66,7 +64,6 @@ exports.createOrderController = async (req, res) => {
 
     // Deben haber aceptado contrato ambas partes
     if (!project.client_accepted || !project.freelancer_accepted) {
-      // 🔔 Notificación al cliente
       await createNotificationForUser(
         userId,
         "El contrato aún no está aceptado por ambas partes. Revisa los términos antes de pagar.",
@@ -81,7 +78,6 @@ exports.createOrderController = async (req, res) => {
 
     const amount = project.contract_price ?? project.amount;
     if (!amount || Number(amount) <= 0) {
-      // 🔔 Notificación al cliente
       await createNotificationForUser(
         userId,
         "No se pudo iniciar el pago porque el proyecto no tiene un monto definido.",
@@ -96,7 +92,6 @@ exports.createOrderController = async (req, res) => {
 
     const orderId = await paypalService.createOrder(amount);
 
-    // (Opcional) Notificación suave al cliente de que se inició el flujo de pago
     await createNotificationForUser(
       userId,
       "Se inició el proceso de pago con PayPal para tu proyecto.",
@@ -106,9 +101,8 @@ exports.createOrderController = async (req, res) => {
 
     res.json({ id: orderId });
   } catch (err) {
-    console.error('Error creating PayPal order:', err.message);
+    console.error("Error creating PayPal order:", err.message);
 
-    // 🔔 Notificación de error genérico al cliente
     try {
       await createNotificationForUser(
         req.user.id,
@@ -117,7 +111,10 @@ exports.createOrderController = async (req, res) => {
         `/projects/${req.params.projectId}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificación en createOrderController:", notifyErr);
+      console.error(
+        "Error creando notificación en createOrderController:",
+        notifyErr
+      );
     }
 
     res.status(500).json({ error: err.message });
