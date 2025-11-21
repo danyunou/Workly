@@ -133,13 +133,15 @@ export default function Home() {
         }
       );
 
-      // Si quieres, podemos mostrar el mensaje también dentro del modal,
-      // pero por ahora mantenemos el comportamiento original:
-      alert(
-        "Tu solicitud fue enviada al freelancer. Te avisaremos cuando la acepte."
-      );
-      startCloseModal();
-      // Más adelante: navigate("/my-requests");
+      setRequestAlert({
+        type: "success",
+        message: "Tu solicitud fue enviada al freelancer. Te avisaremos cuando la acepte.",
+      });
+
+      // Cierra el modal automáticamente después de 2.5s
+      setTimeout(() => {
+        startCloseModal();
+      }, 2500);
     } catch (err) {
       console.error("Error al enviar la solicitud:", err);
 

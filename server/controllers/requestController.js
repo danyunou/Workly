@@ -53,38 +53,69 @@ exports.getRequestsForFreelancer = async (req, res) => {
   const freelancerId = req.user.id;
 
   try {
-    // 1) Obtenemos las categorías configuradas en el perfil del freelancer
-    const profileResult = await pool.query(
-      `SELECT categories
+    // 1. Obtener categorías del freelancer
+    const profileRes = await pool.query(
+      `SELECT categories 
        FROM freelancer_profiles
        WHERE user_id = $1`,
       [freelancerId]
     );
 
-    const categories = profileResult.rows[0]?.categories || [];
+    const freelancerCategories = profileRes.rows[0]?.categories || [];
 
-    // Si el freelancer no tiene categorías, no hay nada relevante que mostrar
-    if (!categories.length) {
-      return res.json([]);
+    if (!freelancerCategories.length) {
+      return res.json([]); // sin categorías → no hay nada que mostrar
     }
 
-    // 2) Obtenemos las requests públicas que matchean con esas categorías
-    const { rows } = await pool.query(
-      `SELECT 
-         r.*,
-         u.username AS client_username,
-         u.profile_picture AS client_pfp
-       FROM requests r
-       JOIN users u ON r.client_id = u.id
-       WHERE r.category = ANY($1::text[])
-       ORDER BY r.created_at DESC`,
-      [categories]
+    // 2. Solicitudes relevantes por categoría
+    //    (Tanto las CUSTOM como las dirigidas a servicios están en esta tabla)
+    const requestsRes = await pool.query(
+      `
+      SELECT 
+        sr.*,
+        u.username AS client_username,
+        u.profile_picture AS client_pfp
+      FROM service_requests sr
+      JOIN users u ON sr.client_id = u.id
+      WHERE sr.category = ANY($1::text[])
+        AND sr.status IN ('pending_freelancer', 'pending_client', 'pending')
+      ORDER BY sr.created_at DESC
+      `,
+      [freelancerCategories]
     );
 
-    res.json(rows);
+    return res.json(requestsRes.rows);
+
   } catch (err) {
-    console.error("Error al obtener custom requests para freelancer:", err);
-    res.status(500).json({ error: "Error al obtener custom requests" });
+    console.error("Error al obtener solicitudes para freelancer:", err);
+    res.status(500).json({ error: "Error al obtener solicitudes" });
+  }
+};
+
+
+//
+// 🔹 Obtener las solicitudes creadas por el cliente autenticado
+//    (Todo sale de la misma tabla `service_requests`)
+//
+exports.getRequestsByClient = async (req, res) => {
+  const clientId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT * 
+      FROM service_requests
+      WHERE client_id = $1
+      ORDER BY created_at DESC
+      `,
+      [clientId]
+    );
+
+    return res.json(result.rows);
+
+  } catch (err) {
+    console.error("Error al obtener solicitudes del cliente:", err);
+    res.status(500).json({ error: "Error al obtener solicitudes del cliente" });
   }
 };
 
