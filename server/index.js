@@ -54,7 +54,7 @@ app.use('/api/disputes', require('./routes/disputes'));
 app.use('/api', require('./routes/ping'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
-app.use("/api/reviews", require("./routes/reviews"));
+app.use('/api/projects', require('./routes/reviews'));
 app.use("/api/conversations", require("./routes/conversations"));
 app.use("/api/project-scopes", require("./routes/projectScopes"));
 app.use("/api/notifications", require ("./routes/notifications"));
