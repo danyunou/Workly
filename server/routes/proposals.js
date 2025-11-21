@@ -11,6 +11,7 @@ router.get('/by-request/:requestId', authMiddleware, proposalController.getPropo
 // Aceptar una propuesta y generar proyecto
 router.post('/accept/:proposalId', authMiddleware, proposalController.acceptProposal);
 
+// Enviar propuesta a una solicitud
 router.post("/send/:requestId", authMiddleware, ensureFreelancer, proposalController.sendProposal);
 
 module.exports = router;

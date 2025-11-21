@@ -1,7 +1,41 @@
-// server/controllers/proposalController.js
 const pool = require("../config/db");
 const { createNotificationForUser } = require("./notificationController");
 
+/**
+ * Obtener todas las propuestas de una service_request específica
+ * requestId = service_request_id
+ */
+exports.getProposalsByRequest = async (req, res) => {
+  const { requestId } = req.params; // este es el service_request_id
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT 
+        p.*,
+        u.username,
+        u.full_name,
+        u.profile_picture
+      FROM proposals p
+      JOIN users u 
+        ON u.id = p.freelancer_id
+      WHERE p.request_id = $1
+      ORDER BY p.created_at DESC
+      `,
+      [requestId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al obtener propuestas por request:", err);
+    res.status(500).json({ error: "Error al obtener propuestas" });
+  }
+};
+
+/**
+ * Aceptar propuesta, marcar service_request como accepted,
+ * crear proyecto + conversación + project_scope
+ */
 exports.acceptProposal = async (req, res) => {
   const { proposalId } = req.params;
   const clientId = req.user.id;
@@ -90,7 +124,7 @@ exports.acceptProposal = async (req, res) => {
       `
       INSERT INTO projects (
          proposal_id,
-         request_id,          -- deprecado, lo dejamos por compatibilidad
+         request_id,          -- deprecado, lo dejamos por compatibilidad (mismo valor)
          service_request_id,  -- el que realmente se usa ahora
          freelancer_id,
          client_id,
@@ -126,7 +160,7 @@ exports.acceptProposal = async (req, res) => {
       `,
       [
         proposalId,
-        proposal.service_request_id,         // antes era proposal.request_id
+        proposal.service_request_id, // antes era proposal.request_id
         proposal.freelancer_id,
         clientId,
         proposal.proposed_price || null,
@@ -255,8 +289,12 @@ exports.acceptProposal = async (req, res) => {
   }
 };
 
+/**
+ * Enviar propuesta a una service_request
+ * requestId = service_request_id
+ */
 exports.sendProposal = async (req, res) => {
-  const { requestId } = req.params;
+  const { requestId } = req.params; // este es service_request_id
   const freelancerId = req.user.id;
   const {
     message,
@@ -267,9 +305,18 @@ exports.sendProposal = async (req, res) => {
   } = req.body;
 
   try {
-    // 0) Obtener la solicitud para saber el cliente
+    // 0) Obtener la service_request para saber el cliente y el servicio
     const reqRes = await pool.query(
-      `SELECT id, client_id, title FROM requests WHERE id = $1`,
+      `
+      SELECT 
+        sr.id,
+        sr.client_id,
+        s.title
+      FROM service_requests sr
+      LEFT JOIN services s 
+        ON s.id = sr.service_id
+      WHERE sr.id = $1
+      `,
       [requestId]
     );
 
@@ -277,11 +324,15 @@ exports.sendProposal = async (req, res) => {
       return res.status(404).json({ error: "Solicitud no encontrada" });
     }
 
-    const request = reqRes.rows[0];
+    const serviceRequest = reqRes.rows[0];
 
     // 1) Verificar si ya existe propuesta de este freelancer
     const existing = await pool.query(
-      `SELECT * FROM proposals WHERE request_id = $1 AND freelancer_id = $2`,
+      `
+      SELECT * 
+      FROM proposals 
+      WHERE request_id = $1 AND freelancer_id = $2
+      `,
       [requestId, freelancerId]
     );
 
@@ -295,7 +346,10 @@ exports.sendProposal = async (req, res) => {
           `/my-proposals` // ajusta a tu ruta real
         );
       } catch (notifyErr) {
-        console.error("Error creando notificación en sendProposal (duplicado):", notifyErr);
+        console.error(
+          "Error creando notificación en sendProposal (duplicado):",
+          notifyErr
+        );
       }
 
       return res
@@ -305,8 +359,9 @@ exports.sendProposal = async (req, res) => {
 
     // 2) Crear propuesta
     const result = await pool.query(
-      `INSERT INTO proposals (
-         request_id,
+      `
+      INSERT INTO proposals (
+         request_id,          -- ahora apunta a service_requests.id
          freelancer_id,
          message,
          proposed_price,
@@ -316,7 +371,8 @@ exports.sendProposal = async (req, res) => {
          status
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
-       RETURNING *`,
+       RETURNING *
+      `,
       [
         requestId,
         freelancerId,
@@ -332,9 +388,9 @@ exports.sendProposal = async (req, res) => {
 
     // 🔔 3) Notificación al cliente: nueva propuesta recibida
     try {
-      const title = request.title || "tu solicitud";
+      const title = serviceRequest.title || "tu solicitud";
       await createNotificationForUser(
-        request.client_id,
+        serviceRequest.client_id,
         `Has recibido una nueva propuesta para "${title}".`,
         "info",
         `/my-requests` // ruta donde el cliente ve sus solicitudes
