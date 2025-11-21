@@ -386,6 +386,7 @@ export default function ProjectDetail() {
           },
         }
       );
+      console.log("GET /by-project status:", convRes.status);
 
       if (!convRes.ok) {
         console.error("No se encontró conversación para este proyecto.");
@@ -393,6 +394,7 @@ export default function ProjectDetail() {
       }
 
       const convData = await convRes.json();
+      console.log("CONVERSATION ENCONTRADA/CREADA:", convData);
       setConversation(convData);
       await fetchMessages(convData.id);
     } catch (err) {
@@ -449,7 +451,10 @@ export default function ProjectDetail() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!conversation || !content.trim()) return;
+     console.log("handleSend llamado", { conversation, content });
+    if (!conversation || !content.trim()) {
+    console.log("handleSend: sin conversation o contenido vacío");
+    return;}
 
     const token = getToken();
 

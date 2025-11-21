@@ -91,11 +91,18 @@ exports.getByProject = async (req, res) => {
       return res.json(existing.rows[0]);
     }
 
-    // 2) Obtener datos del proyecto y participantes
+    // 2) Obtener datos del proyecto y participantes combinando tablas
     const projectRes = await pool.query(
-      `SELECT id, client_id, freelancer_id
-       FROM projects
-       WHERE id = $1`,
+      `SELECT
+         p.id,
+         p.client_id             AS p_client_id,
+         p.freelancer_id         AS p_freelancer_id,
+         sr.client_id            AS sr_client_id,
+         s.freelancer_id         AS s_freelancer_id
+       FROM projects p
+       LEFT JOIN service_requests sr ON sr.id = p.service_request_id
+       LEFT JOIN services         s  ON s.id  = p.service_id
+       WHERE p.id = $1`,
       [projectId]
     );
 
@@ -105,18 +112,35 @@ exports.getByProject = async (req, res) => {
 
     const project = projectRes.rows[0];
 
-    // 3) Si tenemos userId, validamos que sea participante
+    // 3) Determinar cliente y freelancer con fallback
+    const clientId =
+      project.p_client_id || project.sr_client_id || null;
+    const freelancerId =
+      project.p_freelancer_id || project.s_freelancer_id || null;
+
+    // Si no tenemos participantes, no podemos crear conversación
+    if (!clientId || !freelancerId) {
+      console.error(
+        "No se pudieron determinar client_id / freelancer_id para el proyecto",
+        { projectId, clientId, freelancerId }
+      );
+      return res
+        .status(409)
+        .json({ error: "No se pudo crear la conversación del proyecto" });
+    }
+
+    // 4) Validar que el usuario autenticado sea participante (si lo tenemos)
     if (
       userId &&
-      userId !== project.client_id &&
-      userId !== project.freelancer_id
+      userId !== clientId &&
+      userId !== freelancerId
     ) {
       return res.status(403).json({
         error: "No estás autorizado para ver esta conversación del proyecto",
       });
     }
 
-    // 4) Crear la conversación
+    // 5) Crear la conversación
     const insert = await pool.query(
       `INSERT INTO conversations (
          project_id,
@@ -128,7 +152,7 @@ exports.getByProject = async (req, res) => {
        )
        VALUES ($1, NULL, $2, $3, $4, NOW())
        RETURNING *`,
-      [projectId, project.client_id, project.freelancer_id, userId]
+      [projectId, clientId, freelancerId, userId || clientId]
     );
 
     return res.status(201).json(insert.rows[0]);
