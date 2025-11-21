@@ -150,9 +150,24 @@ exports.getFreelancerProfile = async (req, res) => {
         f.social_links,
         f.verified,
         f.categories,
-        f.featured_projects             
+        f.featured_projects,
+        -- ⭐️ rating promedio y número de reseñas
+        rating_stats.avg_rating    AS average_rating,
+        rating_stats.review_count  AS review_count
       FROM freelancer_profiles f
       JOIN users u ON f.user_id = u.id
+      LEFT JOIN (
+        SELECT 
+          freelancer_id,
+          CASE 
+            WHEN COUNT(*) > 0 THEN ROUND(AVG(rating)::numeric, 1)
+            ELSE NULL
+          END AS avg_rating,
+          COUNT(*) AS review_count
+        FROM reviews
+        GROUP BY freelancer_id
+      ) AS rating_stats
+        ON rating_stats.freelancer_id = f.user_id
       WHERE f.user_id = $1
       `,
       [user_id]
@@ -183,11 +198,10 @@ exports.getFreelancerProfile = async (req, res) => {
       ? profile.categories.map(c => c.trim())
       : [];
 
-    // Portafolio (JSONB ya llega como objeto; por si acaso, normalizamos)
+    // Portafolio
     if (!profile.featured_projects) {
       profile.featured_projects = [];
     } else if (!Array.isArray(profile.featured_projects)) {
-      // por si viniera como string
       try {
         profile.featured_projects = JSON.parse(profile.featured_projects);
       } catch {
@@ -201,9 +215,6 @@ exports.getFreelancerProfile = async (req, res) => {
     res.status(500).json({ error: "Error al obtener el perfil" });
   }
 };
-
-
-
 
 // controllers/requestController.js
 exports.getRequestsForFreelancer = async (req, res) => {
@@ -307,9 +318,24 @@ exports.getPublicFreelancerProfile = async (req, res) => {
         f.social_links,
         f.verified,
         f.categories,
-        f.featured_projects              
+        f.featured_projects,
+        -- ⭐️ rating promedio y número de reseñas
+        rating_stats.avg_rating    AS average_rating,
+        rating_stats.review_count  AS review_count
       FROM freelancer_profiles f
       JOIN users u ON f.user_id = u.id
+      LEFT JOIN (
+        SELECT 
+          freelancer_id,
+          CASE 
+            WHEN COUNT(*) > 0 THEN ROUND(AVG(rating)::numeric, 1)
+            ELSE NULL
+          END AS avg_rating,
+          COUNT(*) AS review_count
+        FROM reviews
+        GROUP BY freelancer_id
+      ) AS rating_stats
+        ON rating_stats.freelancer_id = f.user_id
       WHERE u.username = $1
       `,
       [username]

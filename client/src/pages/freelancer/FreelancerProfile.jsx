@@ -225,7 +225,39 @@ export default function FreelancerProfile() {
     }
   };
 
+  // Helper estrellas
+  const renderStars = (rating) => {
+    const max = 5;
+    const filled = Math.round(rating);
+    const stars = [];
+
+    for (let i = 1; i <= max; i++) {
+      stars.push(
+        <span key={i} className={i <= filled ? "star filled" : "star"}>
+          ★
+        </span>
+      );
+    }
+    return stars;
+  };
+
   if (!profile) return <p>Cargando perfil de freelancer...</p>;
+
+  // Leer rating y conteo
+  const ratingValue =
+    profile.average_rating ??
+    profile.avg_rating ??
+    profile.rating ??
+    null;
+
+  const ratingCount =
+    profile.review_count ??
+    profile.ratings_count ??
+    profile.total_reviews ??
+    null;
+
+  const hasRating =
+    typeof ratingValue === "number" && !Number.isNaN(ratingValue) && ratingValue > 0;
 
   return (
     <>
@@ -241,6 +273,22 @@ export default function FreelancerProfile() {
 
           <h3>{profile.full_name}</h3>
           <p className="username">@{profile.username}</p>
+
+          {/* CALIFICACIÓN */}
+          {hasRating && (
+            <div className="rating-row">
+              <div className="rating-stars">{renderStars(ratingValue)}</div>
+              <span className="rating-number">
+                {ratingValue.toFixed(1)}
+                {ratingCount != null && (
+                  <span className="rating-count">
+                    {" "}
+                    ({ratingCount} reseñas)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
 
           <ul className="profile-info">
             <li>Alias: {profile.alias}</li>
@@ -513,30 +561,31 @@ export default function FreelancerProfile() {
                         <div className="portfolio-field">
                           <label>Imagen del proyecto</label>
                           <label className="upload-image-btn">
-                          Subir imagen
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) =>
-                              handleUploadProjectImage(
-                                index,
-                                e.target.files?.[0] || null
-                              )
-                            }
-                          />
-                        </label>
-
-                        {proj.image_url && (
-                          <div className="portfolio-image-preview">
-                            <img
-                              src={proj.image_url}
-                              alt={proj.title || `Proyecto ${index + 1}`}
+                            Subir imagen
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) =>
+                                handleUploadProjectImage(
+                                  index,
+                                  e.target.files?.[0] || null
+                                )
+                              }
                             />
-                            <small className="muted">
-                              Esta imagen se mostrará como portada del proyecto.
-                            </small>
-                          </div>
-                        )}
+                          </label>
+
+                          {proj.image_url && (
+                            <div className="portfolio-image-preview">
+                              <img
+                                src={proj.image_url}
+                                alt={proj.title || `Proyecto ${index + 1}`}
+                              />
+                              <small className="muted">
+                                Esta imagen se mostrará como portada del
+                                proyecto.
+                              </small>
+                            </div>
+                          )}
                         </div>
 
                         <button

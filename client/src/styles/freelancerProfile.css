@@ -467,3 +467,38 @@
 .upload-image-btn:active {
   transform: scale(0.97);
 }
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.star {
+  font-size: 1.1rem;
+  opacity: 0.35;
+}
+
+.star.filled {
+  opacity: 1;
+  /* color primario de Workly */
+  color: #02ad7a;
+}
+
+.rating-number {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.rating-count {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 0.85rem;
+}

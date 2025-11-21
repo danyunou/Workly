@@ -88,6 +88,22 @@ export default function PublicFreelancerProfile() {
       <WelcomeNavbar />
     );
 
+  // Helper para estrellas
+  const renderStars = (rating) => {
+    const max = 5;
+    const filled = Math.round(rating);
+    const stars = [];
+
+    for (let i = 1; i <= max; i++) {
+      stars.push(
+        <span key={i} className={i <= filled ? "star filled" : "star"}>
+          ★
+        </span>
+      );
+    }
+    return stars;
+  };
+
   if (error) {
     return (
       <>
@@ -110,6 +126,22 @@ export default function PublicFreelancerProfile() {
     );
   }
 
+  // Intentar leer rating y conteo desde distintas keys
+  const ratingValue =
+    profile.average_rating ??
+    profile.avg_rating ??
+    profile.rating ??
+    null;
+
+  const ratingCount =
+    profile.review_count ??
+    profile.ratings_count ??
+    profile.total_reviews ??
+    null;
+
+  const hasRating =
+    typeof ratingValue === "number" && !Number.isNaN(ratingValue) && ratingValue > 0;
+
   return (
     <>
       {NavbarToShow}
@@ -124,6 +156,22 @@ export default function PublicFreelancerProfile() {
 
           <h3>{profile.full_name}</h3>
           <p className="username">@{profile.username}</p>
+
+          {/* CALIFICACIÓN */}
+          {hasRating && (
+            <div className="rating-row">
+              <div className="rating-stars">{renderStars(ratingValue)}</div>
+              <span className="rating-number">
+                {ratingValue.toFixed(1)}
+                {ratingCount != null && (
+                  <span className="rating-count">
+                    {" "}
+                    ({ratingCount} reseñas)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
 
           <ul className="profile-info">
             <li>
