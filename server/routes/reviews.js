@@ -3,10 +3,7 @@ const router = express.Router();
 const auth = require("../middleware/authMiddleware");
 const reviewController = require("../controllers/reviewController");
 
-// Crear una reseña
-router.post("/", auth, reviewController.createUserReview);
-
-// Obtener todas las reseñas de un usuario (clientes o freelancers)
-router.get("/:userId", reviewController.getReviewsForUser);
+router.get("/:projectId/reviews", authMiddleware, reviewController.getProjectReviews);
+router.post("/:projectId/reviews", authMiddleware, reviewController.createOrUpdateProjectReview);
 
 module.exports = router;

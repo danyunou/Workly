@@ -60,6 +60,14 @@ export default function ProjectDetail() {
     price: "",
   });
 
+  // ⭐ Calificaciones
+  const [reviews, setReviews] = useState([]);
+  const [myReview, setMyReview] = useState(null);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [savingReview, setSavingReview] = useState(false);
+
   const [error, setError] = useState(null);
 
   const bottomRef = useRef(null);
@@ -74,7 +82,7 @@ export default function ProjectDetail() {
     return d.toLocaleDateString("es-MX");
   };
 
-  const canEditContract = (project) => {
+  const canEditContractBase = (project) => {
     if (!project) return false;
     const blockedStatuses = ["in_progress", "in_revision", "completed", "cancelled"];
     return !blockedStatuses.includes(project.status);
@@ -306,6 +314,9 @@ export default function ProjectDetail() {
 
   const openEditContract = () => {
     if (!project) return;
+    // 🔒 Seguridad extra en front: si ya está firmado por ambos, no abrir modal
+    if (project.client_accepted && project.freelancer_accepted) return;
+
     setEditAmount(project.amount || project.contract_price || "");
     if (project.deadline || project.contract_deadline) {
       const d = new Date(project.deadline || project.contract_deadline);
@@ -451,10 +462,18 @@ export default function ProjectDetail() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-     console.log("handleSend llamado", { conversation, content });
+    console.log("handleSend llamado", { conversation, content });
+
+    // 🔒 Bloquear envío de mensajes si el proyecto está completado o cancelado
+    if (!project || ["completed", "cancelled"].includes(project.status)) {
+      alert("El chat está cerrado porque el proyecto ya fue completado/cancelado.");
+      return;
+    }
+
     if (!conversation || !content.trim()) {
-    console.log("handleSend: sin conversation o contenido vacío");
-    return;}
+      console.log("handleSend: sin conversation o contenido vacío");
+      return;
+    }
 
     const token = getToken();
 
@@ -490,6 +509,13 @@ export default function ProjectDetail() {
   const handleCreateScopeVersion = async (e) => {
     e.preventDefault();
     const token = getToken();
+
+    // 🔒 Evitar crear nuevas versiones de alcance si el contrato ya está firmado por ambos
+    if (project && project.client_accepted && project.freelancer_accepted) {
+      alert("El alcance ya no puede modificarse porque el contrato ya fue firmado por ambas partes.");
+      return;
+    }
+
     try {
       const payload = {
         title: newScopeForm.title,
@@ -538,13 +564,71 @@ export default function ProjectDetail() {
     }
   };
 
-  // Cargar entregables, disputa, scope y chat cuando ya hay proyecto
+  // ⭐ Calificaciones
+  const fetchReviews = async () => {
+    const token = getToken();
+    try {
+      setLoadingReviews(true);
+      const res = await axios.get(
+        `${API_BASE}/api/projects/${projectId}/reviews`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const list = res.data || [];
+      setReviews(list);
+
+      const tokenData = jwtDecode(token);
+      const myId = tokenData.id;
+      const mine = list.find((r) => r.reviewer_id === myId) || null;
+      setMyReview(mine);
+      if (mine) {
+        setRatingValue(mine.rating);
+        setRatingComment(mine.comment || "");
+      }
+    } catch (err) {
+      console.error("Error al obtener reviews:", err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    const token = getToken();
+    if (!ratingValue) return;
+
+    try {
+      setSavingReview(true);
+      await axios.post(
+        `${API_BASE}/api/projects/${projectId}/reviews`,
+        {
+          rating: Number(ratingValue),
+          comment: ratingComment.trim(),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      await fetchReviews();
+      alert("Calificación guardada correctamente.");
+    } catch (err) {
+      console.error("Error al guardar review:", err);
+      const msg = err.response?.data?.error || "No se pudo guardar la calificación.";
+      alert(msg);
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  // Cargar entregables, disputa, scope, chat y reviews cuando ya hay proyecto
   useEffect(() => {
     if (project) {
       fetchDeliverables();
       fetchDispute();
       fetchScope();
       fetchConversationAndMessages();
+      fetchReviews();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project]);
@@ -601,7 +685,6 @@ export default function ProjectDetail() {
 
   const bothAccepted = client_accepted && freelancer_accepted;
 
-  // 🔒 Ahora sólo se puede aceptar contrato si existe alcance (currentScope)
   const showAcceptButton =
     !!currentScope &&
     (status === "awaiting_contract" || status === "pending_contract") &&
@@ -611,6 +694,16 @@ export default function ProjectDetail() {
     isClient &&
     bothAccepted &&
     (status === "awaiting_payment" || status === "pending_contract");
+
+  // 🔒 Edición de contrato sólo si no está firmado por ambos
+  const canEditContractNow = canEditContractBase(project) && !bothAccepted;
+
+  // 🔒 Chat sólo mientras no esté completado/cancelado
+  const canChat =
+    status !== "completed" && status !== "cancelled";
+
+  // ⭐ Mostrar sección de calificaciones sólo cuando el proyecto está completado
+  const showRatingsSection = status === "completed";
 
   return (
     <>
@@ -656,7 +749,7 @@ export default function ProjectDetail() {
               </button>
             )}
 
-            {canEditContract(project) && (
+            {canEditContractNow && (
               <button
                 type="button"
                 className="secondary-btn"
@@ -664,6 +757,13 @@ export default function ProjectDetail() {
               >
                 Editar contrato
               </button>
+            )}
+
+            {!canEditContractNow && bothAccepted && (
+              <p className="contract-locked-note">
+                🔒 El contrato y el alcance ya no pueden modificarse porque fue
+                firmado por ambas partes.
+              </p>
             )}
 
             {/* Nota para guiar al usuario si aún no hay alcance */}
@@ -680,6 +780,37 @@ export default function ProjectDetail() {
         </div>
 
         {error && <p className="project-error-msg">{error}</p>}
+
+        {/* 🧾 Resumen de disputa si existe */}
+        {dispute && (
+          <section className="card dispute-summary-card">
+            <div className="dispute-summary-header">
+              <h3>Disputa asociada a este proyecto</h3>
+              <span className={`dispute-status-pill dispute-status-${dispute.status}`}>
+                {dispute.status}
+              </span>
+            </div>
+            <p className="dispute-summary-text">
+              <strong>Motivo reportado por el cliente:</strong>{" "}
+              {dispute.description}
+            </p>
+            {dispute.resolution && (
+              <p className="dispute-summary-text">
+                <strong>Resolución del administrador:</strong>{" "}
+                {dispute.resolution}
+              </p>
+            )}
+            {lastLog && (
+              <div className="dispute-summary-log">
+                <strong>Última actualización:</strong>
+                <p>{lastLog.action_description}</p>
+                <p className="dispute-log-date">
+                  {new Date(lastLog.timestamp).toLocaleString("es-MX")}
+                </p>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Layout principal: izquierda contrato/alcance, derecha chat */}
         <div className="project-main-layout">
@@ -827,12 +958,21 @@ export default function ProjectDetail() {
                       </p>
                     )}
 
-                    <button
-                      className="scope-new-btn"
-                      onClick={() => setIsNewScopeOpen(true)}
-                    >
-                      Proponer nueva versión de alcance
-                    </button>
+                    {!bothAccepted && (
+                      <button
+                        className="scope-new-btn"
+                        onClick={() => setIsNewScopeOpen(true)}
+                      >
+                        Proponer nueva versión de alcance
+                      </button>
+                    )}
+
+                    {bothAccepted && (
+                      <p className="scope-locked-note">
+                        🔒 El alcance ya no puede modificarse porque el
+                        contrato está firmado por ambas partes.
+                      </p>
+                    )}
                   </>
                 )}
 
@@ -894,6 +1034,12 @@ export default function ProjectDetail() {
                     Todo lo que quede escrito aquí se tomará como referencia en
                     caso de disputas.
                   </p>
+                  {!canChat && (
+                    <p className="chat-locked-note">
+                      El chat está cerrado porque el proyecto ya fue
+                      completado/cancelado.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -936,14 +1082,19 @@ export default function ProjectDetail() {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder={
-                    isFreelancer
+                    !canChat
+                      ? "El chat está cerrado."
+                      : isFreelancer
                       ? "Preséntate brevemente y pregunta por los detalles del proyecto..."
                       : "Escribe tus dudas o especificaciones para el freelancer..."
                   }
                   rows={3}
+                  disabled={!canChat}
                 />
                 <div className="chat-input-actions">
-                  <button type="submit">Enviar</button>
+                  <button type="submit" disabled={!canChat}>
+                    {canChat ? "Enviar" : "Chat cerrado"}
+                  </button>
                 </div>
               </form>
             </section>
@@ -1104,7 +1255,7 @@ export default function ProjectDetail() {
             )}
         </section>
 
-        {/* Disputas */}
+        {/* Disputas (cliente al finalizar) */}
         {isClient && status === "completed" && (
           <section className="card section-card">
             <div className="section-header">
@@ -1201,6 +1352,111 @@ export default function ProjectDetail() {
                 </p>
               </div>
             )}
+          </section>
+        )}
+
+        {/* ⭐ Calificaciones al finalizar */}
+        {showRatingsSection && (
+          <section className="card rating-card">
+            <div className="section-header">
+              <h3>Califíquense mutuamente</h3>
+              <span className="section-badge">Feedback</span>
+            </div>
+
+            <p className="section-text">
+              Al dejar una calificación ayudas a mantener la calidad y confianza
+              dentro de Workly. Ambas partes pueden calificarse.
+            </p>
+
+            <div className="rating-layout">
+              <div className="rating-form-wrapper">
+                <h4>
+                  {isClient
+                    ? "Tu opinión sobre el freelancer"
+                    : "Tu opinión sobre el cliente"}
+                </h4>
+
+                {loadingReviews ? (
+                  <p>Cargando tu calificación...</p>
+                ) : (
+                  <form onSubmit={handleSubmitReview} className="rating-form">
+                    <label>
+                      Calificación
+                      <select
+                        value={ratingValue}
+                        onChange={(e) => setRatingValue(e.target.value)}
+                        disabled={savingReview}
+                      >
+                        <option value={5}>5 - Excelente</option>
+                        <option value={4}>4 - Muy bueno</option>
+                        <option value={3}>3 - Bueno</option>
+                        <option value={2}>2 - Regular</option>
+                        <option value={1}>1 - Malo</option>
+                      </select>
+                    </label>
+
+                    <label>
+                      Comentario (opcional)
+                      <textarea
+                        rows={3}
+                        value={ratingComment}
+                        onChange={(e) => setRatingComment(e.target.value)}
+                        placeholder="Cuéntale a otros cómo fue trabajar con esta persona."
+                        disabled={savingReview}
+                      />
+                    </label>
+
+                    <button
+                      type="submit"
+                      className="primary-btn"
+                      disabled={savingReview}
+                    >
+                      {myReview ? "Actualizar calificación" : "Enviar calificación"}
+                    </button>
+
+                    {myReview && (
+                      <p className="rating-note">
+                        Ya habías calificado este proyecto, puedes actualizar tu
+                        comentario si lo deseas.
+                      </p>
+                    )}
+                  </form>
+                )}
+              </div>
+
+              <div className="rating-list-wrapper">
+                <h4>Historial de calificaciones</h4>
+                {loadingReviews && <p>Cargando calificaciones...</p>}
+                {!loadingReviews && reviews.length === 0 && (
+                  <p className="rating-empty">
+                    Aún no hay calificaciones registradas para este proyecto.
+                  </p>
+                )}
+                {!loadingReviews && reviews.length > 0 && (
+                  <ul className="rating-list">
+                    {reviews.map((r) => (
+                      <li key={r.id} className="rating-item">
+                        <div className="rating-item-header">
+                          <span className="rating-stars">
+                            {"★".repeat(r.rating)}
+                            {"☆".repeat(5 - r.rating)}
+                          </span>
+                          <span className="rating-meta">
+                            {r.reviewer_name} → {r.target_name}
+                          </span>
+                        </div>
+                        {r.comment && (
+                          <p className="rating-comment">“{r.comment}”</p>
+                        )}
+                        <span className="rating-date">
+                          {new Date(r.created_at).toLocaleString("es-MX")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </section>
         )}
 
@@ -1309,7 +1565,7 @@ export default function ProjectDetail() {
       )}
 
       {/* === MODAL NUEVA VERSIÓN DE ALCANCE === */}
-      {isNewScopeOpen && (
+      {isNewScopeOpen && !bothAccepted && (
         <div
           className="modal-backdrop"
           onClick={() => setIsNewScopeOpen(false)}

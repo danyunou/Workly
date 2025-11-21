@@ -145,11 +145,18 @@ exports.postMessage = async (req, res) => {
   }
 
   try {
-    // 1️⃣ Verificar que la conversación exista y que el usuario pertenece a ella
+    // 1️⃣ Verificar que la conversación exista + estado del proyecto (si aplica)
     const convoRes = await pool.query(
-      `SELECT id, client_id, freelancer_id, project_id, service_request_id
-       FROM conversations
-       WHERE id = $1`,
+      `SELECT 
+         c.id,
+         c.client_id,
+         c.freelancer_id,
+         c.project_id,
+         c.service_request_id,
+         p.status AS project_status
+       FROM conversations c
+       LEFT JOIN projects p ON p.id = c.project_id
+       WHERE c.id = $1`,
       [conversationId]
     );
 
@@ -161,6 +168,7 @@ exports.postMessage = async (req, res) => {
 
     const conversation = convoRes.rows[0];
 
+    // 1.1️⃣ Validar que el usuario pertenezca a la conversación
     if (
       sender_id !== conversation.client_id &&
       sender_id !== conversation.freelancer_id
@@ -168,6 +176,17 @@ exports.postMessage = async (req, res) => {
       return res.status(403).json({
         error:
           "No estás autorizado para enviar mensajes en esta conversación",
+      });
+    }
+
+    // 1.2️⃣ Si está ligada a un proyecto completado/cancelado, bloquear mensajes
+    if (
+      conversation.project_status &&
+      ["completed", "cancelled"].includes(conversation.project_status)
+    ) {
+      return res.status(409).json({
+        error:
+          "El chat está cerrado porque el proyecto ya fue completado o cancelado.",
       });
     }
 
@@ -183,7 +202,7 @@ exports.postMessage = async (req, res) => {
       )
       VALUES ($1, $2, $3, 'user', FALSE, NOW())
       RETURNING *`,
-      [conversationId, sender_id, content]
+      [conversationId, sender_id, content.trim()]
     );
 
     const message = rows[0];

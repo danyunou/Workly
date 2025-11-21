@@ -105,7 +105,8 @@
   align-items: flex-end;
 }
 
-/* Nota de contrato (nueva) */
+/* Notas de contrato / bloqueo */
+
 .contract-note {
   margin-top: 0.2rem;
   font-size: 0.82rem;
@@ -114,6 +115,17 @@
   border-radius: 0.6rem;
   padding: 0.4rem 0.6rem;
   max-width: 280px;
+  text-align: right;
+}
+
+.contract-locked-note {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  max-width: 300px;
   text-align: right;
 }
 
@@ -233,7 +245,7 @@
   color: #4b5563;
 }
 
-/* Formulario editar contrato (ahora dentro de modal) */
+/* Formulario editar contrato (en modal) */
 
 .edit-contract-form {
   margin-top: 0.2rem;
@@ -407,7 +419,18 @@
   background: #d1fae5;
 }
 
-/* Form nueva versión de alcance (usado dentro de modal) */
+/* Nota de alcance bloqueado */
+
+.scope-locked-note {
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.6rem;
+}
+
+/* Form nueva versión de alcance (en modal) */
 
 .scope-form {
   margin-top: 0.4rem;
@@ -516,6 +539,15 @@
   color: #6b7280;
 }
 
+.chat-locked-note {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #92400e;
+  background: #fffbeb;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.6rem;
+}
+
 .chat-messages {
   flex: 1;
   padding: 0.8rem 0.2rem 0.6rem;
@@ -594,6 +626,12 @@
   box-shadow: 0 0 0 1px rgba(2, 173, 122, 0.18);
 }
 
+.chat-input-wrapper textarea:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
 .chat-input-actions {
   display: flex;
   justify-content: flex-end;
@@ -616,6 +654,13 @@
   background: #038b63;
   transform: translateY(-1px);
   box-shadow: 0 5px 12px rgba(3, 139, 99, 0.25);
+}
+
+.chat-input-actions button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 /* PayPal */
@@ -893,6 +938,78 @@
   color: #6b7280;
 }
 
+/* Resumen de disputa en la parte superior */
+
+.dispute-summary-card {
+  margin-bottom: 1rem;
+}
+
+.dispute-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.dispute-summary-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.dispute-status-pill {
+  padding: 0.18rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Puedes ajustar según tus estados reales: open, resuelta, etc */
+.dispute-status-open {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.dispute-status-resuelta {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.dispute-status-irresoluble {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+.dispute-status-rejected {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.dispute-summary-text {
+  font-size: 0.88rem;
+  color: #374151;
+  margin-bottom: 0.3rem;
+}
+
+.dispute-summary-log {
+  margin-top: 0.5rem;
+  background: #f9fafb;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #e5e7eb;
+  font-size: 0.84rem;
+  color: #374151;
+}
+
 /* Mini tutorial */
 
 .tutorial-card {
@@ -923,6 +1040,121 @@
   color: #6b7280;
 }
 
+/* === SECCIÓN DE CALIFICACIONES === */
+
+.rating-card {
+  margin-top: 1.2rem;
+}
+
+.rating-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+  gap: 1.25rem;
+  margin-top: 0.6rem;
+}
+
+.rating-form-wrapper h4,
+.rating-list-wrapper h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.rating-form {
+  background: #f9fafb;
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rating-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.82rem;
+  color: #374151;
+}
+
+.rating-form select,
+.rating-form textarea {
+  border-radius: 0.6rem;
+  border: 1px solid #d1d5db;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.86rem;
+}
+
+.rating-form textarea {
+  resize: vertical;
+}
+
+.rating-note {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.rating-list-wrapper {
+  background: #f9fafb;
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #e5e7eb;
+}
+
+.rating-empty {
+  font-size: 0.86rem;
+  color: #6b7280;
+}
+
+.rating-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rating-item {
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.rating-item:last-child {
+  border-bottom: none;
+}
+
+.rating-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.15rem;
+}
+
+.rating-stars {
+  font-size: 0.9rem;
+  color: #f59e0b;
+}
+
+.rating-meta {
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+
+.rating-comment {
+  font-size: 0.86rem;
+  color: #374151;
+  margin: 0.1rem 0 0.15rem;
+}
+
+.rating-date {
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
 /* === MODALES GENERALES === */
 
 .modal-backdrop {
@@ -949,7 +1181,7 @@
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden
+  overflow: hidden;
 }
 
 .modal-large {
@@ -1025,13 +1257,18 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .contract-note {
+  .contract-note,
+  .contract-locked-note {
     text-align: left;
     max-width: 100%;
   }
 
   .modal {
     margin: 0 1rem;
+  }
+
+  .rating-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
