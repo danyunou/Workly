@@ -4,10 +4,11 @@ const { createNotificationForUser } = require("./notificationController");
 
 /**
  * Obtener o crear conversación ligada a una service_request
+ * (se mantiene el nombre getByServiceRequest para no tocar rutas)
  */
-exports.getOrCreateByServiceRequest = async (req, res) => {
+exports.getByServiceRequest = async (req, res) => {
   const serviceRequestId = req.params.requestId || req.params.id;
-  const userId = req.user.id;
+  const userId = req.user?.id || null;
 
   try {
     // 1) Buscar conversación existente
@@ -21,7 +22,6 @@ exports.getOrCreateByServiceRequest = async (req, res) => {
     }
 
     // 2) Obtener datos de la solicitud y participantes
-    // Ajusta los nombres de columnas si difieren en tu esquema
     const srRes = await pool.query(
       `SELECT 
          sr.id,
@@ -39,8 +39,12 @@ exports.getOrCreateByServiceRequest = async (req, res) => {
 
     const sr = srRes.rows[0];
 
-    // 3) Validar que el usuario sea participante
-    if (userId !== sr.client_id && userId !== sr.freelancer_id) {
+    // 3) Si tenemos userId, validamos que sea cliente o freelancer
+    if (
+      userId &&
+      userId !== sr.client_id &&
+      userId !== sr.freelancer_id
+    ) {
       return res.status(403).json({
         error: "No estás autorizado para ver esta conversación",
       });
@@ -63,17 +67,18 @@ exports.getOrCreateByServiceRequest = async (req, res) => {
 
     return res.status(201).json(insert.rows[0]);
   } catch (error) {
-    console.error("Error en getOrCreateByServiceRequest:", error);
+    console.error("Error en getByServiceRequest (get/crear):", error);
     res.status(500).json({ error: "Error al obtener/crear conversación" });
   }
 };
 
 /**
  * Obtener o crear conversación ligada a un proyecto
+ * (se mantiene el nombre getByProject para no tocar rutas)
  */
-exports.getOrCreateByProject = async (req, res) => {
+exports.getByProject = async (req, res) => {
   const projectId = req.params.projectId || req.params.id;
-  const userId = req.user.id;
+  const userId = req.user?.id || null;
 
   try {
     // 1) Buscar conversación existente
@@ -100,8 +105,12 @@ exports.getOrCreateByProject = async (req, res) => {
 
     const project = projectRes.rows[0];
 
-    // 3) Validar que el usuario sea participante del proyecto
-    if (userId !== project.client_id && userId !== project.freelancer_id) {
+    // 3) Si tenemos userId, validamos que sea participante
+    if (
+      userId &&
+      userId !== project.client_id &&
+      userId !== project.freelancer_id
+    ) {
       return res.status(403).json({
         error: "No estás autorizado para ver esta conversación del proyecto",
       });
@@ -124,7 +133,7 @@ exports.getOrCreateByProject = async (req, res) => {
 
     return res.status(201).json(insert.rows[0]);
   } catch (error) {
-    console.error("Error en getOrCreateByProject:", error);
+    console.error("Error en getByProject (get/crear):", error);
     res.status(500).json({ error: "Error al obtener/crear conversación" });
   }
 };
@@ -134,7 +143,7 @@ exports.getOrCreateByProject = async (req, res) => {
  */
 exports.getMessages = async (req, res) => {
   const { conversationId } = req.params;
-  const userId = req.user?.id; // debería venir del authMiddleware
+  const userId = req.user?.id; // viene del authMiddleware
 
   try {
     const { rows } = await pool.query(
@@ -164,7 +173,6 @@ exports.getMessages = async (req, res) => {
           "Error al marcar mensajes como leídos (getMessages):",
           err
         );
-        // No romper respuesta por esto
       }
     }
 
@@ -236,13 +244,11 @@ exports.postMessage = async (req, res) => {
           : conversation.client_id;
 
       if (targetUserId) {
-        // Preview corto del mensaje
         const preview =
           content.length > 80
             ? content.slice(0, 77).trimEnd() + "..."
             : content;
 
-        // Ruta de detalle: proyecto o solicitudes
         let link = null;
         if (conversation.project_id) {
           link = `/projects/${conversation.project_id}`;
