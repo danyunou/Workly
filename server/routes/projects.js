@@ -3,31 +3,39 @@ const express = require("express");
 const router = express.Router();
 
 const projectController = require("../controllers/projectController");
+const scopeController = require("../controllers/scopeController");
 const authMiddleware = require("../middleware/authMiddleware");
-const ensureFreelancer = require("../middleware/ensureFreelancer");
 
+// Si usas multer para entregables:
 const multer = require("multer");
-const upload = multer(); // memoria
+const upload = multer();
 
-// ⚠️ IMPORTANTE: rutas más específicas primero, luego las genéricas
+// 🔹 Proyectos del usuario
+router.get("/my-projects", authMiddleware, projectController.getMyProjects);
 
-// Listado de proyectos del usuario (cliente o freelancer)
-router.get(
-  "/my-projects",
-  authMiddleware,
-  projectController.getMyProjects
-);
+// 🔹 Detalle de un proyecto
+router.get("/:id", authMiddleware, projectController.getProjectById);
 
-// Subida de entregables (freelancer)
+// 🔹 Aceptar contrato
+router.post("/:id/accept", authMiddleware, projectController.acceptContract);
+
+// 🔹 Actualizar contrato
+router.patch("/:id/contract", authMiddleware, projectController.updateContract);
+
+// 🔹 Entregables
 router.post(
   "/upload-deliverable",
   authMiddleware,
-  ensureFreelancer,
   upload.single("deliverable"),
   projectController.uploadDeliverable
 );
 
-// Aprobar / rechazar entregables (cliente)
+router.get(
+  "/:id/deliverables",
+  authMiddleware,
+  projectController.getDeliverables
+);
+
 router.post(
   "/deliverables/:deliverableId/approve",
   authMiddleware,
@@ -40,69 +48,53 @@ router.post(
   projectController.rejectDeliverable
 );
 
-// Crear proyecto desde service_request (freelancer)
-router.post(
-  "/from-service-request",
-  authMiddleware,
-  ensureFreelancer,
-  projectController.createProjectFromServiceRequest
-);
-
-// Crear proyecto desde propuesta aceptada
-router.post(
-  "/from-proposal",
-  authMiddleware,
-  projectController.createProjectFromProposal
-);
-
-// Alcance (scope) del proyecto
-router.get(
-  "/:projectId/scope/current",
-  authMiddleware,
-  projectController.getCurrentScope
-);
-
-router.get(
-  "/:projectId/scope/history",
-  authMiddleware,
-  projectController.getHistory
-);
-
-router.post(
-  "/:projectId/scope",
-  authMiddleware,
-  projectController.createNewScopeVersion
-);
-
-// Aprobar proyecto (cliente)
+// 🔹 Aprobar proyecto completo
 router.post(
   "/:projectId/approve",
   authMiddleware,
   projectController.approveProject
 );
 
-// Entregables del proyecto
-router.get(
-  "/:id/deliverables",
-  authMiddleware,
-  projectController.getDeliverables
-);
-
-// Aceptar contrato
+// 🔹 Crear proyecto desde service_request
 router.post(
-  "/:id/accept",
+  "/from-service-request",
   authMiddleware,
-  projectController.acceptContract
+  projectController.createProjectFromServiceRequest
 );
 
-// Actualizar contrato
-router.patch(
-  "/:id/contract",
+// 🔹 Crear proyecto desde propuesta
+router.post(
+  "/from-proposal",
   authMiddleware,
-  projectController.updateContract
+  projectController.createProjectFromProposal
 );
 
-// Detalle de proyecto
-router.get("/:id", authMiddleware, projectController.getProjectById);
+/* =========================
+   SCOPES DEL PROYECTO
+   ========================= */
+
+// GET alcance actual
+// Front: GET /api/projects/:projectId/scope/current
+router.get(
+  "/:projectId/scope/current",
+  authMiddleware,
+  scopeController.getCurrentScope
+);
+
+// GET historial de versiones
+// Front: GET /api/projects/:projectId/scope/history
+router.get(
+  "/:projectId/scope/history",
+  authMiddleware,
+  scopeController.getHistory
+);
+
+// POST nueva versión de scope
+// Front: POST /api/projects/:projectId/scope
+router.post(
+  "/:projectId/scope",
+  authMiddleware,
+  scopeController.createNewScopeVersion
+);
 
 module.exports = router;

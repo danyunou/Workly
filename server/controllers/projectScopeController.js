@@ -1,6 +1,8 @@
+// server/controllers/scopeController.js
 const pool = require("../config/db");
 const { createNotificationForUser } = require("./notificationController");
 
+// GET /api/projects/:projectId/scope/current
 exports.getCurrentScope = async (req, res) => {
   const { projectId } = req.params;
 
@@ -15,6 +17,7 @@ exports.getCurrentScope = async (req, res) => {
     );
 
     if (!rows.length) {
+      // ⛔️ No hay scope aún → 404 controlado
       return res.status(404).json({ error: "No hay scope para este proyecto" });
     }
 
@@ -25,6 +28,7 @@ exports.getCurrentScope = async (req, res) => {
   }
 };
 
+// GET /api/projects/:projectId/scope/history
 exports.getHistory = async (req, res) => {
   const { projectId } = req.params;
 
@@ -37,6 +41,7 @@ exports.getHistory = async (req, res) => {
       [projectId]
     );
 
+    // Aquí SIEMPRE devolvemos 200, aunque sea []
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener historial de scopes:", error);
@@ -44,6 +49,7 @@ exports.getHistory = async (req, res) => {
   }
 };
 
+// POST /api/projects/:projectId/scope
 exports.createNewScopeVersion = async (req, res) => {
   const { projectId } = req.params;
   const {
@@ -105,7 +111,7 @@ exports.createNewScopeVersion = async (req, res) => {
       ]
     );
 
-    // 3) Resetear aceptaciones de contrato
+    // 3) Resetear aceptaciones de contrato y opcionalmente actualizar price/deadline
     const projRes = await client.query(
       `UPDATE projects
        SET client_accepted = FALSE,
@@ -152,7 +158,6 @@ exports.createNewScopeVersion = async (req, res) => {
         `${actorLabel} creó la versión ${newVersion} del alcance del proyecto. ` +
         `Es necesario revisar y aceptar nuevamente el contrato.`;
 
-      // Notificar al cliente
       await createNotificationForUser(
         project.client_id,
         message,
@@ -160,7 +165,6 @@ exports.createNewScopeVersion = async (req, res) => {
         `/projects/${projectId}`
       );
 
-      // Notificar al freelancer
       await createNotificationForUser(
         project.freelancer_id,
         message,
@@ -168,7 +172,10 @@ exports.createNewScopeVersion = async (req, res) => {
         `/projects/${projectId}`
       );
     } catch (notifyErr) {
-      console.error("Error creando notificaciones en createNewScopeVersion:", notifyErr);
+      console.error(
+        "Error creando notificaciones en createNewScopeVersion:",
+        notifyErr
+      );
     }
 
     await client.query("COMMIT");
