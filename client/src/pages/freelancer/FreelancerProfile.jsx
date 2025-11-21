@@ -244,20 +244,34 @@ export default function FreelancerProfile() {
   if (!profile) return <p>Cargando perfil de freelancer...</p>;
 
   // Leer rating y conteo
-  const ratingValue =
-    profile.average_rating ??
-    profile.avg_rating ??
-    profile.rating ??
-    null;
+// Intentar leer rating y conteo desde distintas keys
+const ratingValueRaw =
+  profile.average_rating ??
+  profile.avg_rating ??
+  profile.rating ??
+  null;
 
-  const ratingCount =
-    profile.review_count ??
-    profile.ratings_count ??
-    profile.total_reviews ??
-    null;
+// normalizar a número (por si viene como string)
+const ratingValue =
+  ratingValueRaw !== null && ratingValueRaw !== undefined
+    ? Number(ratingValueRaw)
+    : null;
 
-  const hasRating =
-    typeof ratingValue === "number" && !Number.isNaN(ratingValue) && ratingValue > 0;
+const ratingCountRaw =
+  profile.review_count ??
+  profile.reviews_count ??   // 👈 IMPORTANTE: esta es la que manda el back
+  profile.ratings_count ??
+  profile.total_reviews ??
+  null;
+
+const ratingCount =
+  ratingCountRaw !== null && ratingCountRaw !== undefined
+    ? Number(ratingCountRaw)
+    : null;
+
+const hasRating =
+  ratingValue !== null && !Number.isNaN(ratingValue) && ratingValue > 0;
+
 
   return (
     <>

@@ -126,7 +126,6 @@ exports.getVerificationStatus = async (req, res) => {
   }
 };
 
-
 exports.getFreelancerProfile = async (req, res) => {
   const user_id = req.user?.id;
 
@@ -136,6 +135,7 @@ exports.getFreelancerProfile = async (req, res) => {
     const result = await pool.query(
       `
       SELECT 
+        u.id AS user_id,
         u.full_name,
         u.username,
         u.created_at,
@@ -150,24 +150,9 @@ exports.getFreelancerProfile = async (req, res) => {
         f.social_links,
         f.verified,
         f.categories,
-        f.featured_projects,
-        -- ⭐️ rating promedio y número de reseñas
-        rating_stats.avg_rating    AS average_rating,
-        rating_stats.review_count  AS review_count
+        f.featured_projects             
       FROM freelancer_profiles f
       JOIN users u ON f.user_id = u.id
-      LEFT JOIN (
-        SELECT 
-          freelancer_id,
-          CASE 
-            WHEN COUNT(*) > 0 THEN ROUND(AVG(rating)::numeric, 1)
-            ELSE NULL
-          END AS avg_rating,
-          COUNT(*) AS review_count
-        FROM reviews
-        GROUP BY freelancer_id
-      ) AS rating_stats
-        ON rating_stats.freelancer_id = f.user_id
       WHERE f.user_id = $1
       `,
       [user_id]
@@ -178,6 +163,11 @@ exports.getFreelancerProfile = async (req, res) => {
     }
 
     const profile = result.rows[0];
+
+    // 🔹 Stats de reseñas para este user
+    const stats = await getUserReviewStats(profile.user_id);
+    profile.avg_rating = stats.avg_rating;
+    profile.reviews_count = stats.review_count;
 
     // Arrays
     profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
@@ -195,7 +185,7 @@ exports.getFreelancerProfile = async (req, res) => {
 
     // Categorías
     profile.categories = Array.isArray(profile.categories)
-      ? profile.categories.map(c => c.trim())
+      ? profile.categories.map((c) => c.trim())
       : [];
 
     // Portafolio
@@ -304,6 +294,7 @@ exports.getPublicFreelancerProfile = async (req, res) => {
     const result = await pool.query(
       `
       SELECT 
+        u.id AS user_id,
         u.full_name,
         u.username,
         u.created_at,
@@ -318,24 +309,9 @@ exports.getPublicFreelancerProfile = async (req, res) => {
         f.social_links,
         f.verified,
         f.categories,
-        f.featured_projects,
-        -- ⭐️ rating promedio y número de reseñas
-        rating_stats.avg_rating    AS average_rating,
-        rating_stats.review_count  AS review_count
+        f.featured_projects              
       FROM freelancer_profiles f
       JOIN users u ON f.user_id = u.id
-      LEFT JOIN (
-        SELECT 
-          freelancer_id,
-          CASE 
-            WHEN COUNT(*) > 0 THEN ROUND(AVG(rating)::numeric, 1)
-            ELSE NULL
-          END AS avg_rating,
-          COUNT(*) AS review_count
-        FROM reviews
-        GROUP BY freelancer_id
-      ) AS rating_stats
-        ON rating_stats.freelancer_id = f.user_id
       WHERE u.username = $1
       `,
       [username]
@@ -346,6 +322,11 @@ exports.getPublicFreelancerProfile = async (req, res) => {
     }
 
     const profile = result.rows[0];
+
+    // 🔹 Stats de reseñas para este freelancer (target_id = user_id)
+    const stats = await getUserReviewStats(profile.user_id);
+    profile.avg_rating = stats.avg_rating;
+    profile.reviews_count = stats.review_count;
 
     profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
     profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
@@ -360,7 +341,7 @@ exports.getPublicFreelancerProfile = async (req, res) => {
     }
 
     profile.categories = Array.isArray(profile.categories)
-      ? profile.categories.map(c => c.trim())
+      ? profile.categories.map((c) => c.trim())
       : [];
 
     if (!profile.featured_projects) {
