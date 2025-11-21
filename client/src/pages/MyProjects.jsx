@@ -236,7 +236,7 @@ export default function MyProjects() {
                 <option value="in_progress">En progreso</option>
                 <option value="in_revision">En revisión</option>
                 <option value="completed">Completados</option>
-                <option value="cancelled">Cancelados</option>
+                {/* sin opción de cancelados en el filtro */}
               </select>
             </div>
           </div>
@@ -255,7 +255,11 @@ export default function MyProjects() {
               </p>
             </div>
           ) : (
-            <div className="projects-grid">
+            <div
+              className={`projects-grid ${
+                filteredProjects.length === 1 ? "projects-grid--single" : ""
+              }`}
+            >
               {filteredProjects.map((project) => {
                 const statusLabel = getStatusLabel(project.status);
                 const statusType = getStatusType(project.status);
@@ -278,6 +282,8 @@ export default function MyProjects() {
                         {statusLabel}
                       </span>
                     </div>
+
+                    <div className="project-card-separator" />
 
                     <div className="project-meta">
                       <p>

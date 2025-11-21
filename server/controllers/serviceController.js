@@ -441,6 +441,7 @@ exports.hireService = async (req, res) => {
   const { message, proposed_deadline, proposed_budget } = req.body;
 
   try {
+    // 1) Verificar que el servicio exista y esté activo
     const { rows: serviceRows } = await pool.query(
       `SELECT * FROM services WHERE id = $1 AND is_active = TRUE`,
       [serviceId]
@@ -452,6 +453,28 @@ exports.hireService = async (req, res) => {
 
     const service = serviceRows[0];
 
+    // 2) Verificar si YA hay una solicitud pendiente o rechazada
+    //    de este cliente para ESTE MISMO servicio.
+    //    Estas se deben gestionar / reenviar desde "Mis solicitudes".
+    const { rows: existingRequests } = await pool.query(
+      `
+      SELECT id, status
+      FROM service_requests
+      WHERE service_id = $1
+        AND client_id = $2
+        AND status IN ('pending_freelancer', 'rejected')
+      `,
+      [service.id, clientId]
+    );
+
+    if (existingRequests.length > 0) {
+      return res.status(409).json({
+        error:
+          "Ya tienes una solicitud pendiente o rechazada para este servicio. Podrás gestionarla y reenviarla desde 'Mis solicitudes'.",
+      });
+    }
+
+    // 3) Crear la nueva solicitud
     const { rows: srRows } = await pool.query(
       `INSERT INTO service_requests (
         service_id,
@@ -469,25 +492,32 @@ exports.hireService = async (req, res) => {
         clientId,
         message || null,
         proposed_deadline || null,
-        proposed_budget || null
+        proposed_budget || null,
       ]
     );
 
     const serviceRequest = srRows[0];
 
-    res.status(201).json({
-      message: "Solicitud enviada al freelancer. Esperando respuesta.",
-      service_request: serviceRequest
+    return res.status(201).json({
+      message:
+        "Solicitud enviada al freelancer. Podrás gestionarla desde 'Mis solicitudes'.",
+      service_request: serviceRequest,
     });
   } catch (err) {
     console.error("Error al solicitar servicio:", err);
+
+    // Red de seguridad por si el índice unique_active_service_request
+    // también considera 'rejected' o algún otro estado como activo.
     if (err.code === "23505" && err.constraint === "unique_active_service_request") {
       return res.status(409).json({
         error:
-          "Ya tienes una solicitud activa para este servicio. Revisa el estado de tu solicitud antes de crear una nueva.",
+          "Ya tienes una solicitud activa para este servicio. Podrás gestionarla o reenviarla desde 'Mis solicitudes'.",
       });
     }
-    res.status(500).json({ error: "Error interno al solicitar el servicio" });
+
+    return res
+      .status(500)
+      .json({ error: "Error interno al solicitar el servicio" });
   }
 };
 

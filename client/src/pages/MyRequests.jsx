@@ -1,21 +1,54 @@
-// src/pages/MyRequests.jsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "../styles/MyRequests.css";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
 
+const CATEGORIES = [
+  "Artes gráficas y diseño",
+  "Marketing",
+  "Escritura y traduccion",
+  "Video y animacion",
+  "Musica y audio",
+  "Programacion y tencología",
+  "Negocios",
+  "Estilo de vida",
+  "Datos",
+  "Fotografía",
+];
+
 const MyRequests = () => {
   const [customRequests, setCustomRequests] = useState([]);
   const [serviceRequests, setServiceRequests] = useState([]);
 
-  const [expandedRequestId, setExpandedRequestId] = useState(null);
+  // solo un item abierto a la vez
+  const [expandedItem, setExpandedItem] = useState(null); // {type:'custom'|'service', id:number}
   const [proposals, setProposals] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Para formulario de reenvío de solicitudes de servicio
+  // Modal crear solicitud personalizada
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    title: "",
+    description: "",
+    budget: "",
+    deadline: "",
+    category: "",
+  });
+  const [createError, setCreateError] = useState("");
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+
+  // Notificaciones en la página
+  const [notification, setNotification] = useState(null);
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 4000); // se oculta a los 4s
+  };
+
+  // Modal reenviar solicitud a servicio
+  const [isResendModalOpen, setIsResendModalOpen] = useState(false);
   const [resendForm, setResendForm] = useState({
     requestId: null,
     message: "",
@@ -34,73 +67,46 @@ const MyRequests = () => {
     },
   });
 
+  const fetchData = async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [customRes, serviceRes] = await Promise.all([
+        api.get("/requests/by-client"),
+        api.get("/service-requests/by-client"),
+      ]);
+
+      const visibleCustom = customRes.data.filter(
+        (req) => req.status !== "hired"
+      );
+
+      const visibleService = serviceRes.data.filter(
+        (sr) => sr.status !== "accepted"
+      );
+
+      setCustomRequests(visibleCustom);
+      setServiceRequests(visibleService);
+    } catch (err) {
+      console.error("Error cargando solicitudes:", err);
+      setError("Ocurrió un error al cargar tus solicitudes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!token) {
       navigate("/login");
       return;
     }
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [customRes, serviceRes] = await Promise.all([
-          api.get("/requests/by-client"),
-          api.get("/service-requests/by-client"),
-        ]);
-
-        // Opcional: ocultar requests con proyecto ya creado (status 'hired')
-        const visibleCustom = customRes.data.filter(
-          (req) => req.status !== "hired"
-        );
-
-        setCustomRequests(visibleCustom);
-        setServiceRequests(serviceRes.data);
-      } catch (err) {
-        console.error("Error cargando solicitudes:", err);
-        setError("Ocurrió un error al cargar tus solicitudes.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const toggleRequestDetails = async (requestId) => {
-    if (expandedRequestId === requestId) {
-      setExpandedRequestId(null);
-      return;
-    }
-
-    try {
-      const res = await api.get(`/proposals/by-request/${requestId}`);
-
-      // Opcional: ocultar propuestas aceptadas
-      const filtered = res.data.filter((p) => p.status !== "accepted");
-
-      setProposals((prev) => ({ ...prev, [requestId]: filtered }));
-      setExpandedRequestId(requestId);
-    } catch (error) {
-      console.error("Error fetching proposals:", error);
-    }
-  };
-
-  const handleAcceptProposal = async (proposalId) => {
-    try {
-      await api.post(`/proposals/accept/${proposalId}`);
-      alert(
-        "Propuesta aceptada. El proyecto y el chat se crearán y podrás gestionarlo desde la sección de Proyectos."
-      );
-      navigate("/projects");
-    } catch (error) {
-      console.error("Error al aceptar propuesta:", error);
-      alert("Hubo un error al aceptar la propuesta.");
-    }
-  };
-
+  // helpers
   const formatDate = (value) => {
     if (!value) return "Sin definir";
     const d = new Date(value);
@@ -132,8 +138,6 @@ const MyRequests = () => {
     switch (status) {
       case "pending_freelancer":
         return "Pendiente del freelancer";
-      case "accepted":
-        return "Aceptada";
       case "rejected":
         return "Rechazada";
       default:
@@ -145,17 +149,105 @@ const MyRequests = () => {
     switch (status) {
       case "pending_freelancer":
         return "status-chip pending";
-      case "accepted":
-        return "status-chip success";
       case "rejected":
         return "status-chip danger";
       default:
-        return "status-chip";
+        return "status-chip neutral";
     }
   };
 
-  // --- Reenviar solicitud de servicio ---
+  // toggles (accordion)
+  const toggleCustomItem = async (id) => {
+    const isSame =
+      expandedItem && expandedItem.type === "custom" && expandedItem.id === id;
 
+    if (isSame) {
+      setExpandedItem(null);
+      return;
+    }
+
+    if (!proposals[id]) {
+      try {
+        const res = await api.get(`/proposals/by-request/${id}`);
+        const filtered = res.data.filter((p) => p.status !== "accepted");
+        setProposals((prev) => ({ ...prev, [id]: filtered }));
+      } catch (err) {
+        console.error("Error fetching proposals:", err);
+      }
+    }
+
+    setExpandedItem({ type: "custom", id });
+  };
+
+  const toggleServiceItem = (id) => {
+    const isSame =
+      expandedItem && expandedItem.type === "service" && expandedItem.id === id;
+
+    if (isSame) {
+      setExpandedItem(null);
+    } else {
+      setExpandedItem({ type: "service", id });
+    }
+  };
+
+  // acciones
+  const handleAcceptProposal = async (proposalId) => {
+    try {
+      await api.post(`/proposals/accept/${proposalId}`);
+      showNotification(
+        "success",
+        "Propuesta aceptada. El proyecto y el chat se crearán y podrás gestionarlo desde la sección de Proyectos."
+      );
+      navigate("/projects");
+    } catch (error) {
+      console.error("Error al aceptar propuesta:", error);
+      showNotification("error", "Hubo un error al aceptar la propuesta.");
+    }
+  };
+
+  // crear custom
+  const openCreateModal = () => {
+    setCreateError("");
+    setCreateForm({
+      title: "",
+      description: "",
+      budget: "",
+      deadline: "",
+      category: "",
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleCreateChange = (e) => {
+    const { name, value } = e.target;
+    setCreateForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    setCreateError("");
+    try {
+      setCreateSubmitting(true);
+      await api.post("/requests/create", createForm);
+      closeCreateModal();
+      await fetchData();
+      showNotification("success", "Solicitud creada correctamente.");
+    } catch (err) {
+      console.error("Error al crear solicitud:", err);
+      const msg =
+        err.response?.data?.error || "Ocurrió un error al crear la solicitud.";
+      setCreateError(msg);
+      showNotification("error", msg);
+    } finally {
+      setCreateSubmitting(false);
+    }
+  };
+
+  // reenvío
   const openResendForm = (sr) => {
     setResendForm({
       requestId: sr.id,
@@ -166,9 +258,11 @@ const MyRequests = () => {
       proposed_budget: sr.proposed_budget || "",
       submitting: false,
     });
+    setIsResendModalOpen(true);
   };
 
   const closeResendForm = () => {
+    setIsResendModalOpen(false);
     setResendForm({
       requestId: null,
       message: "",
@@ -206,7 +300,6 @@ const MyRequests = () => {
         payload
       );
 
-      // Actualizar lista en memoria
       setServiceRequests((prev) =>
         prev.map((sr) =>
           sr.id === resendForm.requestId ? { ...sr, ...res.data.request } : sr
@@ -214,23 +307,28 @@ const MyRequests = () => {
       );
 
       closeResendForm();
-      alert("Solicitud reenviada correctamente.");
+      showNotification("success", "Solicitud reenviada correctamente.");
     } catch (err) {
       console.error("Error al reenviar solicitud:", err);
-      alert("Ocurrió un error al reenviar la solicitud.");
+      showNotification("error", "Ocurrió un error al reenviar la solicitud.");
       setResendForm((prev) => ({ ...prev, submitting: false }));
     }
   };
 
+  // navegación
   const goToService = (serviceId) => {
     if (!serviceId) return;
-    // Suponiendo que la ruta de detalle de servicio exista
-    navigate(`/services/${serviceId}`);
+    // ajusta a tu ruta real de detalle de servicio
+    navigate(`/service/${serviceId}`);
   };
 
   const goToFreelancer = (username) => {
     if (!username) return;
     navigate(`/freelancer/${username}`);
+  };
+
+  const handleRefresh = () => {
+    fetchData();
   };
 
   if (loading) {
@@ -260,29 +358,68 @@ const MyRequests = () => {
                 freelancers o reenviar solicitudes rechazadas.
               </p>
             </div>
-            <div className="my-requests-metrics">
-              <div className="metric-card">
-                <span className="metric-label">Custom requests</span>
-                <span className="metric-value">{customRequests.length}</span>
+
+            <div className="my-requests-header-right">
+              <div className="my-requests-metrics">
+                <div className="metric-card">
+                  <span className="metric-label">Custom requests</span>
+                  <span className="metric-value">{customRequests.length}</span>
+                </div>
+                <div className="metric-card">
+                  <span className="metric-label">
+                    Solicitudes a servicios (activas)
+                  </span>
+                  <span className="metric-value">
+                    {serviceRequests.length}
+                  </span>
+                </div>
               </div>
-              <div className="metric-card">
-                <span className="metric-label">Solicitudes a servicios</span>
-                <span className="metric-value">{serviceRequests.length}</span>
+
+              <div className="header-actions">
+                <button
+                  type="button"
+                  className="btn-outline header-btn"
+                  onClick={handleRefresh}
+                >
+                  Actualizar
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary header-btn"
+                  onClick={openCreateModal}
+                >
+                  Crear solicitud personalizada
+                </button>
               </div>
             </div>
           </header>
 
+          {/* Notificación en la página */}
+          {notification && (
+            <div
+              className={`page-notification ${
+                notification.type === "success"
+                  ? "page-notification-success"
+                  : "page-notification-error"
+              }`}
+            >
+              {notification.message}
+            </div>
+          )}
+
           {error && <div className="my-requests-error">{error}</div>}
 
           <div className="my-requests-sections">
-            {/* ==== SECCIÓN 1: CUSTOM REQUESTS ==== */}
+            {/* CUSTOM REQUESTS */}
             <section className="requests-section">
               <div className="section-header">
-                <h2>Solicitudes personalizadas</h2>
-                <p>
-                  Publicaciones abiertas a toda la comunidad de freelancers.
-                  Aquí puedes revisar las propuestas recibidas.
-                </p>
+                <div>
+                  <h2>Solicitudes personalizadas</h2>
+                  <p>
+                    Publicaciones abiertas a toda la comunidad de freelancers.
+                    Aquí ves solo las propuestas enviadas o rechazadas.
+                  </p>
+                </div>
               </div>
 
               {customRequests.length === 0 ? (
@@ -292,76 +429,86 @@ const MyRequests = () => {
                     Crea una nueva propuesta para recibir ofertas de varios
                     freelancers al mismo tiempo.
                   </p>
+                  <button
+                    className="btn-primary empty-cta-btn"
+                    onClick={openCreateModal}
+                  >
+                    Crear solicitud personalizada
+                  </button>
                 </div>
               ) : (
                 <ul className="request-cards-list">
-                  {customRequests.map((req) => (
-                    <li key={req.id} className="request-card">
-                      <div className="request-card-header">
-                        <div>
-                          <h3 className="request-card-title">{req.title}</h3>
-                          <p className="request-card-description">
-                            {req.description}
-                          </p>
-                        </div>
-                        <span className="status-chip neutral">
-                          {statusLabelRequest(req.status)}
-                        </span>
-                      </div>
+                  {customRequests.map((req) => {
+                    const isExpanded =
+                      expandedItem?.type === "custom" &&
+                      expandedItem.id === req.id;
 
-                      <div className="request-card-meta">
-                        <div>
-                          <span className="meta-label">Presupuesto</span>
-                          <span className="meta-value">
-                            {formatCurrency(req.budget)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="meta-label">
-                            Fecha de entrega deseada
-                          </span>
-                          <span className="meta-value">
-                            {formatDate(req.deadline)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="meta-label">Propuestas</span>
-                          <span className="meta-value">
-                            {proposals[req.id]?.length ?? "—"}
-                          </span>
-                        </div>
-                      </div>
+                    return (
+                      <li
+                        key={req.id}
+                        className={`request-card custom-request-card ${
+                          isExpanded ? "request-card-expanded" : ""
+                        }`}
+                      >
+                        <div className="request-card-main">
+                          <div>
+                            <div className="card-top-row">
+                              <span className="badge badge-type">Custom</span>
+                              <span className="badge badge-status">
+                                {statusLabelRequest(req.status)}
+                              </span>
+                            </div>
 
-                      <div className="request-card-actions">
-                        <button
-                          className="btn-secondary"
-                          onClick={() => toggleRequestDetails(req.id)}
-                        >
-                          {expandedRequestId === req.id
-                            ? "Ocultar propuestas"
-                            : "Ver propuestas"}
-                        </button>
-                      </div>
+                            <h3 className="request-card-title">
+                              {req.title}
+                            </h3>
+                            <p className="request-card-description">
+                              {req.description}
+                            </p>
+                          </div>
 
-                      {expandedRequestId === req.id && (
-                        <div className="proposal-section">
-                          <h4>
-                            Propuestas (
-                            {proposals[req.id]?.length || 0})
-                          </h4>
-                          {proposals[req.id]?.length > 0 ? (
-                            <ul className="proposal-list">
-                              {proposals[req.id].map((prop) => (
-                                <li
-                                  key={prop.id}
-                                  className="proposal-card-item"
-                                >
-                                  <div className="proposal-header">
-                                    <div>
-                                      <p className="proposal-freelancer">
-                                        <strong>Freelancer:</strong>{" "}
+                          <button
+                            className="toggle-details-btn"
+                            onClick={() => toggleCustomItem(req.id)}
+                          >
+                            {isExpanded ? "Ocultar" : "Ver solicitud"}
+                          </button>
+                        </div>
+
+                        {isExpanded && (
+                          <>
+                            <div className="request-card-meta">
+                              <div>
+                                <span className="meta-label">Presupuesto</span>
+                                <span className="meta-value">
+                                  {formatCurrency(req.budget)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="meta-label">
+                                  Fecha de entrega deseada
+                                </span>
+                                <span className="meta-value">
+                                  {formatDate(req.deadline)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="proposal-section">
+                              <h4>
+                                Propuestas enviadas / rechazadas (
+                                {proposals[req.id]?.length || 0})
+                              </h4>
+                              {proposals[req.id]?.length > 0 ? (
+                                <ul className="proposal-list">
+                                  {proposals[req.id].map((prop) => (
+                                    <li
+                                      key={prop.id}
+                                      className="proposal-card-item"
+                                    >
+                                      <div className="proposal-header">
                                         <button
-                                          className="link-button"
+                                          className="freelancer-link"
                                           onClick={() =>
                                             goToFreelancer(
                                               prop.freelancer_username
@@ -369,85 +516,94 @@ const MyRequests = () => {
                                           }
                                         >
                                           {prop.freelancer_name ||
-                                            "Ver perfil"}
+                                            prop.freelancer_username ||
+                                            "Ver freelancer"}
                                         </button>
-                                      </p>
+                                        <span className="proposal-status-label">
+                                          {prop.status === "rejected"
+                                            ? "Rechazada"
+                                            : "Enviada"}
+                                        </span>
+                                      </div>
+
                                       <p className="proposal-message">
                                         {prop.message}
                                       </p>
-                                    </div>
-                                    <span className="status-chip neutral">
-                                      {prop.status || "Pendiente"}
-                                    </span>
-                                  </div>
 
-                                  <div className="proposal-meta">
-                                    <div>
-                                      <span className="meta-label">
-                                        Presupuesto propuesto
-                                      </span>
-                                      <span className="meta-value">
-                                        {formatCurrency(
-                                          prop.proposed_price ??
-                                            prop.offer_budget
-                                        )}
-                                      </span>
-                                    </div>
-                                    <div>
-                                      <span className="meta-label">
-                                        Plazo estimado
-                                      </span>
-                                      <span className="meta-value">
-                                        {prop.proposed_deadline
-                                          ? formatDate(prop.proposed_deadline)
-                                          : prop.estimated_days
-                                          ? `${prop.estimated_days} días`
-                                          : "Sin definir"}
-                                      </span>
-                                    </div>
-                                  </div>
+                                      <div className="proposal-meta">
+                                        <div>
+                                          <span className="meta-label">
+                                            Presupuesto propuesto
+                                          </span>
+                                          <span className="meta-value">
+                                            {formatCurrency(
+                                              prop.proposed_price ??
+                                                prop.offer_budget
+                                            )}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="meta-label">
+                                            Plazo estimado
+                                          </span>
+                                          <span className="meta-value">
+                                            {prop.proposed_deadline
+                                              ? formatDate(
+                                                  prop.proposed_deadline
+                                                )
+                                              : prop.estimated_days
+                                              ? `${prop.estimated_days} días`
+                                              : "Sin definir"}
+                                          </span>
+                                        </div>
+                                      </div>
 
-                                  {prop.status === "pending" && (
-                                    <div className="proposal-actions">
-                                      <button
-                                        className="btn-primary"
-                                        onClick={() =>
-                                          handleAcceptProposal(prop.id)
-                                        }
-                                      >
-                                        Aceptar propuesta
-                                      </button>
-                                    </div>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="no-proposals">
-                              No hay propuestas aún.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </li>
-                  ))}
+                                      {prop.status === "pending" && (
+                                        <div className="proposal-actions">
+                                          <button
+                                            className="btn-primary"
+                                            onClick={() =>
+                                              handleAcceptProposal(prop.id)
+                                            }
+                                          >
+                                            Aceptar propuesta
+                                          </button>
+                                        </div>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="no-proposals">
+                                  Aún no tienes propuestas enviadas o
+                                  rechazadas.
+                                </p>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
 
-            {/* ==== SECCIÓN 2: SERVICE REQUESTS ==== */}
+            {/* SERVICE REQUESTS */}
             <section className="requests-section">
               <div className="section-header">
-                <h2>Solicitudes enviadas a servicios</h2>
-                <p>
-                  Mensajes que enviaste directamente a servicios específicos.
-                  Puedes ver el estado y reenviar las que fueron rechazadas.
-                </p>
+                <div>
+                  <h2>Solicitudes enviadas a servicios</h2>
+                  <p>
+                    Mensajes que enviaste directamente a servicios específicos.
+                    Solo se muestran las solicitudes enviadas o rechazadas.
+                  </p>
+                </div>
               </div>
 
               {serviceRequests.length === 0 ? (
                 <div className="empty-state">
-                  <h3>No has enviado solicitudes a servicios</h3>
+                  <h3>No tienes solicitudes activas a servicios</h3>
                   <p>
                     Cuando contactes a un freelancer desde un servicio, tus
                     solicitudes aparecerán aquí.
@@ -455,162 +611,300 @@ const MyRequests = () => {
                 </div>
               ) : (
                 <ul className="request-cards-list">
-                  {serviceRequests.map((sr) => (
-                    <li key={sr.id} className="request-card">
-                      <div className="request-card-header">
-                        <div>
+                  {serviceRequests.map((sr) => {
+                    const isExpanded =
+                      expandedItem?.type === "service" &&
+                      expandedItem.id === sr.id;
+
+                    return (
+                      <li
+                        key={sr.id}
+                        className={`request-card service-request-card ${
+                          isExpanded ? "request-card-expanded" : ""
+                        }`}
+                      >
+                        <div className="request-card-main">
+                          <div>
+                            <div className="card-top-row">
+                              <span className="badge badge-type">Servicio</span>
+                              <span
+                                className={statusClassServiceRequest(sr.status)}
+                              >
+                                {statusLabelServiceRequest(sr.status)}
+                              </span>
+                            </div>
+
+                            <button
+                              className="service-title-link"
+                              onClick={() => goToService(sr.service_id)}
+                            >
+                              {sr.service_title || "Servicio"}
+                            </button>
+
+                            <div className="service-request-freelancer">
+                              <span className="meta-label meta-label-inline">
+                                Freelancer:
+                              </span>
+                              <button
+                                className="freelancer-link"
+                                onClick={() =>
+                                  goToFreelancer(sr.freelancer_username)
+                                }
+                              >
+                                {sr.freelancer_name || "Ver perfil"}
+                              </button>
+                            </div>
+                          </div>
+
                           <button
-                            className="service-title-button"
-                            onClick={() => goToService(sr.service_id)}
+                            className="toggle-details-btn"
+                            onClick={() => toggleServiceItem(sr.id)}
                           >
-                            {sr.service_title || "Servicio"}
+                            {isExpanded ? "Ocultar" : "Ver solicitud"}
                           </button>
-                          <p className="request-card-description">
-                            <span className="meta-label">Freelancer:</span>{" "}
-                            <button
-                              className="link-button"
-                              onClick={() =>
-                                goToFreelancer(sr.freelancer_username)
-                              }
-                            >
-                              {sr.freelancer_name || "Ver perfil"}
-                            </button>
-                          </p>
                         </div>
-                        <span
-                          className={statusClassServiceRequest(sr.status)}
-                        >
-                          {statusLabelServiceRequest(sr.status)}
-                        </span>
-                      </div>
 
-                      <div className="request-card-meta">
-                        <div>
-                          <span className="meta-label">Presupuesto propuesto</span>
-                          <span className="meta-value">
-                            {formatCurrency(sr.proposed_budget)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="meta-label">
-                            Fecha de entrega deseada
-                          </span>
-                          <span className="meta-value">
-                            {formatDate(sr.proposed_deadline)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="meta-label">Revisión</span>
-                          <span className="meta-value">
-                            {sr.revision || 0}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="service-request-message">
-                        <span className="meta-label">Mensaje enviado</span>
-                        <p>{sr.message || "Sin mensaje."}</p>
-                      </div>
-
-                      {sr.status === "rejected" && (
-                        <div className="rejection-box">
-                          {sr.rejection_reason && (
-                            <p className="rejection-reason">
-                              <strong>Motivo del rechazo:</strong>{" "}
-                              {sr.rejection_reason}
-                            </p>
-                          )}
-
-                          {resendForm.requestId !== sr.id ? (
-                            <button
-                              className="btn-secondary"
-                              onClick={() => openResendForm(sr)}
-                            >
-                              Reenviar solicitud
-                            </button>
-                          ) : (
-                            <form
-                              className="resend-form"
-                              onSubmit={handleResendSubmit}
-                            >
-                              <h4>Reenviar solicitud</h4>
-                              <label className="form-field">
-                                <span>Mensaje para el freelancer</span>
-                                <textarea
-                                  rows={3}
-                                  value={resendForm.message}
-                                  onChange={(e) =>
-                                    handleChangeResendField(
-                                      "message",
-                                      e.target.value
-                                    )
-                                  }
-                                  required
-                                />
-                              </label>
-
-                              <div className="form-row">
-                                <label className="form-field">
-                                  <span>Fecha de entrega deseada</span>
-                                  <input
-                                    type="date"
-                                    value={resendForm.proposed_deadline}
-                                    onChange={(e) =>
-                                      handleChangeResendField(
-                                        "proposed_deadline",
-                                        e.target.value
-                                      )
-                                    }
-                                  />
-                                </label>
-                                <label className="form-field">
-                                  <span>Presupuesto (opcional)</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    value={resendForm.proposed_budget}
-                                    onChange={(e) =>
-                                      handleChangeResendField(
-                                        "proposed_budget",
-                                        e.target.value
-                                      )
-                                    }
-                                  />
-                                </label>
+                        {isExpanded && (
+                          <>
+                            <div className="request-card-meta">
+                              <div>
+                                <span className="meta-label">
+                                  Presupuesto propuesto
+                                </span>
+                                <span className="meta-value">
+                                  {formatCurrency(sr.proposed_budget)}
+                                </span>
                               </div>
+                              <div>
+                                <span className="meta-label">
+                                  Fecha de entrega deseada
+                                </span>
+                                <span className="meta-value">
+                                  {formatDate(sr.proposed_deadline)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="meta-label">Revisión</span>
+                                <span className="meta-value">
+                                  {sr.revision || 0}
+                                </span>
+                              </div>
+                            </div>
 
-                              <div className="resend-form-actions">
+                            <div className="service-request-message">
+                              <span className="meta-label">
+                                Mensaje enviado
+                              </span>
+                              <p>{sr.message || "Sin mensaje."}</p>
+                            </div>
+
+                            {sr.status === "rejected" && (
+                              <div className="rejection-box">
+                                {sr.rejection_reason && (
+                                  <p className="rejection-reason">
+                                    <strong>Motivo del rechazo:</strong>{" "}
+                                    {sr.rejection_reason}
+                                  </p>
+                                )}
+
                                 <button
-                                  type="button"
-                                  className="btn-ghost"
-                                  onClick={closeResendForm}
-                                  disabled={resendForm.submitting}
+                                  className="btn-light"
+                                  onClick={() => openResendForm(sr)}
                                 >
-                                  Cancelar
-                                </button>
-                                <button
-                                  type="submit"
-                                  className="btn-primary"
-                                  disabled={resendForm.submitting}
-                                >
-                                  {resendForm.submitting
-                                    ? "Reenviando..."
-                                    : "Confirmar reenvío"}
+                                  Reenviar solicitud
                                 </button>
                               </div>
-                            </form>
-                          )}
-                        </div>
-                      )}
-                    </li>
-                  ))}
+                            )}
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
           </div>
         </div>
       </div>
+
+      {/* MODAL CREAR SOLICITUD */}
+      {isCreateModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Crear nueva solicitud</h3>
+              <button className="modal-close" onClick={closeCreateModal}>
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleCreateSubmit} className="modal-body">
+              <div className="form-field">
+                <span>Título del proyecto</span>
+                <input
+                  type="text"
+                  name="title"
+                  value={createForm.title}
+                  onChange={handleCreateChange}
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <span>Descripción detallada</span>
+                <textarea
+                  name="description"
+                  rows={4}
+                  value={createForm.description}
+                  onChange={handleCreateChange}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-field">
+                  <span>Presupuesto (USD)</span>
+                  <input
+                    type="number"
+                    name="budget"
+                    min={1}
+                    value={createForm.budget}
+                    onChange={handleCreateChange}
+                    required
+                  />
+                </div>
+                <div className="form-field">
+                  <span>Fecha de entrega deseada</span>
+                  <input
+                    type="date"
+                    name="deadline"
+                    value={createForm.deadline}
+                    onChange={handleCreateChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-field">
+                <span>Categoría</span>
+                <select
+                  name="category"
+                  value={createForm.category}
+                  onChange={handleCreateChange}
+                  required
+                >
+                  <option value="">Selecciona una categoría</option>
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {createError && (
+                <p className="my-requests-error inline-error">
+                  {createError}
+                </p>
+              )}
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={closeCreateModal}
+                  disabled={createSubmitting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={createSubmitting}
+                >
+                  {createSubmitting ? "Publicando..." : "Publicar solicitud"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REENVIAR SOLICITUD */}
+      {isResendModalOpen && resendForm.requestId && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Reenviar solicitud</h3>
+              <button className="modal-close" onClick={closeResendForm}>
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleResendSubmit} className="modal-body">
+              <label className="form-field">
+                <span>Mensaje para el freelancer</span>
+                <textarea
+                  rows={3}
+                  value={resendForm.message}
+                  onChange={(e) =>
+                    handleChangeResendField("message", e.target.value)
+                  }
+                  required
+                />
+              </label>
+
+              <div className="form-row">
+                <label className="form-field">
+                  <span>Fecha de entrega deseada</span>
+                  <input
+                    type="date"
+                    value={resendForm.proposed_deadline}
+                    onChange={(e) =>
+                      handleChangeResendField(
+                        "proposed_deadline",
+                        e.target.value
+                      )
+                    }
+                  />
+                </label>
+                <label className="form-field">
+                  <span>Presupuesto (opcional)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={resendForm.proposed_budget}
+                    onChange={(e) =>
+                      handleChangeResendField(
+                        "proposed_budget",
+                        e.target.value
+                      )
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={closeResendForm}
+                  disabled={resendForm.submitting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={resendForm.submitting}
+                >
+                  {resendForm.submitting ? "Reenviando..." : "Confirmar reenvío"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };
