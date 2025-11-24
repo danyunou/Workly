@@ -185,14 +185,14 @@ exports.getAllDisputes = async (req, res) => {
           ps.title        AS scope_title,
           ps.description  AS scope_description,
           ps.deliverables AS scope_deliverables,
-          ps.price        AS scope_price
+          NULL            AS scope_price   -- 👈 project_scopes YA NO tiene price
         FROM project_scopes ps
         WHERE ps.project_id = p.id
         ORDER BY ps.version DESC
         LIMIT 1
       ) AS scope ON TRUE
 
-      WHERE d.status IN ('open', 'pendiente')   -- por si tienes ambos estados
+      WHERE d.status IN ('open', 'pendiente')   -- ajusta si solo usas uno
       ORDER BY d.opened_at DESC
       `
     );
@@ -274,7 +274,7 @@ exports.getAllDisputes = async (req, res) => {
         null;
 
       const project_budget =
-        row.scope_price ||
+        row.scope_price ||                 // ahora siempre NULL, pero lo dejamos por compatibilidad
         row.contract_price ||
         row.service_price ||
         row.service_request_budget ||
@@ -306,7 +306,6 @@ exports.getAllDisputes = async (req, res) => {
     res.status(500).json({ error: "Error interno al obtener disputas" });
   }
 };
-
 
 exports.acceptDispute = async (req, res) => {
   const adminId = req.user.id;
