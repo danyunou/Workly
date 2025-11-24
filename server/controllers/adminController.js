@@ -168,7 +168,6 @@ exports.getAllDisputes = async (req, res) => {
         scope.scope_title,
         scope.scope_description,
         scope.scope_deliverables,
-        scope.scope_deadline,
         scope.scope_price
 
       FROM disputes d
@@ -186,7 +185,6 @@ exports.getAllDisputes = async (req, res) => {
           ps.title        AS scope_title,
           ps.description  AS scope_description,
           ps.deliverables AS scope_deliverables,
-          ps.deadline     AS scope_deadline,
           ps.price        AS scope_price
         FROM project_scopes ps
         WHERE ps.project_id = p.id
@@ -283,10 +281,9 @@ exports.getAllDisputes = async (req, res) => {
         row.proposal_price ||
         null;
 
+      // 🔹 Ya no usamos scope_deadline porque no existe en project_scopes
       const project_deadline =
-        row.scope_deadline ||
-        row.contract_deadline ||
-        null;
+        row.contract_deadline || null;
 
       disputesWithDetails.push({
         ...row,
@@ -309,6 +306,7 @@ exports.getAllDisputes = async (req, res) => {
     res.status(500).json({ error: "Error interno al obtener disputas" });
   }
 };
+
 
 exports.acceptDispute = async (req, res) => {
   const adminId = req.user.id;
