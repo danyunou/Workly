@@ -1272,6 +1272,44 @@
   }
 }
 
+.page-alert {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.page-alert-success {
+  background-color: #e6f4ea;
+  border-color: #02ad7a;
+  color: #035c41;
+}
+
+.page-alert-error {
+  background-color: #ffe5e5;
+  border-color: #d32f2f;
+  color: #a32020;
+}
+
+.page-alert-warning {
+  background-color: #fff8e1;
+  border-color: #ffb300;
+  color: #8a6d00;
+}
+
+.page-alert-info {
+  background-color: #e3f2fd;
+  border-color: #1976d2;
+  color: #0d47a1;
+}
+
+.rating-summary-text {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
 @media (max-width: 640px) {
   .project-detail {
     padding: 0 1rem;

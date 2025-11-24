@@ -56,24 +56,29 @@ export default function ProjectDetail() {
     deliverables: "",
     exclusions: "",
     revision_limit: "",
-    deadline: "",
-    price: "",
   });
 
   // ⭐ Calificaciones
   const [reviews, setReviews] = useState([]);
   const [myReview, setMyReview] = useState(null);
   const [ratingValue, setRatingValue] = useState(5);
-  const [ratingComment, setRatingComment] = useState("");
+  const [ratingComment, setRatingComment] = useState(""); // ya no se usa en UI, luego lo puedes quitar
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
 
+  // Errores / mensajes globales de la página
   const [error, setError] = useState(null);
+  const [pageAlert, setPageAlert] = useState(null);
 
   const bottomRef = useRef(null);
 
   // Helpers
   const getToken = () => localStorage.getItem("token");
+
+  const showPageAlert = (type, text) => {
+    setPageAlert({ type, text });
+    // si quieres que desaparezca solo, puedes usar un setTimeout aquí
+  };
 
   const formatDate = (value) => {
     if (!value) return "Por confirmar";
@@ -132,6 +137,7 @@ export default function ProjectDetail() {
       setDeliverables(res.data);
     } catch (err) {
       console.error("Error al obtener entregables:", err);
+      showPageAlert("error", "Error al obtener los entregables.");
     }
   };
 
@@ -154,7 +160,7 @@ export default function ProjectDetail() {
         },
       });
 
-      alert("Archivo enviado correctamente");
+      showPageAlert("success", "Archivo enviado correctamente.");
       fetchDeliverables();
       if (!deliverableId) {
         setFile(null);
@@ -166,7 +172,7 @@ export default function ProjectDetail() {
       }
     } catch (error) {
       console.error("Error al subir entregable:", error);
-      alert("Error al subir el entregable");
+      showPageAlert("error", "Error al subir el entregable.");
     }
   };
 
@@ -179,8 +185,10 @@ export default function ProjectDetail() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchDeliverables();
+      showPageAlert("success", "Entregable aprobado.");
     } catch (err) {
       console.error("Error al aprobar entregable:", err);
+      showPageAlert("error", "Error al aprobar el entregable.");
     }
   };
 
@@ -196,8 +204,10 @@ export default function ProjectDetail() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchDeliverables();
+      showPageAlert("info", "Entregable rechazado. El freelancer puede reenviarlo.");
     } catch (err) {
       console.error("Error al rechazar entregable:", err);
+      showPageAlert("error", "Error al rechazar el entregable.");
     }
   };
 
@@ -210,8 +220,10 @@ export default function ProjectDetail() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchProject();
+      showPageAlert("success", "Proyecto aprobado correctamente.");
     } catch (err) {
       console.error("Error al aprobar proyecto:", err);
+      showPageAlert("error", "Error al aprobar el proyecto.");
     }
   };
 
@@ -229,13 +241,27 @@ export default function ProjectDetail() {
       const data = response.data;
       setDispute(data.user || null);
 
-      if (data.all.length >= 5) {
+      if (data.all && data.all.length >= 5) {
         setDisputeLimitReached(true);
       } else {
         setDisputeLimitReached(false);
       }
     } catch (err) {
+      // 🎯 Si es 404, significa simplemente "no hay disputas aún"
+      const status = err.response?.status;
+      if (status === 404) {
+        setDispute(null);
+        setDisputeLogs([]);
+        setDisputeLimitReached(false);
+        // no mostramos alerta ni log ruidoso
+        return;
+      }
+
       console.error("Error al obtener disputa:", err);
+      showPageAlert(
+        "error",
+        "Ocurrió un problema al obtener la información de disputas."
+      );
     }
   };
 
@@ -263,12 +289,18 @@ export default function ProjectDetail() {
     const reasonText = disputeReason.trim();
 
     if (dispute && dispute.status === "pendiente") {
-      alert("Ya tienes una disputa abierta. Espera a que sea resuelta.");
+      showPageAlert(
+        "info",
+        "Ya tienes una disputa abierta. Espera a que sea resuelta."
+      );
       return;
     }
 
     if (!reasonText || !policyAccepted) {
-      alert("Debes describir el motivo de la disputa y aceptar la política.");
+      showPageAlert(
+        "warning",
+        "Debes describir el motivo de la disputa y aceptar la política."
+      );
       return;
     }
 
@@ -285,7 +317,7 @@ export default function ProjectDetail() {
         }
       );
 
-      alert("Disputa enviada correctamente.");
+      showPageAlert("success", "Disputa enviada correctamente.");
       setDisputeReason("");
       setPolicyAccepted(false);
       await fetchDispute();
@@ -293,7 +325,7 @@ export default function ProjectDetail() {
       console.error("Error al enviar disputa:", error);
       const message =
         error.response?.data?.error || "No se pudo enviar la disputa.";
-      alert(message);
+      showPageAlert("error", message);
     }
   };
 
@@ -308,8 +340,14 @@ export default function ProjectDetail() {
           headers: { Authorization: `Bearer ${token}` },
         }
       )
-      .then(() => fetchProject())
-      .catch((err) => console.error("Error al aceptar contrato:", err));
+      .then(() => {
+        fetchProject();
+        showPageAlert("success", "Contrato aceptado correctamente.");
+      })
+      .catch((err) => {
+        console.error("Error al aceptar contrato:", err);
+        showPageAlert("error", "Error al aceptar el contrato.");
+      });
   };
 
   const openEditContract = () => {
@@ -349,22 +387,26 @@ export default function ProjectDetail() {
           },
         }
       );
-      alert("Contrato actualizado. Ambos deberán aceptarlo de nuevo.");
+      showPageAlert(
+        "success",
+        "Contrato actualizado. Ambos deberán aceptarlo de nuevo."
+      );
       setShowEditContract(false);
       fetchProject();
     } catch (err) {
       console.error("Error al actualizar contrato:", err);
       const message =
         err.response?.data?.error || "No se pudo actualizar el contrato.";
-      alert(message);
+      showPageAlert("error", message);
     }
   };
 
-  // === Chat & Scope ===
-  const fetchMessages = async (conversationId) => {
+    // === Chat & Scope ===
+  const fetchMessages = async (conversationId, { silent = false } = {}) => {
     const token = getToken();
     try {
-      setLoadingMessages(true);
+      if (!silent) setLoadingMessages(true);
+
       const res = await fetch(
         `${API_BASE}/api/conversations/${conversationId}/messages`,
         {
@@ -380,9 +422,11 @@ export default function ProjectDetail() {
       setMessages(data);
     } catch (err) {
       console.error(err);
-      setError(err.message || "Error al cargar mensajes.");
+      if (!silent) {
+        setError(err.message || "Error al cargar mensajes.");
+      }
     } finally {
-      setLoadingMessages(false);
+      if (!silent) setLoadingMessages(false);
     }
   };
 
@@ -466,7 +510,10 @@ export default function ProjectDetail() {
 
     // 🔒 Bloquear envío de mensajes si el proyecto está completado o cancelado
     if (!project || ["completed", "cancelled"].includes(project.status)) {
-      alert("El chat está cerrado porque el proyecto ya fue completado/cancelado.");
+      showPageAlert(
+        "info",
+        "El chat está cerrado porque el proyecto ya fue completado/cancelado."
+      );
       return;
     }
 
@@ -497,7 +544,10 @@ export default function ProjectDetail() {
       setContent("");
     } catch (err) {
       console.error(err);
-      alert(err.message || "No se pudo enviar el mensaje.");
+      showPageAlert(
+        "error",
+        err.message || "No se pudo enviar el mensaje."
+      );
     }
   };
 
@@ -512,7 +562,10 @@ export default function ProjectDetail() {
 
     // 🔒 Evitar crear nuevas versiones de alcance si el contrato ya está firmado por ambos
     if (project && project.client_accepted && project.freelancer_accepted) {
-      alert("El alcance ya no puede modificarse porque el contrato ya fue firmado por ambas partes.");
+      showPageAlert(
+        "info",
+        "El alcance ya no puede modificarse porque el contrato ya fue firmado por ambas partes."
+      );
       return;
     }
 
@@ -525,8 +578,6 @@ export default function ProjectDetail() {
         revision_limit: newScopeForm.revision_limit
           ? Number(newScopeForm.revision_limit)
           : null,
-        deadline: newScopeForm.deadline || null,
-        price: newScopeForm.price ? Number(newScopeForm.price) : null,
       };
 
       const res = await fetch(
@@ -552,15 +603,17 @@ export default function ProjectDetail() {
         deliverables: "",
         exclusions: "",
         revision_limit: "",
-        deadline: "",
-        price: "",
       });
       setIsNewScopeOpen(false);
       await fetchScope();
       await fetchProject();
+      showPageAlert("success", "Se creó una nueva versión de alcance.");
     } catch (err) {
       console.error(err);
-      alert(err.message || "Error al crear nueva versión del alcance.");
+      showPageAlert(
+        "error",
+        err.message || "Error al crear nueva versión del alcance."
+      );
     }
   };
 
@@ -596,7 +649,14 @@ export default function ProjectDetail() {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     const token = getToken();
-    if (!ratingValue) return;
+    if (myReview) return; // extra seguridad en front
+    if (!ratingValue) {
+      showPageAlert(
+        "warning",
+        "Selecciona una calificación antes de enviar."
+      );
+      return;
+    }
 
     try {
       setSavingReview(true);
@@ -604,18 +664,20 @@ export default function ProjectDetail() {
         `${API_BASE}/api/projects/${projectId}/reviews`,
         {
           rating: Number(ratingValue),
-          comment: ratingComment.trim(),
+          // ya no mandamos comentario
         },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       await fetchReviews();
-      alert("Calificación guardada correctamente.");
+      showPageAlert("success", "Calificación guardada correctamente.");
     } catch (err) {
       console.error("Error al guardar review:", err);
-      const msg = err.response?.data?.error || "No se pudo guardar la calificación.";
-      alert(msg);
+      const msg =
+        err.response?.data?.error ||
+        "No se pudo guardar la calificación.";
+      showPageAlert("error", msg);
     } finally {
       setSavingReview(false);
     }
@@ -633,26 +695,34 @@ export default function ProjectDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project]);
 
-  // Scroll al final del chat cuando cambian los mensajes
+  // 🔄 Polling de mensajes para simular tiempo real
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
+    if (!conversation || !conversation.id) return;
 
-  // Mensaje sugerido para freelancer cuando no hay historial de mensajes
+    // primera carga (con loader visible)
+    fetchMessages(conversation.id, { silent: false });
+
+    // siguientes cargas cada 3s, en modo silencioso
+    const intervalId = setInterval(() => {
+      fetchMessages(conversation.id, { silent: true });
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [conversation]);
+
+  // Mensaje inicial sugerido SOLO si el freelancer no tiene historial
   useEffect(() => {
     if (
-      conversation &&
       isFreelancer &&
+      conversation &&
       messages.length === 0 &&
-      !content
+      content === ""
     ) {
       setContent(
         "Hola, gracias por confiar en mí 🙌 Platiquemos más sobre tus necesidades para dejar todo claro aquí."
       );
     }
-  }, [conversation, isFreelancer, messages.length, content]);
+  }, [conversation, isFreelancer, messages.length]);
 
   if (!project) {
     return (
@@ -710,6 +780,13 @@ export default function ProjectDetail() {
       {isFreelancer ? <FreelancerNavbar /> : <Navbar />}
 
       <div className="project-detail">
+        {/* Banner de mensajes dentro de la página */}
+        {pageAlert && (
+          <div className={`page-alert page-alert-${pageAlert.type}`}>
+            {pageAlert.text}
+          </div>
+        )}
+
         {/* Header */}
         <div className="project-header">
           <div className="project-header-main">
@@ -929,20 +1006,6 @@ export default function ProjectDetail() {
                         )}
 
                         <div className="scope-meta">
-                          {currentScope.price && (
-                            <span>
-                              Monto sugerido: $
-                              {Number(currentScope.price).toLocaleString(
-                                "es-MX"
-                              )}
-                            </span>
-                          )}
-                          {currentScope.deadline && (
-                            <span>
-                              Fecha límite sugerida:{" "}
-                              {formatDate(currentScope.deadline)}
-                            </span>
-                          )}
                           {currentScope.revision_limit != null && (
                             <span>
                               Revisiones máximas: {currentScope.revision_limit}
@@ -1001,17 +1064,6 @@ export default function ProjectDetail() {
                                   s.created_at
                                 ).toLocaleString("es-MX")}
                               </span>
-                              {s.price && (
-                                <span>
-                                  Monto: $
-                                  {Number(s.price).toLocaleString("es-MX")}
-                                </span>
-                              )}
-                              {s.deadline && (
-                                <span>
-                                  Fecha límite: {formatDate(s.deadline)}
-                                </span>
-                              )}
                             </div>
                           </li>
                         ))}
@@ -1365,7 +1417,7 @@ export default function ProjectDetail() {
 
             <p className="section-text">
               Al dejar una calificación ayudas a mantener la calidad y confianza
-              dentro de Workly. Ambas partes pueden calificarse.
+              dentro de Workly.
             </p>
 
             <div className="rating-layout">
@@ -1378,8 +1430,26 @@ export default function ProjectDetail() {
 
                 {loadingReviews ? (
                   <p>Cargando tu calificación...</p>
+                ) : myReview ? (
+                  <>
+                    <p className="rating-summary-text">
+                      Ya calificaste este proyecto:
+                    </p>
+                    <div className="rating-item-header">
+                      <span className="rating-stars">
+                        {"★".repeat(myReview.rating)}
+                        {"☆".repeat(5 - myReview.rating)}
+                      </span>
+                      <span className="rating-date">
+                        {new Date(myReview.created_at).toLocaleString("es-MX")}
+                      </span>
+                    </div>
+                  </>
                 ) : (
-                  <form onSubmit={handleSubmitReview} className="rating-form">
+                  <form
+                    onSubmit={handleSubmitReview}
+                    className="rating-form"
+                  >
                     <label>
                       Calificación
                       <select
@@ -1395,65 +1465,14 @@ export default function ProjectDetail() {
                       </select>
                     </label>
 
-                    <label>
-                      Comentario (opcional)
-                      <textarea
-                        rows={3}
-                        value={ratingComment}
-                        onChange={(e) => setRatingComment(e.target.value)}
-                        placeholder="Cuéntale a otros cómo fue trabajar con esta persona."
-                        disabled={savingReview}
-                      />
-                    </label>
-
                     <button
                       type="submit"
                       className="primary-btn"
                       disabled={savingReview}
                     >
-                      {myReview ? "Actualizar calificación" : "Enviar calificación"}
+                      Enviar calificación
                     </button>
-
-                    {myReview && (
-                      <p className="rating-note">
-                        Ya habías calificado este proyecto, puedes actualizar tu
-                        comentario si lo deseas.
-                      </p>
-                    )}
                   </form>
-                )}
-              </div>
-
-              <div className="rating-list-wrapper">
-                <h4>Historial de calificaciones</h4>
-                {loadingReviews && <p>Cargando calificaciones...</p>}
-                {!loadingReviews && reviews.length === 0 && (
-                  <p className="rating-empty">
-                    Aún no hay calificaciones registradas para este proyecto.
-                  </p>
-                )}
-                {!loadingReviews && reviews.length > 0 && (
-                  <ul className="rating-list">
-                    {reviews.map((r) => (
-                      <li key={r.id} className="rating-item">
-                        <div className="rating-item-header">
-                          <span className="rating-stars">
-                            {"★".repeat(r.rating)}
-                            {"☆".repeat(5 - r.rating)}
-                          </span>
-                          <span className="rating-meta">
-                            {r.reviewer_name} → {r.target_name}
-                          </span>
-                        </div>
-                        {r.comment && (
-                          <p className="rating-comment">“{r.comment}”</p>
-                        )}
-                        <span className="rating-date">
-                          {new Date(r.created_at).toLocaleString("es-MX")}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
                 )}
               </div>
             </div>
@@ -1630,29 +1649,6 @@ export default function ProjectDetail() {
                   onChange={handleNewScopeChange}
                 />
               </label>
-
-              <div className="scope-form-row">
-                <label>
-                  Monto (MXN)
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="price"
-                    value={newScopeForm.price}
-                    onChange={handleNewScopeChange}
-                  />
-                </label>
-
-                <label>
-                  Fecha límite
-                  <input
-                    type="date"
-                    name="deadline"
-                    value={newScopeForm.deadline}
-                    onChange={handleNewScopeChange}
-                  />
-                </label>
-              </div>
 
               <label>
                 Límite de revisiones

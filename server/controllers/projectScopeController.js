@@ -58,6 +58,8 @@ exports.createNewScopeVersion = async (req, res) => {
     deliverables,
     exclusions,
     revision_limit,
+    // estos dos se usan SOLO para actualizar el contrato,
+    // ya no se guardan en project_scopes
     deadline,
     price,
   } = req.body;
@@ -81,7 +83,7 @@ exports.createNewScopeVersion = async (req, res) => {
     const lastVersion = lastScopeRes.rows[0]?.version || 0;
     const newVersion = lastVersion + 1;
 
-    // 2) Crear nueva versión
+    // 2) Crear nueva versión (SIN price/deadline)
     const scopeRes = await client.query(
       `INSERT INTO project_scopes (
         project_id,
@@ -91,11 +93,9 @@ exports.createNewScopeVersion = async (req, res) => {
         deliverables,
         exclusions,
         revision_limit,
-        deadline,
-        price,
         created_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
       [
         projectId,
@@ -105,19 +105,18 @@ exports.createNewScopeVersion = async (req, res) => {
         deliverables,
         exclusions,
         revision_limit,
-        deadline,
-        price,
         userId,
       ]
     );
 
-    // 3) Resetear aceptaciones de contrato y opcionalmente actualizar price/deadline
+    // 3) Resetear aceptaciones de contrato y actualizar monto/fecha SI vienen
     const projRes = await client.query(
       `UPDATE projects
        SET client_accepted = FALSE,
            freelancer_accepted = FALSE,
            contract_price = COALESCE($2, contract_price),
-           contract_deadline = COALESCE($3, contract_deadline)
+           contract_deadline = COALESCE($3::date, contract_deadline),
+           updated_at = NOW()
        WHERE id = $1
        RETURNING client_id, freelancer_id`,
       [projectId, price, deadline]
@@ -149,7 +148,7 @@ exports.createNewScopeVersion = async (req, res) => {
       ]
     );
 
-    // 🔔 5) NOTIFICACIONES
+    // 5) Notificaciones
     try {
       const isClient = userId === project.client_id;
       const actorLabel = isClient ? "El cliente" : "El freelancer";

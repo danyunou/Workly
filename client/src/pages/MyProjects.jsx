@@ -136,10 +136,32 @@ export default function MyProjects() {
     return "Ver proyecto";
   };
 
-  // Filtros
+  // -------- Filtros --------
   const filteredProjects = projects.filter((p) => {
-    if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    // 1) Filtro por estado
+    if (statusFilter !== "all") {
+      if (statusFilter === "contract") {
+        // Pendiente de contrato / contrato en revisión
+        if (
+          !(
+            p.status === "pending_contract" ||
+            p.status === "awaiting_contract"
+          )
+        ) {
+          return false;
+        }
+      } else if (statusFilter === "in_progress") {
+        // En progreso incluye "in_progress" + "in_revision"
+        if (!(p.status === "in_progress" || p.status === "in_revision")) {
+          return false;
+        }
+      } else {
+        // awaiting_payment, completed
+        if (p.status !== statusFilter) return false;
+      }
+    }
 
+    // 2) Filtro por búsqueda
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       const title = (p.service_title || "").toLowerCase();
@@ -155,7 +177,7 @@ export default function MyProjects() {
     return true;
   });
 
-  // Contadores
+  // -------- Contadores (sin cancelados) --------
   const activeStatuses = [
     "pending_contract",
     "awaiting_contract",
@@ -164,16 +186,12 @@ export default function MyProjects() {
     "in_revision",
   ];
   const completedStatuses = ["completed"];
-  const cancelledStatuses = ["cancelled"];
 
   const totalActive = projects.filter((p) =>
     activeStatuses.includes(p.status)
   ).length;
   const totalCompleted = projects.filter((p) =>
     completedStatuses.includes(p.status)
-  ).length;
-  const totalCancelled = projects.filter((p) =>
-    cancelledStatuses.includes(p.status)
   ).length;
 
   const counterpartLabel = isClient ? "Freelancer" : "Cliente";
@@ -205,10 +223,6 @@ export default function MyProjects() {
               <span className="projects-stat-label">Completados</span>
               <span className="projects-stat-value">{totalCompleted}</span>
             </div>
-            <div className="projects-stat-card">
-              <span className="projects-stat-label">Cancelados</span>
-              <span className="projects-stat-value">{totalCancelled}</span>
-            </div>
           </div>
 
           {/* Filtros */}
@@ -230,13 +244,10 @@ export default function MyProjects() {
                 className="projects-filter-select"
               >
                 <option value="all">Todos los estados</option>
-                <option value="pending_contract">Pendiente de contrato</option>
-                <option value="awaiting_contract">Contrato en revisión</option>
+                <option value="contract">Pendiente de contrato</option>
                 <option value="awaiting_payment">Pendiente de pago</option>
                 <option value="in_progress">En progreso</option>
-                <option value="in_revision">En revisión</option>
                 <option value="completed">Completados</option>
-                {/* sin opción de cancelados en el filtro */}
               </select>
             </div>
           </div>
