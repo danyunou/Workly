@@ -1,32 +1,22 @@
+// server/routes/reviews.js
 const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../middlewares/authMiddleware");
+const reviewController = require("../controllers/reviewController");
 
-const {
-  getProjectReviews,
-  createProjectReview,
-  createUserReview,
-  getReviewsForUser,
-} = require("../controllers/reviewController");
-
+// GET /api/projects/:projectId/reviews
 router.get(
-  "/projects/:projectId/reviews",
+  "/:projectId/reviews",
   authMiddleware,
-  getProjectReviews
+  reviewController.getProjectReviews
 );
 
+// POST /api/projects/:projectId/reviews
 router.post(
-  "/projects/:projectId/reviews",
+  "/:projectId/reviews",
   authMiddleware,
-  createProjectReview 
+  reviewController.createProjectReview
 );
-
-router.post(
-  "/reviews",
-  authMiddleware,
-  createUserReview
-);
-
 
 module.exports = router;
