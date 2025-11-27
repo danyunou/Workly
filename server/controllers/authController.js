@@ -150,7 +150,7 @@ exports.login = async (req, res) => {
         email: user.email,
         username: user.username,
         preferences: user.preferences,
-        role_id: user.role_id, // 👈 esto es clave para que el frontend sepa el rol
+        role_id: user.role_id, 
       },
     });
   } catch (err) {

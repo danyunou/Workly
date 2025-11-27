@@ -41,7 +41,6 @@ export default function FreelancerNavbar() {
           <img src={notifications} />
         </Link>
 
-        {/* MENÚ DESPLEGABLE */}
         <div className="profile-dropdown" ref={menuRef}>
           <img
             src={profile}

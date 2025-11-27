@@ -62,7 +62,7 @@ export default function ProjectDetail() {
   const [reviews, setReviews] = useState([]);
   const [myReview, setMyReview] = useState(null);
   const [ratingValue, setRatingValue] = useState(5);
-  const [ratingComment, setRatingComment] = useState(""); // ya no se usa en UI, luego lo puedes quitar
+  const [ratingComment, setRatingComment] = useState("");
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
 
@@ -401,7 +401,7 @@ export default function ProjectDetail() {
     }
   };
 
-    // === Chat & Scope ===
+  // === Chat & Scope ===
   const fetchMessages = async (conversationId, { silent = false } = {}) => {
     const token = getToken();
     try {
@@ -664,7 +664,7 @@ export default function ProjectDetail() {
         `${API_BASE}/api/projects/${projectId}/reviews`,
         {
           rating: Number(ratingValue),
-          // ya no mandamos comentario
+          comment: ratingComment || null,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -722,7 +722,7 @@ export default function ProjectDetail() {
         "Hola, gracias por confiar en mí 🙌 Platiquemos más sobre tus necesidades para dejar todo claro aquí."
       );
     }
-  }, [conversation, isFreelancer, messages.length]);
+  }, [conversation, isFreelancer, messages.length, content]);
 
   if (!project) {
     return (
@@ -1444,6 +1444,11 @@ export default function ProjectDetail() {
                         {new Date(myReview.created_at).toLocaleString("es-MX")}
                       </span>
                     </div>
+                    {myReview.comment && (
+                      <p className="rating-comment">
+                        {myReview.comment}
+                      </p>
+                    )}
                   </>
                 ) : (
                   <form
@@ -1465,6 +1470,17 @@ export default function ProjectDetail() {
                       </select>
                     </label>
 
+                    <label>
+                      Comentario (opcional)
+                      <textarea
+                        value={ratingComment}
+                        onChange={(e) => setRatingComment(e.target.value)}
+                        rows={3}
+                        placeholder="Cuéntanos cómo fue tu experiencia."
+                        disabled={savingReview}
+                      />
+                    </label>
+
                     <button
                       type="submit"
                       className="primary-btn"
@@ -1473,6 +1489,39 @@ export default function ProjectDetail() {
                       Enviar calificación
                     </button>
                   </form>
+                )}
+              </div>
+
+              <div className="rating-list-wrapper">
+                <h4>Reseñas de este proyecto</h4>
+                {reviews.length === 0 ? (
+                  <p className="rating-empty">
+                    Aún no hay reseñas registradas.
+                  </p>
+                ) : (
+                  <ul className="rating-list">
+                    {reviews.map((r) => (
+                      <li key={r.id} className="rating-item">
+                        <div className="rating-item-header">
+                          <span className="rating-stars">
+                            {"★".repeat(r.rating)}
+                            {"☆".repeat(5 - r.rating)}
+                          </span>
+                          <span className="rating-date">
+                            {new Date(r.created_at).toLocaleString("es-MX")}
+                          </span>
+                        </div>
+                        <div className="rating-meta">
+                          Por: {r.reviewer_name || "Usuario"}
+                        </div>
+                        {r.comment && (
+                          <p className="rating-comment">
+                            {r.comment}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
@@ -1544,7 +1593,7 @@ export default function ProjectDetail() {
             >
               <div className="form-row">
                 <label>
-                  Monto del contrato (USD)
+                  Monto del contrato (MXN)
                   <input
                     type="number"
                     step="0.01"

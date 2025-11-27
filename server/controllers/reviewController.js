@@ -157,9 +157,7 @@ exports.getProjectReviews = async (req, res) => {
   }
 };
 
-// POST /api/projects/:projectId/reviews
-// body: { rating, comment }
-exports.createOrUpdateProjectReview = async (req, res) => {
+exports.createProjectReview = async (req, res) => {
   const reviewerId = req.user?.id;
   const { projectId } = req.params;
   const { rating, comment } = req.body;
@@ -177,7 +175,7 @@ exports.createOrUpdateProjectReview = async (req, res) => {
   }
 
   try {
-    // 1. Validar que el reviewer pertenece al proyecto y que está completado
+    // 1. Validar proyecto, participantes y que esté completado
     const projectRes = await pool.query(
       `
       SELECT id, client_id, freelancer_id, status
@@ -214,7 +212,7 @@ exports.createOrUpdateProjectReview = async (req, res) => {
         ? project.freelancer_id
         : project.client_id;
 
-    // 2. Upsert por (project_id, reviewer_id)
+    // 2. Verificar si YA existe reseña de este usuario en este proyecto
     const existsRes = await pool.query(
       `
       SELECT id
@@ -225,28 +223,21 @@ exports.createOrUpdateProjectReview = async (req, res) => {
     );
 
     if (existsRes.rows.length > 0) {
-      const reviewId = existsRes.rows[0].id;
-      await pool.query(
-        `
-        UPDATE project_reviews
-        SET rating = $1,
-            comment = $2,
-            target_id = $3
-        WHERE id = $4
-        `,
-        [rating, comment || null, targetId, reviewId]
-      );
-    } else {
-      await pool.query(
-        `
-        INSERT INTO project_reviews (project_id, reviewer_id, target_id, rating, comment)
-        VALUES ($1, $2, $3, $4, $5)
-        `,
-        [projectId, reviewerId, targetId, rating, comment || null]
-      );
+      return res.status(409).json({
+        error: "Ya registraste una reseña para este proyecto. No se puede modificar."
+      });
     }
 
-    // Opcional: notificación para la contraparte
+    // 3. Insertar nueva reseña
+    await pool.query(
+      `
+      INSERT INTO project_reviews (project_id, reviewer_id, target_id, rating, comment)
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [projectId, reviewerId, targetId, rating, comment || null]
+    );
+
+    // 4. Notificación para la contraparte (opcional)
     try {
       await createNotificationForUser(
         targetId,
@@ -258,7 +249,7 @@ exports.createOrUpdateProjectReview = async (req, res) => {
       console.error("Error creando notificación de review:", notifyErr);
     }
 
-    // devolver lista actualizada (va bien con el front que hace setReviews con la respuesta)
+    // 5. Devolver lista actualizada de reseñas del proyecto
     const { rows } = await pool.query(
       `
       SELECT 
@@ -282,10 +273,11 @@ exports.createOrUpdateProjectReview = async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error("Error en createOrUpdateProjectReview:", err);
+    console.error("Error en createProjectReview:", err);
     res.status(500).json({ error: "Error interno al guardar review" });
   }
 };
+
 
 // 🔹 Reviews para mostrar en el perfil de un usuario (target_id)
 exports.getReviewsForUser = async (req, res) => {

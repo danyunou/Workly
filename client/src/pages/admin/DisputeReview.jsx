@@ -9,6 +9,12 @@ const API_BASE =
 export default function DisputeReview() {
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // 🔹 textos de resolución por disputa (id -> texto)
+  const [resolutionTexts, setResolutionTexts] = useState({});
+  // 🔹 feedback global en la página
+  const [feedback, setFeedback] = useState(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +34,10 @@ export default function DisputeReview() {
         setDisputes(data);
       } catch (err) {
         console.error("Error al cargar disputas:", err);
+        setFeedback({
+          type: "error",
+          text: "Ocurrió un error al cargar las disputas.",
+        });
       } finally {
         setLoading(false);
       }
@@ -36,11 +46,22 @@ export default function DisputeReview() {
     fetchDisputes();
   }, []);
 
+  const handleResolutionChange = (disputeId, value) => {
+    setResolutionTexts((prev) => ({
+      ...prev,
+      [disputeId]: value,
+    }));
+  };
+
   const handleReject = async (disputeId) => {
-    const reason = prompt(
-      "Motivo para rechazar la disputa (se enviará en la resolución):"
-    );
-    if (!reason) return;
+    const reason = (resolutionTexts[disputeId] || "").trim();
+    if (!reason) {
+      setFeedback({
+        type: "warning",
+        text: "Escribe un mensaje de resolución antes de rechazar la disputa.",
+      });
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -59,19 +80,35 @@ export default function DisputeReview() {
         throw new Error("Error al rechazar la disputa");
       }
 
-      alert("Disputa rechazada y partes notificadas");
       setDisputes((prev) => prev.filter((d) => d.id !== disputeId));
+      setResolutionTexts((prev) => {
+        const copy = { ...prev };
+        delete copy[disputeId];
+        return copy;
+      });
+
+      setFeedback({
+        type: "success",
+        text: "Disputa rechazada. Se ha guardado la resolución y las partes fueron notificadas.",
+      });
     } catch (err) {
       console.error("Error al rechazar disputa:", err);
-      alert("Ocurrió un error al rechazar la disputa");
+      setFeedback({
+        type: "error",
+        text: "Ocurrió un error al rechazar la disputa.",
+      });
     }
   };
 
   const handleAccept = async (disputeId) => {
-    const reason = prompt(
-      "Mensaje / resolución al aceptar la disputa (se guardará como resolución):"
-    );
-    if (!reason) return;
+    const reason = (resolutionTexts[disputeId] || "").trim();
+    if (!reason) {
+      setFeedback({
+        type: "warning",
+        text: "Escribe un mensaje de resolución antes de aceptar la disputa.",
+      });
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -90,11 +127,23 @@ export default function DisputeReview() {
         throw new Error("Error al aceptar la disputa");
       }
 
-      alert("Disputa aceptada, proyecto actualizado y partes notificadas");
       setDisputes((prev) => prev.filter((d) => d.id !== disputeId));
+      setResolutionTexts((prev) => {
+        const copy = { ...prev };
+        delete copy[disputeId];
+        return copy;
+      });
+
+      setFeedback({
+        type: "success",
+        text: "Disputa aceptada. El proyecto fue actualizado y las partes fueron notificadas.",
+      });
     } catch (err) {
       console.error("Error al aceptar disputa:", err);
-      alert("Ocurrió un error al aceptar la disputa");
+      setFeedback({
+        type: "error",
+        text: "Ocurrió un error al aceptar la disputa.",
+      });
     }
   };
 
@@ -115,10 +164,17 @@ export default function DisputeReview() {
         <div className="dispute-header-main">
           <h2>Disputas abiertas</h2>
           <p className="dispute-subtitle">
-            Revisa el alcance, entregables, mensajes y el historial antes de
+            Revisa el alcance (project_scopes), entregables, mensajes y el historial antes de
             tomar una decisión.
           </p>
         </div>
+
+        {/* 🔹 Mensaje global dentro de la página */}
+        {feedback && (
+          <div className={`admin-alert admin-alert-${feedback.type}`}>
+            {feedback.text}
+          </div>
+        )}
 
         {disputes.length === 0 ? (
           <p>No hay disputas activas.</p>
@@ -128,20 +184,33 @@ export default function DisputeReview() {
             const hasDeliverables = (d.deliverables || []).length > 0;
             const hasLogs = (d.logs || []).length > 0;
 
+            // Formato de ID único de disputa
+            const disputeCode = `DSP-${String(d.id).padStart(6, "0")}`;
+
+            // Deliverables del scope
+            const scopeLines = (d.scope_deliverables || "")
+              .split("\n")
+              .map((line) => line.trim())
+              .filter((line) => line !== "");
+
             return (
               <div key={d.id} className="dispute-card">
                 {/* CABECERA */}
                 <div className="dispute-header">
                   <div>
-                    <h4>Proyecto #{d.project_id}</h4>
-                    {d.project_title && (
-                      <p className="dispute-project-title">
-                        {d.project_title}
-                      </p>
-                    )}
+                    <h4>
+                      Disputa{" "}
+                      <span className="dispute-id">{disputeCode}</span>
+                    </h4>
+                    <p className="dispute-project-title">
+                      Proyecto #{d.project_id}
+                      {d.project_title ? ` — ${d.project_title}` : ""}
+                    </p>
                   </div>
                   <div className="dispute-header-right">
-                    <span className={`dispute-status badge-${d.dispute_status}`}>
+                    <span
+                      className={`dispute-status badge-${d.dispute_status}`}
+                    >
                       {d.dispute_status}
                     </span>
                     {d.project_budget && (
@@ -166,7 +235,7 @@ export default function DisputeReview() {
                   <p>
                     <strong>Fecha de apertura:</strong>{" "}
                     {d.opened_at
-                      ? new Date(d.opened_at).toLocaleString()
+                      ? new Date(d.opened_at).toLocaleString("es-MX")
                       : "—"}
                   </p>
                   <p>
@@ -180,30 +249,84 @@ export default function DisputeReview() {
                   )}
                 </div>
 
-                {/* PROYECTO + SCOPE */}
+                {/* PROYECTO + SCOPE (project_scopes) */}
                 <div className="dispute-section">
-                  <h5>Proyecto</h5>
+                  <h5>Proyecto y alcance</h5>
+
                   {d.project_description && (
                     <p>
                       <strong>Descripción del proyecto:</strong>{" "}
                       {d.project_description}
                     </p>
                   )}
-                  {d.project_scope && (
-                    <p>
-                      <strong>Alcance / scope acordado:</strong>{" "}
-                      {d.project_scope}
-                    </p>
-                  )}
+
                   <p>
                     <strong>Estado del proyecto:</strong>{" "}
                     {d.project_status || "—"}
                   </p>
+
                   {d.project_deadline && (
                     <p>
                       <strong>Fecha límite:</strong>{" "}
-                      {new Date(d.project_deadline).toLocaleDateString()}
+                      {new Date(
+                        d.project_deadline
+                      ).toLocaleDateString("es-MX")}
                     </p>
+                  )}
+
+                  {/* 🔹 Bloque de alcance desde project_scopes */}
+                  {(d.scope_title ||
+                    d.scope_description ||
+                    scopeLines.length > 0) && (
+                    <div className="scope-block">
+                      <p className="scope-block-title">
+                        <strong>
+                          Alcance (última versión registrada en project_scopes)
+                        </strong>
+                      </p>
+
+                      {d.scope_title && (
+                        <p>
+                          <strong>Título:</strong> {d.scope_title}
+                        </p>
+                      )}
+
+                      {d.scope_description && (
+                        <p>
+                          <strong>Descripción:</strong>{" "}
+                          {d.scope_description}
+                        </p>
+                      )}
+
+                      {scopeLines.length > 0 && (
+                        <>
+                          <p>
+                            <strong>Entregables:</strong>
+                          </p>
+                          <ul className="scope-deliverables-list">
+                            {scopeLines.map((line, idx) => (
+                              <li key={idx}>{line}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+
+                      {d.scope_revision_limit != null && (
+                        <p>
+                          <strong>Límite de revisiones:</strong>{" "}
+                          {d.scope_revision_limit}
+                        </p>
+                      )}
+
+                      {d.scope_created_at && (
+                        <p className="scope-meta">
+                          <strong>Versión creada el:</strong>{" "}
+                          {new Date(
+                            d.scope_created_at
+                          ).toLocaleString("es-MX")}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -224,7 +347,7 @@ export default function DisputeReview() {
                     <p>
                       <strong>Nombre:</strong> {d.freelancer_name || "—"}
                     </p>
-                      <p>
+                    <p>
                       <strong>Email:</strong> {d.freelancer_email || "—"}
                     </p>
                   </div>
@@ -254,7 +377,9 @@ export default function DisputeReview() {
                             <p className="dispute-list-meta">
                               Subido:{" "}
                               {del.created_at
-                                ? new Date(del.created_at).toLocaleString()
+                                ? new Date(
+                                    del.created_at
+                                  ).toLocaleString("es-MX")
                                 : "—"}
                               {del.submitted_by && (
                                 <> · Usuario #{del.submitted_by}</>
@@ -262,7 +387,11 @@ export default function DisputeReview() {
                             </p>
                           </div>
                           <div className="dispute-list-right">
-                            <span className={`badge-deliverable badge-${del.status || "pending"}`}>
+                            <span
+                              className={`badge-deliverable badge-${
+                                del.status || "pending"
+                              }`}
+                            >
                               {del.status || "pending"}
                             </span>
                             {del.file_url && (
@@ -311,7 +440,9 @@ export default function DisputeReview() {
                               </p>
                               <p className="dispute-list-meta">
                                 {m.created_at
-                                  ? new Date(m.created_at).toLocaleString()
+                                  ? new Date(
+                                      m.created_at
+                                    ).toLocaleString("es-MX")
                                   : "—"}
                               </p>
                             </div>
@@ -346,7 +477,9 @@ export default function DisputeReview() {
                             </p>
                             <p className="dispute-list-meta">
                               {log.timestamp
-                                ? new Date(log.timestamp).toLocaleString()
+                                ? new Date(
+                                    log.timestamp
+                                  ).toLocaleString("es-MX")
                                 : "—"}{" "}
                               · Usuario #{log.action_by}
                             </p>
@@ -357,20 +490,39 @@ export default function DisputeReview() {
                   )}
                 </div>
 
-                {/* ACCIONES ADMIN */}
+                {/* ACCIONES ADMIN + MENSAJE DENTRO DE LA PÁGINA */}
                 <div className="dispute-actions">
-                  <button
-                    className="btn-accept"
-                    onClick={() => handleAccept(d.id)}
-                  >
-                    Aceptar disputa
-                  </button>
-                  <button
-                    className="btn-reject"
-                    onClick={() => handleReject(d.id)}
-                  >
-                    Rechazar disputa
-                  </button>
+                  <div className="dispute-resolution-input">
+                    <label>
+                      Mensaje de resolución para las partes
+                      <textarea
+                        rows={3}
+                        placeholder="Explica brevemente la decisión que estás tomando..."
+                        value={resolutionTexts[d.id] || ""}
+                        onChange={(e) =>
+                          handleResolutionChange(d.id, e.target.value)
+                        }
+                      />
+                    </label>
+                    <p className="dispute-resolution-note">
+                      Este texto se guardará como resolución y se mostrará al
+                      cliente y al freelancer.
+                    </p>
+                  </div>
+                  <div className="dispute-actions-buttons">
+                    <button
+                      className="btn-accept"
+                      onClick={() => handleAccept(d.id)}
+                    >
+                      Aceptar disputa
+                    </button>
+                    <button
+                      className="btn-reject"
+                      onClick={() => handleReject(d.id)}
+                    >
+                      Rechazar disputa
+                    </button>
+                  </div>
                 </div>
               </div>
             );

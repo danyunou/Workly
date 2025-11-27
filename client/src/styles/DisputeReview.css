@@ -39,6 +39,33 @@
   color: #777;
 }
 
+/* Alertas dentro de la página admin */
+.admin-alert {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.6rem;
+  font-size: 0.88rem;
+  border: 1px solid transparent;
+}
+
+.admin-alert-success {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #166534;
+}
+
+.admin-alert-error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.admin-alert-warning {
+  background: #fffbeb;
+  border-color: #facc15;
+  color: #92400e;
+}
+
 /* Tarjeta de cada disputa */
 .dispute-card {
   margin-top: 1.5rem;
@@ -73,6 +100,17 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* ID de disputa estilo código */
+.dispute-id {
+  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.9rem;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  margin-left: 0.3rem;
 }
 
 /* Badges */
@@ -135,6 +173,36 @@
   background: #ecfdf5;
   border-radius: 8px;
   border: 1px solid #bbf7d0;
+}
+
+/* Bloque de scope (project_scopes) */
+.scope-block {
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.8rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  font-size: 0.88rem;
+}
+
+.scope-block-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.86rem;
+  color: #111827;
+}
+
+.scope-deliverables-list {
+  margin: 0.25rem 0 0.25rem 1.1rem;
+  padding: 0;
+}
+
+.scope-deliverables-list li {
+  margin-bottom: 0.15rem;
+}
+
+.scope-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
 }
 
 /* Grid cliente / freelancer */
@@ -242,13 +310,52 @@
   color: #9ca3af;
 }
 
-/* Acciones admin */
+/* Acciones admin (contenedor general) */
 .dispute-actions {
   margin-top: 1.25rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #e5e7eb;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Bloque del textarea de resolución */
+.dispute-resolution-input label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.dispute-resolution-input textarea {
+  border-radius: 0.6rem;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.86rem;
+  resize: vertical;
+  min-height: 70px;
+}
+
+.dispute-resolution-input textarea:focus {
+  outline: none;
+  border-color: #02ad7a;
+  box-shadow: 0 0 0 1px rgba(2, 173, 122, 0.15);
+}
+
+.dispute-resolution-note {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+/* Fila de botones Aceptar / Rechazar */
+.dispute-actions-buttons {
+  display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .dispute-card button {
@@ -325,5 +432,9 @@
 
   .dispute-header-right {
     align-self: flex-start;
+  }
+
+  .dispute-actions-buttons {
+    justify-content: flex-start;
   }
 }

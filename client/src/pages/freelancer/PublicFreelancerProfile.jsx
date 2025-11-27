@@ -4,7 +4,6 @@ import "../../styles/freelancerProfile.css";
 import Navbar from "../../components/Navbar";
 import WelcomeNavbar from "../../components/WelcomeNavbar";
 import FreelancerNavbar from "../../components/FreelancerNavbar";
-
 import { jwtDecode } from "jwt-decode";
 
 export default function PublicFreelancerProfile() {
@@ -13,13 +12,16 @@ export default function PublicFreelancerProfile() {
   const [error, setError] = useState(null);
   const [roleId, setRoleId] = useState(null);
 
-  // Solo leer token una vez
+  // Leer token una sola vez para decidir navbar
   useEffect(() => {
     const token = localStorage.getItem("token");
-
     if (token) {
-      const decoded = jwtDecode(token);
-      setRoleId(decoded.role_id);
+      try {
+        const decoded = jwtDecode(token);
+        setRoleId(decoded.role_id);
+      } catch (e) {
+        console.error("Error al decodificar token:", e);
+      }
     }
   }, []);
 
@@ -126,34 +128,43 @@ export default function PublicFreelancerProfile() {
     );
   }
 
-  // Intentar leer rating y conteo desde distintas keys
-  // Intentar leer rating y conteo desde distintas keys
-const ratingValueRaw =
-  profile.average_rating ??
-  profile.avg_rating ??
-  profile.rating ??
-  null;
+  // ==== Rating global ====
+  const ratingValueRaw =
+    profile.average_rating ??
+    profile.avg_rating ??
+    profile.rating ??
+    null;
 
-// normalizar a número (por si viene como string)
-const ratingValue =
-  ratingValueRaw !== null && ratingValueRaw !== undefined
-    ? Number(ratingValueRaw)
-    : null;
+  const ratingValue =
+    ratingValueRaw !== null && ratingValueRaw !== undefined
+      ? Number(ratingValueRaw)
+      : null;
 
-const ratingCountRaw =
-  profile.review_count ??
-  profile.reviews_count ??   // 👈 IMPORTANTE: esta es la que manda el back
-  profile.ratings_count ??
-  profile.total_reviews ??
-  null;
+  const ratingCountRaw =
+    profile.review_count ??
+    profile.reviews_count ?? // 👈 la más probable
+    profile.ratings_count ??
+    profile.total_reviews ??
+    null;
 
-const ratingCount =
-  ratingCountRaw !== null && ratingCountRaw !== undefined
-    ? Number(ratingCountRaw)
-    : null;
+  const ratingCount =
+    ratingCountRaw !== null && ratingCountRaw !== undefined
+      ? Number(ratingCountRaw)
+      : null;
 
-const hasRating =
-  ratingValue !== null && !Number.isNaN(ratingValue) && ratingValue > 0;
+  const hasRating =
+    ratingValue !== null && !Number.isNaN(ratingValue) && ratingValue > 0;
+
+  // ==== Reseñas con comentarios ====
+  const reviewsArray =
+    profile.recent_reviews ??
+    profile.reviews ??
+    profile.last_reviews ??
+    [];
+
+  const hasReviewsList =
+    Array.isArray(reviewsArray) && reviewsArray.length > 0;
+
   return (
     <>
       {NavbarToShow}
@@ -228,6 +239,57 @@ const hasRating =
             <p className="section-text">
               {profile.description || "Sin descripción aún."}
             </p>
+          </section>
+
+          {/* RESEÑAS VISIBLES PARA EL PÚBLICO */}
+          <section className="section-block">
+            <h3>Lo que opinan sus clientes</h3>
+            {hasReviewsList ? (
+              <ul className="reviews-list">
+                {reviewsArray.slice(0, 5).map((rev, i) => {
+                  const reviewerName =
+                    rev.reviewer_name ||
+                    rev.client_name ||
+                    rev.reviewer ||
+                    "Cliente";
+
+                  const projectTitle =
+                    rev.project_title ||
+                    rev.service_title ||
+                    rev.project_name ||
+                    null;
+
+                  return (
+                    <li key={rev.id || i} className="review-item">
+                      <div className="review-header">
+                        <div className="review-stars">
+                          {renderStars(rev.rating || 0)}
+                        </div>
+                        <span className="review-meta">
+                          {reviewerName}
+                          {projectTitle && ` · ${projectTitle}`}
+                        </span>
+                        <span className="review-date">
+                          {rev.created_at &&
+                            new Date(rev.created_at).toLocaleDateString(
+                              "es-MX"
+                            )}
+                        </span>
+                      </div>
+                      <p className="review-comment">
+                        {rev.comment && rev.comment.trim() !== ""
+                          ? rev.comment
+                          : "El cliente solo dejó la calificación numérica."}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="section-text muted">
+                Aún no hay reseñas visibles para este freelancer.
+              </p>
+            )}
           </section>
 
           {/* EDUCACIÓN */}

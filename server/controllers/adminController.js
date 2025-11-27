@@ -165,9 +165,12 @@ exports.getAllDisputes = async (req, res) => {
         pr.proposed_price     AS proposal_price,
 
         -- último scope de proyecto (si existe)
+        scope.scope_version,
         scope.scope_title,
         scope.scope_description,
         scope.scope_deliverables,
+        scope.scope_revision_limit,
+        scope.scope_created_at,
         scope.scope_price
 
       FROM disputes d
@@ -182,10 +185,13 @@ exports.getAllDisputes = async (req, res) => {
       -- último project_scope por versión
       LEFT JOIN LATERAL (
         SELECT 
-          ps.title        AS scope_title,
-          ps.description  AS scope_description,
-          ps.deliverables AS scope_deliverables,
-          NULL            AS scope_price   -- 👈 project_scopes YA NO tiene price
+          ps.version        AS scope_version,
+          ps.title          AS scope_title,
+          ps.description    AS scope_description,
+          ps.deliverables   AS scope_deliverables,
+          ps.revision_limit AS scope_revision_limit,
+          ps.created_at     AS scope_created_at,
+          NULL              AS scope_price   -- project_scopes YA NO tiene price, dejamos el alias por compatibilidad
         FROM project_scopes ps
         WHERE ps.project_id = p.id
         ORDER BY ps.version DESC
@@ -225,7 +231,6 @@ exports.getAllDisputes = async (req, res) => {
         ),
 
         // MENSAJES (chat) del proyecto:
-        // conversations vincula project_id -> messages
         pool.query(
           `
           SELECT 
@@ -260,30 +265,22 @@ exports.getAllDisputes = async (req, res) => {
 
       // armar campos "bonitos" para el front
       const project_title =
-        row.scope_title ||
-        row.service_title ||
-        "Proyecto sin título";
+        row.scope_title || row.service_title || "Proyecto sin título";
 
       const project_description =
-        row.scope_description ||
-        row.service_description ||
-        "";
+        row.scope_description || row.service_description || "";
 
-      const project_scope =
-        row.scope_deliverables ||
-        null;
+      const project_scope = row.scope_deliverables || null;
 
       const project_budget =
-        row.scope_price ||                 // ahora siempre NULL, pero lo dejamos por compatibilidad
+        row.scope_price || // ahora siempre NULL, pero lo dejamos por compatibilidad
         row.contract_price ||
         row.service_price ||
         row.service_request_budget ||
         row.proposal_price ||
         null;
 
-      // 🔹 Ya no usamos scope_deadline porque no existe en project_scopes
-      const project_deadline =
-        row.contract_deadline || null;
+      const project_deadline = row.contract_deadline || null;
 
       disputesWithDetails.push({
         ...row,

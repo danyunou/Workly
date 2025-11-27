@@ -1,4 +1,3 @@
-// src/pages/PublicClientProfile.jsx
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -56,17 +55,20 @@ export default function PublicClientProfile() {
     );
   }
 
-  // Helpers para rating
-  const ratingText = user.avg_rating
-    ? Number(user.avg_rating).toFixed(1)
-    : "Sin calificación";
+  // Helpers para rating (como cliente)
+  const hasRating = user.avg_rating && Number(user.avg_rating) > 0;
+  const ratingNumber = hasRating ? Number(user.avg_rating).toFixed(1) : null;
+  const ratingStars = hasRating
+    ? "★".repeat(Math.round(user.avg_rating)) +
+      "☆".repeat(5 - Math.round(user.avg_rating))
+    : "☆☆☆☆☆";
 
   const reviewsText =
     user.reviews_count && user.reviews_count > 0
       ? `${user.reviews_count} reseña${
           user.reviews_count === 1 ? "" : "s"
-        }`
-      : "Aún no tiene reseñas";
+        } de freelancers`
+      : "Aún no tiene reseñas de freelancers";
 
   return (
     <>
@@ -96,12 +98,19 @@ export default function PublicClientProfile() {
             <li>⏰ {user.communication_hours || "No establecido"}</li>
           </ul>
 
-          {/* Bloque de calificación pública */}
+          {/* Bloque de calificación pública (como cliente) */}
           <div className="profile-rating-box">
             <div className="profile-rating-main">
-              <span>⭐ {ratingText}</span>
+              <span className="profile-rating-stars">{ratingStars}</span>
+              <span className="profile-rating-value">
+                {hasRating ? `${ratingNumber} / 5` : "Sin calificación"}
+              </span>
             </div>
             <div className="profile-rating-sub">{reviewsText}</div>
+            <p className="profile-rating-helper">
+              Calificación basada en proyectos completados con freelancers en
+              Workly.
+            </p>
           </div>
 
           {/* Aquí NO mostramos botón de editar porque es perfil público */}
@@ -128,7 +137,10 @@ export default function PublicClientProfile() {
 
           <div className="comments-section">
             <h3>Comentarios de freelancers</h3>
-            <p>Aún no hay comentarios públicos.</p>
+            <p>
+              Por ahora sólo mostramos la calificación global. Más adelante
+              podremos listar comentarios individuales por proyecto.
+            </p>
           </div>
         </div>
       </div>

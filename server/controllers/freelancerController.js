@@ -186,7 +186,9 @@ exports.getFreelancerProfile = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Perfil de freelancer no encontrado" });
+      return res
+        .status(404)
+        .json({ error: "Perfil de freelancer no encontrado" });
     }
 
     const profile = result.rows[0];
@@ -196,10 +198,41 @@ exports.getFreelancerProfile = async (req, res) => {
     profile.avg_rating = stats.avg_rating;
     profile.reviews_count = stats.review_count;
 
+    // 🔹 Reseñas recientes (con comentario) dirigidas a este usuario (freelancer)
+    const { rows: recentReviews } = await pool.query(
+      `
+      SELECT
+        pr.id,
+        pr.rating,
+        pr.comment,
+        pr.created_at,
+        u.full_name AS reviewer_name,
+        COALESCE(
+          p.service_title,
+          'Proyecto #' || pr.project_id::text
+        ) AS project_title
+      FROM project_reviews pr
+      JOIN users u
+        ON u.id = pr.reviewer_id
+      JOIN projects p
+        ON p.id = pr.project_id
+      WHERE pr.target_id = $1
+      ORDER BY pr.created_at DESC
+      LIMIT 10
+      `,
+      [profile.user_id]
+    );
+
+    profile.recent_reviews = recentReviews;
+
     // Arrays
-    profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
+    profile.languages = Array.isArray(profile.languages)
+      ? profile.languages
+      : [];
     profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
-    profile.social_links = Array.isArray(profile.social_links) ? profile.social_links : [];
+    profile.social_links = Array.isArray(profile.social_links)
+      ? profile.social_links
+      : [];
 
     // Educación
     if (typeof profile.education === "string") {
@@ -232,6 +265,7 @@ exports.getFreelancerProfile = async (req, res) => {
     res.status(500).json({ error: "Error al obtener el perfil" });
   }
 };
+
 
 // controllers/requestController.js
 exports.getRequestsForFreelancer = async (req, res) => {

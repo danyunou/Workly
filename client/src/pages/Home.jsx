@@ -9,7 +9,7 @@ export default function Home() {
   const [categories, setCategories] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isModalClosing, setIsModalClosing] = useState(false);
+  const [isModalClosing, setIsModalClosing] = useState(false);3
 
   // Campos de la solicitud
   const [requestMessage, setRequestMessage] = useState("");
@@ -225,9 +225,9 @@ export default function Home() {
                       </button>
 
                       <div className="service-metrics compact-metrics">
-                        <span className="metric-item">
+                        {/*<span className="metric-item">
                           ⭐ {Number(service.rating_avg || 0).toFixed(1)}
-                        </span>
+                        </span>*/}
                         <span className="metric-item">
                           📦 {service.completed_orders || 0}
                         </span>
@@ -237,7 +237,7 @@ export default function Home() {
                       </div>
 
                       <p className="service-price">
-                        Desde ${service.price} USD
+                        Desde ${service.price} MXN
                       </p>
 
                       <button
@@ -301,13 +301,13 @@ export default function Home() {
                       {selectedService.delivery_time_days} días
                     </span>
                     <span>
-                      ⭐ {Number(selectedService.rating_avg || 0).toFixed(1)} ·{" "}
-                      {selectedService.completed_orders || 0} pedidos
+                      {/*⭐ {Number(selectedService.rating_avg || 0).toFixed(1)} ·{" "}*/}
+                      📦 {selectedService.completed_orders || 0} pedidos realizados
                     </span>
                   </div>
 
                   <p className="service-modal-price">
-                    Desde ${selectedService.price} USD
+                    Desde ${selectedService.price} MXN
                   </p>
 
                   <div className="service-modal-form">
@@ -352,7 +352,7 @@ export default function Home() {
                           type="number"
                           min="0"
                           className="service-modal-input"
-                          placeholder="USD"
+                          placeholder="MXN"
                           value={proposedBudget}
                           onChange={(e) =>
                             setProposedBudget(e.target.value)
