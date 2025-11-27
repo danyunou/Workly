@@ -60,7 +60,7 @@
 
 .btn-outline:hover {
   background-color: black;
-  color: white;
+  color: #038b63 !important;
 }
 
 .profile-dropdown {
