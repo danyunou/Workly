@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
-const reviewController = require("../controller/reviewController");
+const reviewController = require("../controllers/reviewController");
 
 // GET /api/projects/:projectId/reviews
 router.get(
