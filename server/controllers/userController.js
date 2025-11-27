@@ -31,10 +31,10 @@ exports.getUserProfile = async (req, res) => {
 
     const user = result.rows[0];
 
-    // 🔹 Stats reales
+    // 🔹 Stats reales (promedio y conteo)
     const stats = await getUserReviewStats(user.id);
 
-    // 🔹 Reseñas recientes dirigidas a este usuario (cuando actúa como cliente)
+    // 🔹 Reseñas recientes dirigidas a este usuario (como cliente)
     const { rows: recentReviews } = await pool.query(
       `
       SELECT
@@ -44,14 +44,18 @@ exports.getUserProfile = async (req, res) => {
         pr.created_at,
         u.full_name AS reviewer_name,
         COALESCE(
-          p.service_title,
+          s.title,
           'Proyecto #' || pr.project_id::text
         ) AS project_title
       FROM project_reviews pr
       JOIN users u
         ON u.id = pr.reviewer_id
-      JOIN projects p
+      LEFT JOIN projects p
         ON p.id = pr.project_id
+      LEFT JOIN service_requests sr
+        ON sr.id = p.service_request_id
+      LEFT JOIN services s
+        ON s.id = sr.service_id
       WHERE pr.target_id = $1
       ORDER BY pr.created_at DESC
       LIMIT 10
@@ -70,7 +74,6 @@ exports.getUserProfile = async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };
-
 
 exports.updateUserProfile = async (req, res) => {
   const userId = req.user?.id;

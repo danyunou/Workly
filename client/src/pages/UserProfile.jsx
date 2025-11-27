@@ -12,7 +12,14 @@ export default function UserProfile() {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
       .then((res) => res.json())
-      .then((data) => setUser(data))
+      .then((data) => {
+        // por si el backend viniera anidado o con error
+        if (data && !data.error) {
+          setUser(data);
+        } else {
+          console.error("Error en profile:", data.error);
+        }
+      })
       .catch((err) => console.error("Error fetching user profile:", err));
   }, []);
 
@@ -24,7 +31,18 @@ export default function UserProfile() {
       </>
     );
 
-  // Helpers de rating (vista del propio usuario)
+  // Helper fecha de unión
+  const joinedText = (() => {
+    if (!user.created_at) return "Fecha no disponible";
+    const d = new Date(user.created_at);
+    if (Number.isNaN(d.getTime())) return "Fecha no disponible";
+    return d.toLocaleDateString("es-MX", {
+      month: "long",
+      year: "numeric",
+    });
+  })();
+
+  // Helpers de rating
   const hasRating = user.avg_rating && Number(user.avg_rating) > 0;
   const ratingNumber = hasRating ? Number(user.avg_rating).toFixed(1) : null;
   const ratingStars = hasRating
@@ -36,9 +54,7 @@ export default function UserProfile() {
     user.reviews_count && user.reviews_count > 0
       ? `${user.reviews_count} reseña${
           user.reviews_count === 1 ? "" : "s"
-        } recibida${
-          user.reviews_count === 1 ? "" : "s"
-        }`
+        } recibida${user.reviews_count === 1 ? "" : "s"}`
       : "Aún no tienes reseñas";
 
   return (
@@ -55,18 +71,11 @@ export default function UserProfile() {
           <p>@{user.username}</p>
           <ul className="profile-info">
             <li>📍 Ubicado en {user.location || "México"}</li>
-            <li>
-              🕒 Se unió en{" "}
-              {new Date(user.created_at).toLocaleString("es-MX", {
-                month: "long",
-                year: "numeric",
-              })}
-            </li>
+            <li>🕒 Se unió en {joinedText}</li>
             <li>🗣️ {user.languages || "Español"}</li>
             <li>⏰ {user.communication_hours || "No establecido"}</li>
           </ul>
 
-          {/* Bloque de calificación (para el propio usuario) */}
           <div className="profile-rating-box">
             <div className="profile-rating-main">
               <span className="profile-rating-stars">{ratingStars}</span>
@@ -105,8 +114,8 @@ export default function UserProfile() {
           <div className="comments-section">
             <h3>Comentarios de otros usuarios</h3>
             <p>
-              De momento se muestra solo tu calificación global. Más adelante
-              se podrán ver comentarios individuales por proyecto.
+              De momento se muestra solo tu calificación global. Más adelante se
+              podrán ver comentarios individuales por proyecto.
             </p>
           </div>
         </div>
