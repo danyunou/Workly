@@ -141,7 +141,6 @@ exports.getPublicUserProfile = async (req, res) => {
         created_at
       FROM users
       WHERE username = $1
-      LIMIT 1
       `,
       [username]
     );
@@ -152,19 +151,46 @@ exports.getPublicUserProfile = async (req, res) => {
 
     const user = rows[0];
 
-    // Obtener stats reales
+    // 🔹 Stats (como cliente)
     const stats = await getUserReviewStats(user.id);
+
+    // 🔹 Reseñas recientes dirigidas a este usuario (cliente)
+    const { rows: recentReviews } = await pool.query(
+      `
+      SELECT
+        pr.id,
+        pr.rating,
+        pr.comment,
+        pr.created_at,
+        u.full_name AS reviewer_name,
+        COALESCE(
+          s.title,
+          'Proyecto #' || pr.project_id::text
+        ) AS project_title
+      FROM project_reviews pr
+      JOIN users u
+        ON u.id = pr.reviewer_id
+      LEFT JOIN projects p
+        ON p.id = pr.project_id
+      LEFT JOIN service_requests sr
+        ON sr.id = p.service_request_id
+      LEFT JOIN services s
+        ON s.id = sr.service_id
+      WHERE pr.target_id = $1
+      ORDER BY pr.created_at DESC
+      LIMIT 10
+      `,
+      [user.id]
+    );
 
     res.json({
       ...user,
       avg_rating: stats.avg_rating,
-      reviews_count: stats.review_count
+      reviews_count: stats.review_count,
+      recent_reviews: recentReviews,
     });
-
   } catch (err) {
     console.error("Error en getPublicUserProfile:", err);
-    return res
-      .status(500)
-      .json({ error: "Error obteniendo perfil público" });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };

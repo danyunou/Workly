@@ -499,7 +499,7 @@ export default function MyServices() {
                       <div className="service-title-row">
                         <h3>{service.title}</h3>
                         <span className="service-price">
-                          ${Number(service.price).toFixed(2)} USD
+                          ${Number(service.price).toFixed(2)} MXN
                         </span>
                       </div>
 
@@ -727,7 +727,7 @@ export default function MyServices() {
 
                   <div className="edit-row-two">
                     <div className="edit-field">
-                      <label>Precio (USD)</label>
+                      <label>Precio (MXN)</label>
                       <input
                         type="number"
                         name="price"
