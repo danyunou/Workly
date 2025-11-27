@@ -160,7 +160,6 @@ exports.getFreelancerProfile = async (req, res) => {
   }
 
   try {
-    // 🔹 Datos base del freelancer (users + freelancer_profiles)
     const { rows } = await pool.query(
       `
       SELECT 
@@ -169,6 +168,8 @@ exports.getFreelancerProfile = async (req, res) => {
         u.full_name,
         u.email,
         u.created_at,
+        u.profile_picture,
+        u.preferences,                           -- 👈 AQUÍ
         fp.id AS freelancer_profile_id,
         fp.alias,
         fp.description,
@@ -181,8 +182,7 @@ exports.getFreelancerProfile = async (req, res) => {
         fp.verified,
         fp.categories,
         fp.featured_projects,
-        fp.created_at AS profile_created_at,
-        u.profile_picture
+        fp.created_at AS profile_created_at
       FROM freelancer_profiles fp
       JOIN users u ON u.id = fp.user_id
       WHERE fp.user_id = $1
@@ -198,10 +198,8 @@ exports.getFreelancerProfile = async (req, res) => {
 
     const profile = rows[0];
 
-    // 🔹 Stats globales (rating promedio y conteo de reseñas)
     const stats = await getUserReviewStats(profile.id);
 
-    // 🔹 Reseñas recientes dirigidas a este FREELANCER
     const { rows: recentReviews } = await pool.query(
       `
       SELECT
@@ -227,7 +225,7 @@ exports.getFreelancerProfile = async (req, res) => {
       ORDER BY pr.created_at DESC
       LIMIT 10
       `,
-      [profile.id] // 👈 el user_id del freelancer es el target_id
+      [profile.id]
     );
 
     res.json({
@@ -336,6 +334,7 @@ exports.getPublicFreelancerProfile = async (req, res) => {
         u.full_name,
         u.created_at,
         u.profile_picture,
+        u.preferences,                       -- 👈 AQUÍ
         fp.alias,
         fp.description,
         fp.languages,
@@ -358,7 +357,6 @@ exports.getPublicFreelancerProfile = async (req, res) => {
     }
 
     const profile = rows[0];
-
     const stats = await getUserReviewStats(profile.id);
 
     const { rows: recentReviews } = await pool.query(
@@ -400,8 +398,6 @@ exports.getPublicFreelancerProfile = async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };
-
-
 
 exports.updatePortfolio = async (req, res) => {
   const userId = req.user.id;
