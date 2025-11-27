@@ -2,8 +2,8 @@
 const express = require("express");
 const router = express.Router();
 
-const authMiddleware = require("../middlewares/authMiddleware");
-const reviewController = require("../controllers/reviewController");
+const authMiddleware = require("../middleware/authMiddleware");
+const reviewController = require("../controller/reviewController");
 
 // GET /api/projects/:projectId/reviews
 router.get(
