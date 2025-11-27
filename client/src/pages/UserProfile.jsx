@@ -13,7 +13,6 @@ export default function UserProfile() {
     })
       .then((res) => res.json())
       .then((data) => {
-        // por si el backend viniera anidado o con error
         if (data && !data.error) {
           setUser(data);
         } else {
@@ -56,6 +55,16 @@ export default function UserProfile() {
           user.reviews_count === 1 ? "" : "s"
         } recibida${user.reviews_count === 1 ? "" : "s"}`
       : "Aún no tienes reseñas";
+
+  // 👇 Lista de reseñas recientes que manda el backend
+  const recentReviews = user.recent_reviews || [];
+
+  // Helper para estrellas por reseña individual
+  const renderStars = (rating) => {
+    const r = Number(rating || 0);
+    if (!r) return "☆☆☆☆☆";
+    return "★".repeat(Math.round(r)) + "☆".repeat(5 - Math.round(r));
+  };
 
   return (
     <>
@@ -113,10 +122,43 @@ export default function UserProfile() {
 
           <div className="comments-section">
             <h3>Comentarios de otros usuarios</h3>
-            <p>
-              De momento se muestra solo tu calificación global. Más adelante se
-              podrán ver comentarios individuales por proyecto.
-            </p>
+
+            {recentReviews.length === 0 ? (
+              <p>
+                Aún no tienes comentarios. Cuando completes proyectos y te
+                califiquen, aparecerán aquí las reseñas más recientes.
+              </p>
+            ) : (
+              <div className="comments-list">
+                {recentReviews.map((rev) => (
+                  <div key={rev.id} className="comment-card">
+                    <div className="comment-header">
+                      <span className="comment-project">
+                        {rev.project_title}
+                      </span>
+                      <span className="comment-rating">
+                        {renderStars(rev.rating)} ({rev.rating}/5)
+                      </span>
+                    </div>
+                    <div className="comment-meta">
+                      <span className="comment-author">
+                        De: {rev.reviewer_name}
+                      </span>
+                      <span className="comment-date">
+                        {new Date(rev.created_at).toLocaleDateString("es-MX", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <p className="comment-text">
+                      {rev.comment || "El usuario solo dejó una calificación."}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

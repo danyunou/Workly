@@ -154,51 +154,54 @@ exports.getVerificationStatus = async (req, res) => {
 };
 
 exports.getFreelancerProfile = async (req, res) => {
-  const user_id = req.user?.id;
-
-  if (!user_id) return res.status(401).json({ error: "No autorizado" });
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
 
   try {
-    const result = await pool.query(
+    // 🔹 Datos base del freelancer (users + freelancer_profiles)
+    const { rows } = await pool.query(
       `
       SELECT 
-        u.id AS user_id,
-        u.full_name,
+        u.id,
         u.username,
+        u.full_name,
+        u.email,
         u.created_at,
-        u.preferences,
-        u.profile_picture,
-        f.alias,
-        f.description,
-        f.languages,
-        f.skills,
-        f.education,
-        f.website,
-        f.social_links,
-        f.verified,
-        f.categories,
-        f.featured_projects             
-      FROM freelancer_profiles f
-      JOIN users u ON f.user_id = u.id
-      WHERE f.user_id = $1
+        fp.id AS freelancer_profile_id,
+        fp.alias,
+        fp.description,
+        fp.languages,
+        fp.skills,
+        fp.education,
+        fp.website,
+        fp.social_links,
+        fp.verification_file,
+        fp.verified,
+        fp.categories,
+        fp.featured_projects,
+        fp.created_at AS profile_created_at,
+        u.profile_picture
+      FROM freelancer_profiles fp
+      JOIN users u ON u.id = fp.user_id
+      WHERE fp.user_id = $1
       `,
-      [user_id]
+      [userId]
     );
 
-    if (result.rows.length === 0) {
+    if (rows.length === 0) {
       return res
         .status(404)
-        .json({ error: "Perfil de freelancer no encontrado" });
+        .json({ error: "No se encontró el perfil de freelancer" });
     }
 
-    const profile = result.rows[0];
+    const profile = rows[0];
 
-    // 🔹 Stats de reseñas para este user
-    const stats = await getUserReviewStats(profile.user_id);
-    profile.avg_rating = stats.avg_rating;
-    profile.reviews_count = stats.review_count;
+    // 🔹 Stats globales (rating promedio y conteo de reseñas)
+    const stats = await getUserReviewStats(profile.id);
 
-    // 🔹 Reseñas recientes (con comentario) dirigidas a este usuario (freelancer)
+    // 🔹 Reseñas recientes dirigidas a este FREELANCER
     const { rows: recentReviews } = await pool.query(
       `
       SELECT
@@ -208,61 +211,34 @@ exports.getFreelancerProfile = async (req, res) => {
         pr.created_at,
         u.full_name AS reviewer_name,
         COALESCE(
-          p.service_title,
+          s.title,
           'Proyecto #' || pr.project_id::text
         ) AS project_title
       FROM project_reviews pr
       JOIN users u
         ON u.id = pr.reviewer_id
-      JOIN projects p
+      LEFT JOIN projects p
         ON p.id = pr.project_id
+      LEFT JOIN service_requests sr
+        ON sr.id = p.service_request_id
+      LEFT JOIN services s
+        ON s.id = sr.service_id
       WHERE pr.target_id = $1
       ORDER BY pr.created_at DESC
       LIMIT 10
       `,
-      [profile.user_id]
+      [profile.id] // 👈 el user_id del freelancer es el target_id
     );
 
-    profile.recent_reviews = recentReviews;
-
-    // Arrays
-    profile.languages = Array.isArray(profile.languages)
-      ? profile.languages
-      : [];
-    profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
-    profile.social_links = Array.isArray(profile.social_links)
-      ? profile.social_links
-      : [];
-
-    // Educación
-    if (typeof profile.education === "string") {
-      try {
-        profile.education = JSON.parse(profile.education);
-      } catch {
-        profile.education = [];
-      }
-    }
-
-    // Categorías
-    profile.categories = Array.isArray(profile.categories)
-      ? profile.categories.map((c) => c.trim())
-      : [];
-
-    // Portafolio
-    if (!profile.featured_projects) {
-      profile.featured_projects = [];
-    } else if (!Array.isArray(profile.featured_projects)) {
-      try {
-        profile.featured_projects = JSON.parse(profile.featured_projects);
-      } catch {
-        profile.featured_projects = [];
-      }
-    }
-
-    res.json(profile);
+    res.json({
+      ...profile,
+      avg_rating: stats.avg_rating,
+      reviews_count: stats.review_count,
+      recent_reviews: recentReviews,
+    });
   } catch (err) {
     console.error("Error al obtener perfil de freelancer:", err);
-    res.status(500).json({ error: "Error al obtener el perfil" });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -352,75 +328,79 @@ exports.getPublicFreelancerProfile = async (req, res) => {
   const { username } = req.params;
 
   try {
-    const result = await pool.query(
+    const { rows } = await pool.query(
       `
       SELECT 
-        u.id AS user_id,
-        u.full_name,
+        u.id,
         u.username,
+        u.full_name,
         u.created_at,
-        u.preferences,
         u.profile_picture,
-        f.alias,
-        f.description,
-        f.languages,
-        f.skills,
-        f.education,
-        f.website,
-        f.social_links,
-        f.verified,
-        f.categories,
-        f.featured_projects              
-      FROM freelancer_profiles f
-      JOIN users u ON f.user_id = u.id
+        fp.alias,
+        fp.description,
+        fp.languages,
+        fp.skills,
+        fp.education,
+        fp.website,
+        fp.social_links,
+        fp.verified,
+        fp.categories,
+        fp.featured_projects
+      FROM freelancer_profiles fp
+      JOIN users u ON u.id = fp.user_id
       WHERE u.username = $1
       `,
       [username]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Perfil de freelancer no encontrado" });
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Perfil no encontrado" });
     }
 
-    const profile = result.rows[0];
+    const profile = rows[0];
 
-    // 🔹 Stats de reseñas para este freelancer (target_id = user_id)
-    const stats = await getUserReviewStats(profile.user_id);
-    profile.avg_rating = stats.avg_rating;
-    profile.reviews_count = stats.review_count;
+    const stats = await getUserReviewStats(profile.id);
 
-    profile.languages = Array.isArray(profile.languages) ? profile.languages : [];
-    profile.skills = Array.isArray(profile.skills) ? profile.skills : [];
-    profile.social_links = Array.isArray(profile.social_links) ? profile.social_links : [];
+    const { rows: recentReviews } = await pool.query(
+      `
+      SELECT
+        pr.id,
+        pr.rating,
+        pr.comment,
+        pr.created_at,
+        u.full_name AS reviewer_name,
+        COALESCE(
+          s.title,
+          'Proyecto #' || pr.project_id::text
+        ) AS project_title
+      FROM project_reviews pr
+      JOIN users u
+        ON u.id = pr.reviewer_id
+      LEFT JOIN projects p
+        ON p.id = pr.project_id
+      LEFT JOIN service_requests sr
+        ON sr.id = p.service_request_id
+      LEFT JOIN services s
+        ON s.id = sr.service_id
+      WHERE pr.target_id = $1
+      ORDER BY pr.created_at DESC
+      LIMIT 10
+      `,
+      [profile.id]
+    );
 
-    if (typeof profile.education === "string") {
-      try {
-        profile.education = JSON.parse(profile.education);
-      } catch {
-        profile.education = [];
-      }
-    }
-
-    profile.categories = Array.isArray(profile.categories)
-      ? profile.categories.map((c) => c.trim())
-      : [];
-
-    if (!profile.featured_projects) {
-      profile.featured_projects = [];
-    } else if (!Array.isArray(profile.featured_projects)) {
-      try {
-        profile.featured_projects = JSON.parse(profile.featured_projects);
-      } catch {
-        profile.featured_projects = [];
-      }
-    }
-
-    res.json(profile);
+    res.json({
+      ...profile,
+      avg_rating: stats.avg_rating,
+      reviews_count: stats.review_count,
+      recent_reviews: recentReviews,
+    });
   } catch (err) {
-    console.error("Error al obtener perfil público de freelancer:", err);
-    res.status(500).json({ error: "Error al obtener el perfil público" });
+    console.error("Error en perfil público de freelancer:", err);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
+
 
 
 exports.updatePortfolio = async (req, res) => {
